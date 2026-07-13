@@ -999,7 +999,8 @@ function entryRow(e, first, idx){
   var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
     '<span style="display:block;font-size:13px;color:var(--sub)">'+esc(e.detail)+'</span></span>'+
-    '<span class="num" style="font-size:13px;color:var(--sub)">'+tClock(e.ts)+'</span>';
+    '<span class="num" style="font-size:13px;color:var(--sub)">'+tClock(e.ts)+'</span>'+
+    (idx==null ? "" : ic("chevron-right",15,"#5c5c61"));
   var sty = 'display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left;'+
     (first?"":"border-top:1px solid var(--hair);");
   return idx==null
@@ -1142,7 +1143,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.7</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.8</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
