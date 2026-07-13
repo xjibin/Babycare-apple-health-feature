@@ -117,6 +117,13 @@
   .icoopt{width:44px; height:44px; border-radius:50%; background:var(--card2);
     display:flex; align-items:center; justify-content:center; flex:none; border:2px solid transparent;}
   .icoopt.on{border-color:#fff;}
+  @keyframes wig{0%{rotate:-1deg}50%{rotate:1deg}100%{rotate:-1deg}}
+  .wig{animation:wig .3s ease-in-out infinite;}
+  .wigmode .actcard{position:relative; transition:transform .22s;}
+  .dragging{scale:1.03; box-shadow:0 14px 34px rgba(0,0,0,.55); z-index:10;}
+  .delbadge{position:absolute; top:-7px; left:-7px; width:26px; height:26px; border-radius:50%;
+    background:#48484A; border:1.5px solid rgba(255,255,255,.28); display:flex; align-items:center;
+    justify-content:center; z-index:3;}
 </style>
 </head>
 <body>
@@ -351,6 +358,7 @@ var A = {
   hist: function(){ S.hist=true; render(); },
   histback: function(){ S.hist=false; render(); },
   open: function(x){
+    if(S.editing) return;
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
     ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
     render();
@@ -398,13 +406,6 @@ var A = {
   addnew: function(){
     S.route="new"; ui.col=CUSTCOLS[S.custom.length%CUSTCOLS.length]; ui.icon="sparkles"; ui.unit="ml";
     render();
-  },
-  mv: function(x){
-    var p=x.split(":"), i=+p[0], j=i+(+p[1]);
-    ensureOrder();
-    if(j<0 || j>=S.order.length) return;
-    var o=S.order.splice(i,1)[0]; S.order.splice(j,0,o);
-    save(); render();
   },
   delc: function(k){
     var a=act(k); if(!a) return;
@@ -499,38 +500,77 @@ document.addEventListener("click", function(e){
   if(fn) fn(el.getAttribute("data-x"));
 });
 
-/* drag-to-reorder in edit mode */
+/* long-press a card to enter wiggle mode; drag full cards to reorder (iOS style) */
+var lpT=null;
 document.addEventListener("pointerdown", function(ev){
-  var hnd=ev.target.closest(".dragh");
-  if(!hnd) return;
-  var row=hnd.closest(".erow"), list=document.getElementById("elist");
-  if(!row || !list) return;
-  var rows=[].slice.call(list.children);
-  var idx=rows.indexOf(row), n=rows.length, slot=row.offsetHeight+10;
-  var startY=ev.clientY, cur=idx, moved=false;
-  row.style.zIndex="5"; row.style.position="relative"; row.style.transition="none";
-  try{ hnd.setPointerCapture(ev.pointerId); }catch(err){}
-  function mv(e2){
-    var dy=e2.clientY-startY;
+  if(S.tab!=="activity" || S.route!=="list") return;
+  var card = ev.target.closest ? ev.target.closest(".actcard") : null;
+  if(!card || (ev.target.closest && ev.target.closest(".delbadge"))) return;
+  var sc=byId("scroll");
+
+  /* normal mode: hold ~0.5s without moving -> wiggle mode */
+  if(!S.editing){
+    var sx=ev.clientX, sy=ev.clientY;
+    clearTimeout(lpT);
+    var pm=function(e2){ if(Math.abs(e2.clientX-sx)>10 || Math.abs(e2.clientY-sy)>10) cancel(); };
+    var cancel=function(){
+      clearTimeout(lpT); lpT=null;
+      document.removeEventListener("pointermove",pm);
+      document.removeEventListener("pointerup",cancel);
+      document.removeEventListener("pointercancel",cancel);
+    };
+    lpT=setTimeout(function(){ cancel(); S.editing=true; render(); }, 500);
+    document.addEventListener("pointermove",pm);
+    document.addEventListener("pointerup",cancel);
+    document.addEventListener("pointercancel",cancel);
+    return;
+  }
+
+  /* wiggle mode: drag to reorder */
+  var wrap=byId("cards"); if(!wrap) return;
+  var rows=[].slice.call(wrap.children);
+  var idx=rows.indexOf(card); if(idx<0) return;
+  var n=rows.length, gap=16, tops=[], hs=[], i;
+  for(i=0;i<n;i++){ tops.push(rows[i].offsetTop); hs.push(rows[i].offsetHeight); }
+  var slot=hs[idx]+gap;
+  var startCY=ev.clientY+sc.scrollTop, lastY=ev.clientY, cur=idx, moved=false;
+  card.classList.remove("wig");
+  card.classList.add("dragging");
+  card.style.transition="none";
+  try{ card.setPointerCapture(ev.pointerId); }catch(e0){}
+  var block=function(e3){ e3.preventDefault(); };
+  window.addEventListener("touchmove", block, {passive:false});
+  function upd(){
+    var dy=(lastY+sc.scrollTop)-startCY;
     if(Math.abs(dy)>4) moved=true;
-    row.style.transform="translateY("+dy+"px)";
-    var t2=Math.min(n-1, Math.max(0, idx+Math.round(dy/slot)));
-    if(t2!==cur){
-      cur=t2;
-      for(var i=0;i<n;i++){
-        if(i===idx) continue;
+    card.style.transform="translateY("+dy+"px)";
+    var c=tops[idx]+hs[idx]/2+dy, t=0, j;
+    for(j=0;j<n;j++){ if(j===idx) continue; if(c > tops[j]+hs[j]/2) t++; }
+    if(t!==cur){
+      cur=t;
+      for(j=0;j<n;j++){
+        if(j===idx) continue;
         var off=0;
-        if(idx<cur && i>idx && i<=cur) off=-slot;
-        else if(idx>cur && i>=cur && i<idx) off=slot;
-        rows[i].style.transform = off ? "translateY("+off+"px)" : "";
+        if(idx<cur && j>idx && j<=cur) off=-slot;
+        else if(idx>cur && j>=cur && j<idx) off=slot;
+        rows[j].style.transform = off ? "translateY("+off+"px)" : "";
       }
     }
-    e2.preventDefault();
   }
-  function up(){
-    document.removeEventListener("pointermove", mv);
-    document.removeEventListener("pointerup", up);
-    document.removeEventListener("pointercancel", up);
+  var scInt=setInterval(function(){
+    var vh=window.innerHeight;
+    if(lastY>vh-110) sc.scrollTop+=7;
+    else if(lastY<130) sc.scrollTop-=7;
+    else return;
+    upd();
+  }, 16);
+  var pm2=function(e2){ lastY=e2.clientY; upd(); };
+  var up2=function(){
+    clearInterval(scInt);
+    window.removeEventListener("touchmove", block);
+    document.removeEventListener("pointermove",pm2);
+    document.removeEventListener("pointerup",up2);
+    document.removeEventListener("pointercancel",up2);
     if(moved && cur!==idx){
       ensureOrder();
       var o=S.order.splice(idx,1)[0];
@@ -538,11 +578,14 @@ document.addEventListener("pointerdown", function(ev){
       save();
     }
     render();
-  }
-  document.addEventListener("pointermove", mv);
-  document.addEventListener("pointerup", up);
-  document.addEventListener("pointercancel", up);
+  };
+  document.addEventListener("pointermove",pm2);
+  document.addEventListener("pointerup",up2);
+  document.addEventListener("pointercancel",up2);
   ev.preventDefault();
+});
+document.addEventListener("contextmenu", function(e){
+  if(e.target && e.target.closest && e.target.closest(".actcard")) e.preventDefault();
 });
 
 /* ============ export ============ */
@@ -710,34 +753,18 @@ function vHistory(){
 
 /* ============ Activity tab (mirrors JSX Workout-style list) ============ */
 function vList(){
-  var acts=allActs(), i;
-
-  /* --- edit / reorder mode --- */
-  if(S.editing){
-    var eh = '<div class="rowsb" style="padding-top:16px;margin-bottom:8px">'+
-      '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Activity</span>'+
-      '<button class="press" data-a="editdone" style="color:var(--blue);font-size:17px;font-weight:600">Done</button></div>'+
-      '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Drag the handle to reorder \u00B7 custom cards can be removed</div>'+
-      '<div id="elist">';
-    for(i=0;i<acts.length;i++){
-      var ea=acts[i], custom=(ea.kind==="qty");
-      eh += '<div class="erow"><span class="dragh">'+GRIP+'</span>'+ic(ea.icon,20,ea.c)+
-        '<span style="flex:1;min-width:0;font-size:16px;font-weight:600;margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ea.t+'</span>'+
-        '<button class="mvbtn press" data-a="mv" data-x="'+i+':-1">'+ic("chevron-left",15,"#fff",{style:"transform:rotate(90deg)"})+'</button>'+
-        '<button class="mvbtn press" data-a="mv" data-x="'+i+':1">'+ic("chevron-left",15,"#fff",{style:"transform:rotate(-90deg)"})+'</button>'+
-        (custom?'<button class="mvbtn press" data-a="delc" data-x="'+ea.k+'" style="background:'+alpha(C.red,0.18)+'">'+ic("minus",15,C.red)+'</button>':"")+
-        '</div>';
-    }
-    return eh+'</div>';
-  }
-
-  /* --- normal list --- */
-  var h = '<div class="rowsb" style="padding-top:16px;margin-bottom:20px">'+
+  var acts=allActs(), i, edit=S.editing;
+  var h = '<div class="rowsb" style="padding-top:16px;margin-bottom:'+(edit?'8':'20')+'px">'+
     '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Activity</span>'+
-    '<span style="display:flex;gap:12px">'+
-    '<button class="circ press" data-a="editmode" style="width:44px;height:44px;background:var(--card)">'+ic("pencil",18,"#fff")+'</button>'+
-    '<button class="circ press" data-a="addnew" style="width:44px;height:44px;background:var(--card)">'+ic("plus",20,"#fff")+'</button></span></div>';
-  h += bannerHtml();
+    (edit
+      ? '<button class="press" data-a="editdone" style="color:var(--blue);font-size:17px;font-weight:600">Done</button>'
+      : '<span style="display:flex;gap:12px">'+
+        '<button class="circ press" data-a="editmode" style="width:44px;height:44px;background:var(--card)">'+ic("pencil",18,"#fff")+'</button>'+
+        '<button class="circ press" data-a="addnew" style="width:44px;height:44px;background:var(--card)">'+ic("plus",20,"#fff")+'</button></span>')+
+    '</div>';
+  if(edit) h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Drag a card to reorder \u00B7 tap Done when finished</div>';
+  else h += bannerHtml();
+  h += '<div id="cards"'+(edit?' class="wigmode"':'')+'>';
   for(i=0;i<acts.length;i++){
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single");
     var chips = timed ? ["music","mic","timer"] : ["plus","pencil","timer"], ch="";
@@ -748,15 +775,22 @@ function vList(){
       if(secs>0.5) st='<div class="num" style="margin-top:8px;font-size:13px;font-weight:700;color:'+a.c+'">'+
         (s.run?'<span class="pulse">\u25CF</span> In progress \u00B7 ':'Paused \u00B7 ')+fmt(secs)+'</div>';
     }
-    h += '<button class="actcard press" data-a="open" data-x="'+a.k+'" '+
-      'style="background:linear-gradient(140deg,'+alpha(a.c,0.17)+','+alpha(a.c,0.04)+'),#121214">'+
+    var tag = edit ? "div" : "button";
+    h += '<'+tag+' class="actcard'+(edit?' wig':' press')+'"'+
+      (edit ? '' : ' data-a="open" data-x="'+a.k+'"')+' data-k="'+a.k+'"'+
+      ' style="background:linear-gradient(140deg,'+alpha(a.c,0.17)+','+alpha(a.c,0.04)+'),#121214'+
+      (edit?';animation-delay:-'+((i%5)*93)+'ms':'')+'">'+
+      (edit && a.kind==="qty"
+        ? '<button class="delbadge press" data-a="delc" data-x="'+a.k+'">'+ic("minus",14,"#fff",{sw:3})+'</button>'
+        : "")+
       '<div class="rowsb" style="align-items:flex-start">'+ic(a.icon,38,a.c)+
       '<span class="circ" style="width:56px;height:56px;background:'+a.c+'">'+
       (timed ? ic("play",24,"#000",{fill:true,style:"margin-left:3px"}) : ic("plus",26,"#000",{sw:2.6}))+
       '</span></div>'+
       '<div style="font-size:25px;font-weight:700;margin-top:20px">'+a.t+'</div>'+st+
-      '<div class="chiprow">'+ch+'</div></button>';
+      '<div class="chiprow">'+ch+'</div></'+tag+'>';
   }
+  h += '</div>';
   h += '<div style="font-size:22px;font-weight:700;margin:8px 0 12px">Today</div>';
   var tk=dayKey(new Date().toISOString()), rows="", n=0;
   for(var j=0;j<S.entries.length;j++){
