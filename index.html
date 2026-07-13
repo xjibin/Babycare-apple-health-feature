@@ -1143,7 +1143,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.8</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.9</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1499,11 +1499,13 @@ function vFeed(){
     ic("clock",20,C.orange)+
     '<span style="flex:1;font-size:15px;font-weight:600">Set alarm for '+tClock(al)+'</span>'+
     ic("chevron-right",16,C.sub)+'</button>'+
-    '<div style="font-size:12px;color:var(--sub);line-height:1.55;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">'+
-    'One-time setup: in the <b style="color:#fff">Shortcuts</b> app create a shortcut named '+
-    '<b style="color:#fff">Feed Alarm</b> with the single action <b style="color:#fff">Create Alarm</b>, '+
-    'Time set to <b style="color:#fff">Shortcut Input</b>. This button then hands it the time and the alarm '+
-    'appears in the native Clock app.</div></div>';
+    '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">'+
+    'One-time setup \u2014 a Shortcuts shortcut named <b style="color:#fff">Feed Alarm</b> with <b style="color:#fff">two actions</b>:'+
+    '<div style="margin-top:8px">1 \u00B7 <b style="color:#fff">Get Dates from Input</b> \u2014 Input: <b style="color:#fff">Shortcut Input</b></div>'+
+    '<div>2 \u00B7 <b style="color:#fff">Create Alarm</b> \u2014 Time: <b style="color:#fff">Dates</b> (the variable from step 1)</div>'+
+    '<div style="margin-top:8px">This button sends the time as text (<span class="mono" style="color:'+C.teal+'">\u201C'+tClock(al)+'\u201D</span>); '+
+    'step 1 converts it to a real time, so Shortcuts creates the alarm without asking. '+
+    'If you already made the one-action version, just add step 1 above Create Alarm and point Time at <b style="color:#fff">Dates</b>.</div></div></div>';
   h += saveBar(C.mint, true, "fSave");
   return h;
 }
