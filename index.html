@@ -102,9 +102,10 @@
     font-size:17px; padding:16px; -webkit-appearance:none; border-radius:24px;}
   .ninput::placeholder{color:#5c5c61;}
   .wheelwrap{position:relative; height:180px; overflow:hidden;}
-  .wheel{height:180px; overflow-y:auto; scrollbar-width:none; scroll-snap-type:y mandatory;
+  .wheel,.wcol{height:180px; overflow-y:auto; scrollbar-width:none; scroll-snap-type:y mandatory;
     -webkit-overflow-scrolling:touch;}
-  .wheel::-webkit-scrollbar{display:none;}
+  .wheel::-webkit-scrollbar,.wcol::-webkit-scrollbar{display:none;}
+  .dtrow{display:flex;}
   .witem{height:36px; line-height:36px; text-align:center; font-size:16px; color:var(--sub);
     scroll-snap-align:center;}
   .witem.on{color:#fff; font-weight:600;}
@@ -179,8 +180,9 @@ var NAPPIES = [
 
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
-var S = { tab:"summary", route:"list", hist:false, editing:false, entries:[], sess:{}, order:[], custom:[] };
-var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles" };
+var S = { tab:"summary", route:"list", hist:false, editing:false, pmode:false, entries:[], sess:{}, order:[], custom:[] };
+var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
+  pl:0, pr:0, pdur:0, dts:{} };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
@@ -219,6 +221,92 @@ var UNITS = ["count","times","ml","L","fl oz","cup","tsp","tbsp","drops","mg","g
 var GRIP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 var CUSTCOLS = [C.pink, C.teal, C.orange, C.green, C.yellow, C.lav, C.indigo, C.mint];
 var CUSTICONS = ["sparkles","droplet","pill","timer","moon","flame","zap","heart","activity","circle-dot"];
+
+/* ---- generic iOS-style wheel ---- */
+function byId(x){ return document.getElementById(x); }
+function makeWheel(w, items, startIdx, loop, cb){
+  if(!w) return;
+  var H=36, N=items.length, reps=loop?3:1, html="", r, i;
+  for(r=0;r<reps;r++) for(i=0;i<N;i++) html+='<div class="witem">'+items[i]+'</div>';
+  w.innerHTML='<div style="height:72px"></div>'+html+'<div style="height:72px"></div>';
+  var t;
+  function settle(){
+    var j=Math.round(w.scrollTop/H);
+    if(loop){
+      if(j<N*0.5){ w.scrollTop+=N*H; j+=N; }
+      else if(j>N*2.5){ w.scrollTop-=N*H; j-=N; }
+    } else { j=Math.max(0, Math.min(N-1, j)); }
+    if(Math.abs(w.scrollTop-j*H)>1) w.scrollTop=j*H;
+    var its=w.getElementsByClassName("witem");
+    for(var q=0;q<its.length;q++) its[q].className="witem"+(q===j?" on":"");
+    if(cb) cb(((j%N)+N)%N);
+  }
+  w.addEventListener("scroll", function(){ clearTimeout(t); t=setTimeout(settle, 90); });
+  w.scrollTop=((loop?N:0)+startIdx)*H;
+  settle();
+}
+
+/* ---- date-time picker (Date | Hour | Min | AM-PM), hour & minute loop infinitely ---- */
+var DMAX = 60; /* days back */
+function dtPicker(pid){
+  return '<div class="card" style="padding:6px 0"><div class="wheelwrap"><div class="dtrow">'+
+    '<div class="wcol" id="w_'+pid+'_d" style="flex:1.8"></div>'+
+    '<div class="wcol" id="w_'+pid+'_h" style="flex:.6"></div>'+
+    '<div class="wcol" id="w_'+pid+'_m" style="flex:.6"></div>'+
+    '<div class="wcol" id="w_'+pid+'_a" style="flex:.8"></div>'+
+    '</div><div class="wsel"></div>'+
+    '<div class="wfade" style="top:0;background:linear-gradient(#1C1C1E,rgba(28,28,30,0))"></div>'+
+    '<div class="wfade" style="bottom:0;background:linear-gradient(rgba(28,28,30,0),#1C1C1E)"></div>'+
+    '</div></div>';
+}
+function initDT(pid, defDate, onch){
+  var now=new Date(), st=ui.dts[pid];
+  if(!st){
+    var dd=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate()) -
+      new Date(defDate.getFullYear(),defDate.getMonth(),defDate.getDate()))/864e5);
+    dd=Math.max(0, Math.min(DMAX, dd));
+    var h24=defDate.getHours(), h12=h24%12; if(h12===0) h12=12;
+    st = ui.dts[pid] = {day:dd, h:h12, m:defDate.getMinutes(), ap:h24>=12?1:0};
+  }
+  var days=[], i;
+  for(i=DMAX;i>=0;i--){
+    var d2=new Date(now.getFullYear(), now.getMonth(), now.getDate()-i);
+    days.push(i===0?"Today":(i===1?"Yesterday":d2.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"})));
+  }
+  var HRS=[], MINS=[];
+  for(i=1;i<=12;i++) HRS.push(String(i));
+  for(i=0;i<60;i++) MINS.push((i<10?"0":"")+i);
+  function ch(){ if(onch) onch(); }
+  makeWheel(byId("w_"+pid+"_d"), days, DMAX-st.day, false, function(ix){ st.day=DMAX-ix; ch(); });
+  makeWheel(byId("w_"+pid+"_h"), HRS, st.h-1, true,  function(ix){ st.h=ix+1; ch(); });
+  makeWheel(byId("w_"+pid+"_m"), MINS, st.m,  true,  function(ix){ st.m=ix; ch(); });
+  makeWheel(byId("w_"+pid+"_a"), ["AM","PM"], st.ap, false, function(ix){ st.ap=ix; ch(); });
+}
+function dtValue(pid){
+  var st=ui.dts[pid]; if(!st) return new Date();
+  var now=new Date(), h24=(st.h%12)+(st.ap?12:0);
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()-st.day, h24, st.m, 0, 0);
+}
+
+/* ---- past-entry form pieces ---- */
+function lbl(t){ return '<div style="font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.5px;margin:0 4px 8px">'+t+'</div>'; }
+function sBtn(action, d){
+  return '<button class="circ press num" data-a="'+action+'" data-x="'+d+'" '+
+    'style="width:32px;height:32px;background:#3A3A3C;font-size:11px;font-weight:700">'+(d>0?"+":"")+d+'</button>';
+}
+function stepRow(label, action, val, unit, s1, s2, first){
+  return '<div class="srow"'+(first?"":' style="border-top:1px solid var(--hair)"')+'>'+
+    '<span style="color:var(--sub);font-size:15px">'+label+'</span>'+
+    '<span style="display:flex;align-items:center;gap:6px">'+
+    sBtn(action,-s2)+sBtn(action,-s1)+
+    '<span class="num" style="font-size:15px;font-weight:600;min-width:64px;text-align:center">'+val+' '+unit+'</span>'+
+    sBtn(action,s1)+sBtn(action,s2)+'</span></div>';
+}
+function pastLink(a){
+  return '<button class="press" data-a="past" style="display:flex;align-items:center;gap:6px;'+
+    'margin:28px auto 8px;color:'+a.c+';font-size:15px;font-weight:600">'+
+    ic("plus",16,a.c,{sw:2.6})+'Add a past '+a.t+'</button>';
+}
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
 function alpha(hex,a){ var n=parseInt(hex.slice(1),16);
   return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")"; }
@@ -248,18 +336,63 @@ function dsFold(s){ var e=dsE(s); s.l=e.l; s.r=e.r; s.at=Date.now(); }
 function ssn(k){ if(!S.sess[k]) S.sess[k]={sec:0,run:false,at:0}; return S.sess[k]; }
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
-function addEntry(k, detail, data){
-  S.entries.unshift({id:Date.now(), act:k, detail:detail, data:data||{}, ts:new Date().toISOString()});
-  save(); S.route="list"; ui.sheet=false; render(); toast("Saved");
+function addEntryAt(k, detail, data, ts){
+  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts});
+  S.entries.sort(function(x,y){ return x.ts<y.ts ? 1 : (x.ts>y.ts ? -1 : 0); });
+  save();
+  S.route="list"; S.pmode=false; ui.sheet=false;
+  render(); toast("Saved");
 }
+function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISOString()); }
 
 /* ============ actions ============ */
 var A = {
-  tab: function(x){ S.tab=x; S.route="list"; S.hist=false; S.editing=false; ui.sheet=false; render(); },
+  tab: function(x){ S.tab=x; S.route="list"; S.hist=false; S.editing=false; S.pmode=false; ui.sheet=false; render(); },
   hist: function(){ S.hist=true; render(); },
   histback: function(){ S.hist=false; render(); },
-  open: function(x){ S.route=x; ui.sheet=false; ui.sel=null; ui.ml=0; ui.pml=60; ui.qty=0; render(); },
-  back: function(){ S.route="list"; ui.sheet=false; render(); },
+  open: function(x){
+    S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
+    ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
+    render();
+  },
+  back: function(){ S.route="list"; S.pmode=false; ui.sheet=false; render(); },
+  past: function(){
+    S.pmode=true; ui.sel=null; ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
+    render();
+  },
+  pastback: function(){ S.pmode=false; render(); },
+  pl: function(x){ ui.pl=Math.max(0, ui.pl+(+x)); render(); },
+  pr: function(x){ ui.pr=Math.max(0, ui.pr+(+x)); render(); },
+  pd: function(x){ ui.pdur=Math.max(0, ui.pdur+(+x)); render(); },
+  savePast: function(){
+    var a=act(S.route); if(!a) return;
+    var d=dtValue("p1");
+    if(d.getTime() > Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
+    var ts=d.toISOString();
+    if(a.kind==="dual"){
+      if(a.pump){
+        var tot=ui.pdur*60;
+        if(tot<=0){ toast("Set a duration"); return; }
+        addEntryAt(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {total:tot, ml:ui.pml}, ts);
+      } else {
+        var l=ui.pl*60, r=ui.pr*60, t2=l+r;
+        if(t2<=0){ toast("Set a duration"); return; }
+        addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(t2)+" total", {l:l, r:r, total:t2}, ts);
+      }
+    }
+    else if(a.kind==="amount"){ if(ui.ml<=0){ toast("Set an amount"); return; } addEntryAt(a.k, ui.ml+" ml", {ml:ui.ml}, ts); }
+    else if(a.kind==="qty"){ if(ui.qty<=0){ toast("Set an amount"); return; } addEntryAt(a.k, ui.qty+" "+a.unit, {qty:ui.qty, unit:a.unit}, ts); }
+    else if(a.kind==="supp"){ if(!ui.sel){ toast("Pick a type"); return; } addEntryAt(a.k, ui.sel, {type:ui.sel}, ts); }
+    else if(a.kind==="nappy"){ if(!ui.sel){ toast("Pick a status"); return; } addEntryAt(a.k, ui.sel+" nappy", {type:ui.sel}, ts); }
+  },
+  saveSleepPast: function(){
+    var a=act(S.route); if(!a) return;
+    var f=dtValue("sf"), w=dtValue("sw");
+    if(w.getTime() <= f.getTime()){ toast("Woke up must be after fell asleep"); return; }
+    if(w.getTime() > Date.now()+60000){ toast("Woke up time can\u2019t be in the future"); return; }
+    var sec=Math.round((w-f)/1000);
+    addEntryAt(a.k, fmt(sec)+" of sleep", {sec:sec, start:f.toISOString()}, w.toISOString());
+  },
   editmode: function(){ S.editing=true; render(); },
   editdone: function(){ S.editing=false; render(); },
   addnew: function(){
@@ -670,7 +803,7 @@ function vDual(a){
   }
   var h = '<div class="full">'+timerHead(a, tot, status, s.run)+
     '<div style="display:flex;align-items:flex-start;gap:56px;margin-top:48px">'+sideBtn("L",e.l)+sideBtn("R",e.r)+'</div>'+
-    stopBtn(tot>0.5)+'</div>';
+    stopBtn(tot>0.5)+pastLink(a)+'</div>';
   if(ui.sheet){
     var l=Math.round(s.l), r=Math.round(s.r);
     var extra = a.pump ?
@@ -685,16 +818,46 @@ function vDual(a){
   }
   return h;
 }
+function stopCore(enabled){
+  return '<button class="press" data-a="stop" '+(enabled?"":"disabled")+
+    ' style="margin-top:36px;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:'+(enabled?1:0.3)+'">'+
+    '<span class="circ" style="width:64px;height:64px;background:var(--card2)">'+ic("square",22,C.red,{fill:true})+'</span>'+
+    '<span style="color:var(--sub);font-size:13px;font-weight:600">Stop</span></button>';
+}
+function refreshSleepLen(){
+  var e2=byId("sleeplen"); if(!e2) return;
+  var f=dtValue("sf"), w=dtValue("sw"), d=(w-f)/1000;
+  if(d<=0){ e2.style.color=C.red; e2.textContent="Woke up must be after fell asleep"; }
+  else { e2.style.color="#98989F"; e2.textContent="Duration: "+fmtMin(d); }
+}
 function vSingle(a){
   var s=ssn(a.k), sec=sE(s);
   var status = s.run ? "Sleeping \u00B7 recording" : (sec>0.5?"Paused":"Tap play when sleep begins");
-  var h = '<div class="full">'+timerHead(a, sec, status, s.run)+
-    '<span style="position:relative;display:block;margin-top:48px">'+
+  var h = '<div style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;flex-direction:column;align-items:center;margin-top:16px">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+ic(a.icon,18,a.c)+
+    '<span style="color:'+a.c+';font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase">'+a.t+'</span></div>'+
+    '<div id="tt" class="bigtimer num">'+fmt(sec)+'</div>'+
+    '<div id="tstatus" style="display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--sub);font-size:15px">'+
+    (s.run?'<span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--red)"></span>':"")+status+'</div>'+
+    '<span style="position:relative;display:block;margin-top:36px">'+
     (s.run?'<span class="ring pulse" style="inset:-8px;border:2.5px solid '+alpha(a.c,0.6)+'"></span>':"")+
     '<button class="circ press" data-a="tgl" style="width:112px;height:112px;background:'+a.c+'">'+
     (s.run ? ic("pause",42,"#000",{fill:true}) : ic("play",42,"#000",{fill:true,style:"margin-left:5px"}))+
     '</button></span>'+
-    stopBtn(sec>0.5)+'</div>';
+    stopCore(sec>0.5)+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin:32px 0 20px">'+
+    '<span style="flex:1;height:1px;background:var(--hair)"></span>'+
+    '<span style="color:var(--sub);font-size:13px;font-weight:600">or</span>'+
+    '<span style="flex:1;height:1px;background:var(--hair)"></span></div>'+
+    '<div style="font-size:20px;font-weight:700;margin-bottom:14px">Add a past '+a.t+'</div>'+
+    lbl("FELL ASLEEP")+dtPicker("sf")+
+    '<div style="height:16px"></div>'+
+    lbl("WOKE UP")+dtPicker("sw")+
+    '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>'+
+    saveBar(a.c, true, "saveSleepPast", "Save Sleep")+
+    '</div>';
   if(ui.sheet) setSheet(a, [["Duration",fmt(Math.round(s.sec))],["Ended",tClock(Date.now())]], "");
   return h;
 }
@@ -735,7 +898,7 @@ function vAmount(a){
     '<div style="display:flex;gap:40px;margin-top:32px">'+
     '<button class="circ press" data-a="ml" data-x="-10" style="width:56px;height:56px;background:var(--card2)">'+ic("minus",24,"#fff")+'</button>'+
     '<button class="circ press" data-a="ml" data-x="10" style="width:56px;height:56px;background:var(--card2)">'+ic("plus",24,"#fff")+'</button></div>'+
-    '<div style="display:flex;gap:10px;margin-top:32px">'+qh+'</div></div>'+
+    '<div style="display:flex;gap:10px;margin-top:32px">'+qh+'</div>'+pastLink(a)+'</div>'+
     saveBar(a.c, ui.ml>0, "saveAmount")+'</div>';
 }
 function vSupp(a){
@@ -748,7 +911,7 @@ function vSupp(a){
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 24px">'+ic(a.icon,30,a.c)+
     '<span style="font-size:28px;font-weight:700">'+a.t+'</span></div>'+
-    '<div class="card" style="padding:0;overflow:hidden">'+oh+'</div>'+
+    '<div class="card" style="padding:0;overflow:hidden">'+oh+'</div>'+pastLink(a)+
     '<div style="flex:1"></div>'+saveBar(a.c, !!ui.sel, "saveSupp")+'</div>';
 }
 function vNappy(a){
@@ -763,7 +926,7 @@ function vNappy(a){
     '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">'+ic(a.icon,30,a.c)+
     '<span style="font-size:28px;font-weight:700">'+a.t+'</span></div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:24px">What did this change look like?</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+th+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+th+'</div>'+pastLink(a)+
     '<div style="flex:1"></div>'+saveBar(a.c, !!ui.sel, "saveNappy")+'</div>';
 }
 
@@ -795,27 +958,11 @@ function vNew(){
     '<div style="flex:1;min-height:24px"></div>'+saveBar(C.pink, true, "saveNew", "Add Card")+'</div>';
 }
 function initWheel(){
-  var el=document.getElementById("wheel");
-  if(!el) return;
-  var H=36, N=UNITS.length, html="", r, i;
-  for(r=0;r<3;r++) for(i=0;i<N;i++) html+='<div class="witem">'+UNITS[i]+'</div>';
-  el.innerHTML='<div style="height:72px"></div>'+html+'<div style="height:72px"></div>';
-  var t;
-  function settle(){
-    var j=Math.round(el.scrollTop/H);
-    if(j<N*0.5){ el.scrollTop+=N*H; j+=N; }
-    else if(j>N*2.5){ el.scrollTop-=N*H; j-=N; }
-    if(Math.abs(el.scrollTop-j*H)>1) el.scrollTop=j*H;
-    var u=UNITS[((j%N)+N)%N];
-    ui.unit=u;
-    var us=document.getElementById("usel"); if(us) us.textContent=u;
-    var its=el.getElementsByClassName("witem");
-    for(var q=0;q<its.length;q++) its[q].className="witem"+(q===j?" on":"");
-  }
-  el.addEventListener("scroll", function(){ clearTimeout(t); t=setTimeout(settle, 90); });
-  var j0=N+Math.max(0, UNITS.indexOf(ui.unit));
-  el.scrollTop=j0*H;
-  settle();
+  var w=byId("wheel"); if(!w) return;
+  makeWheel(w, UNITS, Math.max(0, UNITS.indexOf(ui.unit)), true, function(i){
+    ui.unit=UNITS[i];
+    var us=byId("usel"); if(us) us.textContent=UNITS[i];
+  });
 }
 
 /* ============ generic quantity screen for custom cards ============ */
@@ -832,8 +979,50 @@ function vQty(a){
     '<div style="display:flex;align-items:baseline;gap:8px;margin-top:40px">'+
     '<span class="num" style="font-size:64px;font-weight:700">'+ui.qty+'</span>'+
     '<span style="font-size:22px;font-weight:600;color:var(--sub)">'+a.unit+'</span></div>'+
-    '<div style="display:flex;gap:14px;margin-top:32px">'+qbtn(-10)+qbtn(-1)+qbtn(1)+qbtn(10)+'</div></div>'+
+    '<div style="display:flex;gap:14px;margin-top:32px">'+qbtn(-10)+qbtn(-1)+qbtn(1)+qbtn(10)+'</div>'+pastLink(a)+'</div>'+
     saveBar(a.c, ui.qty>0, "saveQty")+'</div>';
+}
+
+/* ============ Add a past entry (adaptive per activity) ============ */
+function vPast(a){
+  var body="", i;
+  if(a.kind==="dual"){
+    body = lbl("STARTED AT")+dtPicker("p1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+
+      (a.pump
+        ? stepRow("Duration","pd",ui.pdur,"min",1,5,true)+stepRow("Amount","pml",ui.pml,"ml",10,30,false)
+        : stepRow("Left","pl",ui.pl,"min",1,5,true)+stepRow("Right","pr",ui.pr,"min",1,5,false))+
+      '</div>';
+  } else if(a.kind==="amount"){
+    body = lbl("TIME")+dtPicker("p1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",10,30,true)+'</div>';
+  } else if(a.kind==="qty"){
+    body = lbl("TIME")+dtPicker("p1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","q",ui.qty,a.unit,1,10,true)+'</div>';
+  } else if(a.kind==="supp"){
+    var oh="";
+    for(i=0;i<SUPPS.length;i++){
+      var o=SUPPS[i], on=ui.sel===o;
+      oh+='<button class="listopt press" data-a="sel" data-x="'+o+'" '+(i?'style="border-top:1px solid var(--hair)"':"")+'>'+
+        '<span style="font-size:16px;font-weight:'+(on?700:400)+'">'+o+'</span>'+(on?ic("check",20,a.c,{sw:3}):"")+'</button>';
+    }
+    body = lbl("TIME")+dtPicker("p1")+'<div style="height:16px"></div>'+lbl("TYPE")+
+      '<div class="card" style="padding:0;overflow:hidden">'+oh+'</div>';
+  } else {
+    var th="";
+    for(i=0;i<NAPPIES.length;i++){
+      var t2=NAPPIES[i], on2=ui.sel===t2.n;
+      th+='<button class="tile press" data-a="sel" data-x="'+t2.n+'" style="height:88px;'+
+        (on2?('background:'+alpha(t2.c,0.16)+';border-color:'+t2.c):"")+'">'+
+        ic(t2.icon,26,t2.c)+'<span style="font-size:14px;font-weight:600">'+t2.n+'</span></button>';
+    }
+    body = lbl("TIME")+dtPicker("p1")+'<div style="height:16px"></div>'+lbl("STATUS")+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+th+'</div>';
+  }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c, a.t, "pastback")+
+    '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Add a past '+a.t+'</div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Log one you forgot to record \u00B7 pick the date and time it happened</div>'+
+    body+'<div style="flex:1;min-height:20px"></div>'+saveBar(a.c, true, "savePast")+'</div>';
 }
 
 /* ============ Sharing tab (mirrors JSX) ============ */
@@ -882,6 +1071,7 @@ function render(){
   else {
     var a=act(S.route);
     if(!a) h=vList();
+    else if(S.pmode) h=vPast(a);
     else if(a.kind==="dual") h=vDual(a);
     else if(a.kind==="single") h=vSingle(a);
     else if(a.kind==="amount") h=vAmount(a);
@@ -892,7 +1082,18 @@ function render(){
   var sc=document.getElementById("scroll");
   sc.className = "scroll"+(inSession?" pad0":"");
   sc.innerHTML = h;
-  if(S.route==="new" && S.tab==="activity") initWheel();
+  if(S.tab==="activity"){
+    if(S.route==="new") initWheel();
+    else {
+      var ia=act(S.route);
+      if(ia && S.pmode) initDT("p1", new Date());
+      else if(ia && ia.kind==="single"){
+        initDT("sf", new Date(Date.now()-36e5), refreshSleepLen);
+        initDT("sw", new Date(), refreshSleepLen);
+        refreshSleepLen();
+      }
+    }
+  }
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
   tb.innerHTML = inSession ? "" : tabbarHtml();
