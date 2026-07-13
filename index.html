@@ -51,7 +51,6 @@
     .scroll{padding-top:calc(env(safe-area-inset-top) + 12px); padding-bottom:calc(env(safe-area-inset-bottom) + 112px);}
     .scroll.pad0{padding-bottom:28px;}
     .tabwrap{bottom:calc(env(safe-area-inset-bottom) + 12px);}
-    .labar{bottom:calc(env(safe-area-inset-bottom) + 92px);}
     .sheet{padding-bottom:calc(env(safe-area-inset-bottom) + 26px) !important;}
   }
 
@@ -83,7 +82,7 @@
     display:flex; align-items:center; justify-content:center;}
   .pulse{animation:pu 1.5s ease-in-out infinite;}
   @keyframes pu{0%,100%{opacity:1}50%{opacity:.35}}
-  .ring{position:absolute; inset:-7px; border-radius:50%;}
+  .ring{position:absolute; inset:-7px; border-radius:50%; pointer-events:none;}
   .tile{width:100%; border-radius:24px; height:116px; display:flex; flex-direction:column; align-items:center;
     justify-content:center; gap:10px; background:var(--card); border:2px solid transparent;}
   #toast{position:fixed; left:50%; transform:translateX(-50%); bottom:110px; background:#2C2C2E; color:#fff;
@@ -133,6 +132,9 @@
   .seg.on{background:#3A3A3C; color:#fff;}
   .pchip{border-radius:999px; padding:8px 14px; font-size:14px; font-weight:600; background:var(--card2); color:#fff;}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; word-break:break-all;}
+  @media (max-width:500px){
+    .labar{bottom:calc(env(safe-area-inset-bottom) + 90px);}
+  }
 </style>
 </head>
 <body>
@@ -200,7 +202,7 @@ var NAPPIES = [
 
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
-var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false,
+var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, eidx:null,
   entries:[], sess:{}, order:[], custom:[], baby:{} };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
   pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null };
@@ -549,7 +551,7 @@ function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISO
 
 /* ============ actions ============ */
 var A = {
-  tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; ui.sheet=false; render(); },
+  tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; render(); },
   sub: function(x){
     S.sub=x;
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||""}; ui.dob=null; }
@@ -693,6 +695,75 @@ var A = {
     ui.gv = Math.max(0, Math.round((ui.gv+d)*10)/10);
     if(ui.gtype==="weight") ui.gv=Math.round(ui.gv);
     render();
+  },
+  eopen: function(x){
+    var i=+x, e=S.entries[i]; if(!e) return;
+    S.eidx=i; ui.sheet=false; ui.dts={};
+    var a=act(e.act), d=e.data||{};
+    if(a){
+      if(a.kind==="dual"){
+        if(a.pump){ ui.pdur=Math.max(1,Math.round((d.total||0)/60)); ui.pml=(d.ml!=null?d.ml:60); }
+        else { ui.pl=Math.round((d.l||0)/60); ui.pr=Math.round((d.r||0)/60); }
+      }
+      else if(a.kind==="amount") ui.ml=d.ml||0;
+      else if(a.kind==="qty") ui.qty=d.qty||0;
+      else if(a.kind==="supp"||a.kind==="nappy") ui.sel=d.type||null;
+      else if(a.kind==="growth"){ ui.gtype=d.gtype||"weight"; ui.gv=(d.v!=null?d.v:0); }
+    }
+    render();
+  },
+  eback: function(){ S.eidx=null; render(); },
+  eSave: function(){
+    var e=S.entries[S.eidx];
+    if(!e){ S.eidx=null; render(); return; }
+    var a=act(e.act), d=e.data||{};
+    if(a && a.kind==="single"){
+      var f=dtValue("sf"), w=dtValue("sw");
+      if(w.getTime()<=f.getTime()){ toast("Woke up must be after fell asleep"); return; }
+      if(w.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
+      var sec=Math.round((w.getTime()-f.getTime())/1000);
+      e.detail=fmt(sec)+" of sleep"; e.data={sec:sec, start:f.toISOString()}; e.ts=w.toISOString();
+    } else {
+      var dp=dtValue("e1");
+      if(dp.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
+      var ts=dp.toISOString();
+      if(!a){ e.ts=ts; }
+      else if(a.kind==="dual"){
+        if(a.pump){
+          var tot=ui.pdur*60;
+          if(tot<=0){ toast("Set a duration"); return; }
+          e.detail=fmt(tot)+" \u00B7 "+ui.pml+" ml collected";
+          e.data={total:tot, ml:ui.pml, startSide:d.startSide||null};
+        } else {
+          var l=ui.pl*60, r=ui.pr*60, t2=l+r;
+          if(t2<=0){ toast("Set a duration"); return; }
+          e.detail="L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(t2)+" total";
+          e.data={l:l, r:r, total:t2, startSide:d.startSide||null};
+        }
+        e.ts=ts;
+      }
+      else if(a.kind==="amount"){ if(ui.ml<=0){ toast("Set an amount"); return; } e.detail=ui.ml+" ml"; e.data={ml:ui.ml}; e.ts=ts; }
+      else if(a.kind==="qty"){ if(ui.qty<=0){ toast("Set an amount"); return; } e.detail=ui.qty+" "+a.unit; e.data={qty:ui.qty, unit:a.unit}; e.ts=ts; }
+      else if(a.kind==="supp"){ if(!ui.sel){ toast("Pick a type"); return; } e.detail=ui.sel; e.data={type:ui.sel}; e.ts=ts; }
+      else if(a.kind==="nappy"){ if(!ui.sel){ toast("Pick a status"); return; } e.detail=ui.sel+" nappy"; e.data={type:ui.sel}; e.ts=ts; }
+      else if(a.kind==="growth"){
+        if(ui.gv<=0){ toast("Set a value"); return; }
+        e.detail = ui.gtype==="weight"
+          ? "Weight \u00B7 "+(ui.gv>=1000?(ui.gv/1000).toFixed(2)+" kg":ui.gv+" g")
+          : GLBL[ui.gtype]+" \u00B7 "+ui.gv.toFixed(1)+" cm";
+        e.data={gtype:ui.gtype, v:ui.gv}; e.ts=ts;
+      }
+      else { e.ts=ts; }
+    }
+    S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+    S.eidx=null; save(); render(); toast("Updated");
+  },
+  eDel: function(){
+    var e=S.entries[S.eidx];
+    if(!e){ S.eidx=null; render(); return; }
+    if(!confirm("Delete this entry? This can\u2019t be undone.")) return;
+    S.entries.splice(S.eidx,1);
+    S.eidx=null; save(); render(); toast("Deleted");
   },
   saveGrowth: function(){
     if(ui.gv<=0){ toast("Set a value"); return; }
@@ -896,13 +967,17 @@ function backBtn(color, label, action){
   return '<button class="backbtn press" data-a="'+(action||"back")+'" style="color:'+color+'">'+
     ic("chevron-left",24,color,{sw:2.4})+(label||"Activity")+'</button>';
 }
-function entryRow(e, first){
+function entryRow(e, first, idx){
   var a=act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"};
-  return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;'+
-    (first?"":"border-top:1px solid var(--hair);")+'">'+ic(a.icon,22,a.c)+
+  var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
     '<span style="display:block;font-size:13px;color:var(--sub)">'+esc(e.detail)+'</span></span>'+
-    '<span class="num" style="font-size:13px;color:var(--sub)">'+tClock(e.ts)+'</span></div>';
+    '<span class="num" style="font-size:13px;color:var(--sub)">'+tClock(e.ts)+'</span>';
+  var sty = 'display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left;'+
+    (first?"":"border-top:1px solid var(--hair);");
+  return idx==null
+    ? '<div style="'+sty+'">'+inner+'</div>'
+    : '<button class="press" data-a="eopen" data-x="'+idx+'" style="'+sty+'">'+inner+'</button>';
 }
 function saveBar(color, enabled, action, label){
   return '<button class="savebar press" data-a="'+action+'" '+(enabled?"":"disabled")+
@@ -1009,18 +1084,18 @@ function vHistory(){
     for(var i=0;i<S.entries.length;i++){
       var e=S.entries[i], k=dayKey(e.ts);
       if(!map[k]){ map[k]={ts:e.ts,list:[]}; groups.push(map[k]); }
-      map[k].list.push(e);
+      map[k].list.push(i);
     }
     for(var g=0;g<groups.length;g++){
       var gr=groups[g], feeds=0, nurs=0, ml=0, nap=0, bs=0, rows="";
       for(var j=0;j<gr.list.length;j++){
-        var en=gr.list[j], d=en.data||{};
+        var ei=gr.list[j], en=S.entries[ei], d=en.data||{};
         if(en.act==="nursing"||en.act==="expressed"||en.act==="formula") feeds++;
         if(en.act==="nursing") nurs+=d.total||0;
         if(d.ml) ml+=d.ml;
         if(en.act==="nappy") nap++;
         if(en.act==="babysleep") bs+=d.sec||0;
-        rows+=entryRow(en, j===0);
+        rows+=entryRow(en, j===0, ei);
       }
       var chips="";
       if(feeds) chips+='<span class="hchip">'+feeds+' feeds</span>';
@@ -1040,7 +1115,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.5</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.6</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1096,7 +1171,7 @@ function vList(){
   h += '<div style="font-size:22px;font-weight:700;margin:8px 0 12px">Today</div>';
   var tk=dayKey(new Date().toISOString()), rows="", n=0;
   for(var j=0;j<S.entries.length;j++){
-    if(dayKey(S.entries[j].ts)===tk){ rows+=entryRow(S.entries[j], n===0); n++; }
+    if(dayKey(S.entries[j].ts)===tk){ rows+=entryRow(S.entries[j], n===0, j); n++; }
   }
   h += n ? '<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>'
     : '<div class="card" style="color:var(--sub);font-size:15px">Nothing logged yet. Start a session or add a quick log above \u2014 saved entries appear here.</div>';
@@ -1361,6 +1436,70 @@ function vPast(a){
     '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Add a past '+a.t+'</div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Log one you forgot to record \u00B7 pick the date and time it happened</div>'+
     body+'<div style="flex:1;min-height:20px"></div>'+saveBar(a.c, true, "savePast")+'</div>';
+}
+
+/* ============ edit an existing entry ============ */
+function vEdit(){
+  var e=S.entries[S.eidx];
+  var a=act(e.act) || {t:"Entry", icon:"circle-dot", c:"#98989F", kind:"none", k:e.act};
+  var body="", i;
+  if(a.kind==="dual"){
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+
+      (a.pump
+        ? stepRow("Duration","pd",ui.pdur,"min",1,5,true)+stepRow("Amount","pml",ui.pml,"ml",10,30,false)
+        : stepRow("Left","pl",ui.pl,"min",1,5,true)+stepRow("Right","pr",ui.pr,"min",1,5,false))+
+      '</div>';
+  } else if(a.kind==="single"){
+    body = lbl("FELL ASLEEP")+dtPicker("sf")+'<div style="height:16px"></div>'+
+      lbl("WOKE UP")+dtPicker("sw")+
+      '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>';
+  } else if(a.kind==="amount"){
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",10,30,true)+'</div>';
+  } else if(a.kind==="qty"){
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","q",ui.qty,a.unit,1,10,true)+'</div>';
+  } else if(a.kind==="supp"){
+    var oh="";
+    for(i=0;i<SUPPS.length;i++){
+      var o=SUPPS[i], on=ui.sel===o;
+      oh+='<button class="listopt press" data-a="sel" data-x="'+o+'" '+(i?'style="border-top:1px solid var(--hair)"':"")+'>'+
+        '<span style="font-size:16px;font-weight:'+(on?700:400)+'">'+o+'</span>'+(on?ic("check",20,a.c,{sw:3}):"")+'</button>';
+    }
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+lbl("TYPE")+
+      '<div class="card" style="padding:0;overflow:hidden">'+oh+'</div>';
+  } else if(a.kind==="nappy"){
+    var th="";
+    for(i=0;i<NAPPIES.length;i++){
+      var t2=NAPPIES[i], on2=ui.sel===t2.n;
+      th+='<button class="tile press" data-a="sel" data-x="'+t2.n+'" style="height:88px;'+
+        (on2?('background:'+alpha(t2.c,0.16)+';border-color:'+t2.c):"")+'">'+
+        ic(t2.icon,26,t2.c)+'<span style="font-size:14px;font-weight:600">'+t2.n+'</span></button>';
+    }
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+lbl("STATUS")+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+th+'</div>';
+  } else if(a.kind==="growth"){
+    body = lbl("MEASUREMENT")+
+      '<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
+      (ui.gtype==="weight"
+        ? stepRow("Weight","gv",ui.gv,"g",10,100,true)
+        : stepRow(GLBL[ui.gtype],"gv",ui.gv.toFixed(1),"cm",0.1,1,true))+'</div>'+
+      lbl("MEASURED ON")+dtPicker("e1");
+  } else if(a.kind==="vax"){
+    body = '<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px">'+
+      ic("syringe",20,a.c)+
+      '<span style="font-size:15px;font-weight:600">'+esc((e.data&&e.data.vaccine)||e.detail)+'</span></div>'+
+      lbl("GIVEN ON")+dtPicker("e1");
+  } else {
+    body = lbl("TIME")+dtPicker("e1");
+  }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c, "Back", "eback")+
+    '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Edit '+a.t+'</div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Logged '+dayLabel(e.ts)+' \u00B7 '+tClock(e.ts)+'</div>'+
+    body+'<div style="flex:1;min-height:20px"></div>'+
+    saveBar(a.c, true, "eSave", "Save Changes")+
+    '<button class="press" data-a="eDel" style="display:block;width:100%;text-align:center;margin-top:14px;padding:8px;color:var(--red);font-size:16px;font-weight:600">Delete Entry</button></div>';
 }
 
 /* ============ Trends & predictions ============ */
@@ -1685,9 +1824,10 @@ function tabbarHtml(){
 /* ============ render ============ */
 function render(){
   sheetHtml="";
-  var inSession = S.tab==="activity" && S.route!=="list";
+  var inSession = (S.tab==="activity" && S.route!=="list") || S.eidx!=null;
   var h;
-  if(S.tab==="summary"){
+  if(S.eidx!=null && S.entries[S.eidx]) h = vEdit();
+  else if(S.tab==="summary"){
     h = S.sub==="hist" ? vHistory()
       : S.sub==="trends" ? vTrends()
       : S.sub==="baby" ? vBaby()
@@ -1711,7 +1851,7 @@ function render(){
   var sc=document.getElementById("scroll");
   sc.className = "scroll"+(inSession?" pad0":"");
   sc.innerHTML = h;
-  if(S.tab==="activity"){
+  if(S.tab==="activity" && S.eidx==null){
     if(S.route==="new") initWheel();
     else {
       var ia=act(S.route);
@@ -1726,9 +1866,20 @@ function render(){
     }
   }
   if(S.tab==="summary" && S.sub==="baby") initDOB();
+  if(S.eidx!=null && S.entries[S.eidx]){
+    var ee=S.entries[S.eidx], ea=act(ee.act);
+    if(ea && ea.kind==="single"){
+      var wk=new Date(ee.ts), fl=new Date(wk.getTime()-(((ee.data||{}).sec)||0)*1000);
+      initDT("sf", fl, refreshSleepLen);
+      initDT("sw", wk, refreshSleepLen);
+      refreshSleepLen();
+    } else {
+      initDT("e1", new Date(ee.ts));
+    }
+  }
   var ls=liveSession();
   document.getElementById("la").innerHTML =
-    (ls && !S.night && !ui.sheet && !(S.tab==="activity" && S.route===ls.k))
+    (ls && S.eidx==null && !S.night && !ui.sheet && !(S.tab==="activity" && S.route===ls.k))
       ? liveBarHtml(ls) : "";
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
