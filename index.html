@@ -203,21 +203,22 @@ var NAPPIES = [
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
 var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, eidx:null,
-  entries:[], sess:{}, order:[], custom:[], baby:{} };
+  entries:[], sess:{}, order:[], custom:[], baby:{}, feedIv:null };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
-  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null };
+  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
   if (MEM) return;
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIv:S.feedIv})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
   if (MEM) return;
   try { var j = localStorage.getItem(KEY);
     if (j){ var d = JSON.parse(j); S.entries = d.entries || []; S.sess = d.sess || {};
-      S.order = d.order || []; S.custom = d.custom || []; S.baby = d.baby || {}; } } catch(e){}
+      S.order = d.order || []; S.custom = d.custom || []; S.baby = d.baby || {};
+      S.feedIv = (typeof d.feedIv==="number") ? d.feedIv : null; } } catch(e){}
 }
 
 /* ============ helpers ============ */
@@ -310,9 +311,12 @@ function upNext(){
     var g=f[i]-f[i-1];
     if(g>10*6e4 && g<12*36e5) gaps.push(g);
   }
-  var med=null, nxt=null;
-  if(gaps.length){ gaps.sort(function(a,b){return a-b;}); med=gaps[Math.floor(gaps.length/2)]; nxt=f[f.length-1]+med; }
-  return {last:f[f.length-1], med:med, next:nxt, side:suggSide()};
+  var auto=null;
+  if(gaps.length){ gaps.sort(function(a,b){return a-b;}); auto=gaps[Math.floor(gaps.length/2)]; }
+  var manual=(S.feedIv!=null);
+  var iv = manual ? S.feedIv*6e4 : auto;
+  return {last:f[f.length-1], med:iv, auto:auto, manual:manual,
+    next:(iv ? f[f.length-1]+iv : null), side:suggSide()};
 }
 function agoStr(ms){
   var m=Math.max(0,Math.round((Date.now()-ms)/6e4));
@@ -555,6 +559,11 @@ var A = {
   sub: function(x){
     S.sub=x;
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||""}; ui.dob=null; }
+    if(x==="feed"){
+      var u2=upNext();
+      ui.fauto=(S.feedIv==null);
+      ui.fiv = S.feedIv!=null ? S.feedIv : (u2&&u2.auto ? Math.round(u2.auto/6e4) : 150);
+    }
     render();
   },
   subback: function(){ S.sub=""; render(); },
@@ -696,6 +705,24 @@ var A = {
     if(ui.gtype==="weight") ui.gv=Math.round(ui.gv);
     render();
   },
+  fiv: function(x){ ui.fiv=Math.min(720, Math.max(15, ui.fiv+(+x))); ui.fauto=false; render(); },
+  fauto: function(){
+    var u2=upNext();
+    if(u2 && u2.auto){ ui.fauto=true; ui.fiv=Math.round(u2.auto/6e4); render(); }
+  },
+  fSave: function(){
+    S.feedIv = ui.fauto ? null : ui.fiv;
+    save(); S.sub=""; render();
+    toast("Feed schedule updated");
+  },
+  falarm: function(){
+    var un=upNext(); if(!un) return;
+    var ivMs=ui.fiv*6e4, nx=un.last+ivMs;
+    var t = nx>Date.now() ? nx : Date.now()+ivMs;
+    var url="shortcuts://run-shortcut?name=Feed%20Alarm&input=text&text="+encodeURIComponent(tClock(t));
+    try{ location.href=url; }catch(err){}
+    toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
+  },
   eopen: function(x){
     var i=+x, e=S.entries[i]; if(!e) return;
     S.eidx=i; ui.sheet=false; ui.dts={};
@@ -828,7 +855,7 @@ var A = {
   edit: function(){ toast("Editing isn\u2019t in this test build"); },
   expCsv: function(){ exportFile("baby-care-"+today()+".csv", buildCsv(), "text/csv"); },
   expJson: function(){ exportFile("baby-care-"+today()+".json",
-    JSON.stringify({exported:new Date().toISOString(), app:"BabyCare test build", baby:S.baby,
+    JSON.stringify({exported:new Date().toISOString(), app:"BabyCare test build", baby:S.baby, feedIv:S.feedIv,
       order:S.order, custom:S.custom, entries:S.entries}, null, 2), "application/json"); },
   clear: function(){
     if(!confirm("Delete ALL "+S.entries.length+" entries and any running sessions? Export first if you need a backup.")) return;
@@ -994,12 +1021,12 @@ function vSummary(){
   var upHtml="";
   if(un && un.next){
     var due = un.next<Date.now();
-    upHtml = '<div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
+    upHtml = '<button class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
       ic("clock",22,C.mint)+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">'+
       (due ? 'Feed due now' : 'Next feed ~'+tClock(un.next))+'</span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Every ~'+fmtMin(un.med/1000)+
-      ' \u00B7 Start on the '+un.side+'</span></span></div>';
+      '<span style="display:block;font-size:13px;color:var(--sub)">Every '+(un.manual?"":"~")+fmtMin(un.med/1000)+
+      ' \u00B7 Start on the '+un.side+'</span></span>'+ic("chevron-right",18,C.sub)+'</button>';
   }
   return '<div style="position:relative">'+
     '<div style="position:absolute;top:-100px;left:-16px;right:-16px;height:376px;pointer-events:none;'+
@@ -1115,7 +1142,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.6</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.7</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1438,6 +1465,48 @@ function vPast(a){
     body+'<div style="flex:1;min-height:20px"></div>'+saveBar(a.c, true, "savePast")+'</div>';
 }
 
+/* ============ next-feed schedule editor ============ */
+function vFeed(){
+  var un=upNext();
+  var h = backBtn(C.mint, "Summary", "subback")+
+    '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:4px">Next Feed</div>';
+  if(!un){
+    return h+'<div class="card" style="margin-top:16px;color:var(--sub);font-size:14px;line-height:1.6">'+
+      'Predictions unlock after the first feed. Log a Nursing, Expressed or Formula entry and come back.</div>';
+  }
+  var ivMs=ui.fiv*6e4, nx=un.last+ivMs, due=nx<Date.now();
+  var al = due ? Date.now()+ivMs : nx;
+  h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Last feed '+agoStr(un.last)+' \u00B7 '+tClock(un.last)+'</div>';
+  h += '<div class="card" style="margin-bottom:16px;text-align:center;padding:22px 16px">'+
+    '<div style="font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.5px">NEXT FEED</div>'+
+    '<div class="num" style="font-size:44px;font-weight:700;letter-spacing:-1px;margin-top:6px;color:'+C.mint+'">'+
+    (due ? 'Due now' : tClock(nx))+'</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+
+    (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+'</div></div>';
+  h += lbl("FEED INTERVAL")+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
+    stepRow("Interval","fiv", fmtMin(ui.fiv*60), "", 5, 15, true)+'</div>'+
+    '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:6px">'+
+    (ui.fauto ? 'Auto \u00B7 median of your recent feed gaps. Stepping switches to manual.'
+              : 'Manual interval \u00B7 the Summary card and predictions use this.')+'</div>';
+  if(un.auto && !ui.fauto)
+    h += '<button class="press" data-a="fauto" style="display:block;margin:4px auto 8px;color:'+C.mint+
+      ';font-size:15px;font-weight:600">Reset to suggested ('+fmtMin(un.auto/1000)+')</button>';
+  h += '<div style="height:14px"></div>'+lbl("IPHONE ALARM")+
+    '<div class="card">'+
+    '<button class="press" data-a="falarm" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left">'+
+    ic("clock",20,C.orange)+
+    '<span style="flex:1;font-size:15px;font-weight:600">Set alarm for '+tClock(al)+'</span>'+
+    ic("chevron-right",16,C.sub)+'</button>'+
+    '<div style="font-size:12px;color:var(--sub);line-height:1.55;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">'+
+    'One-time setup: in the <b style="color:#fff">Shortcuts</b> app create a shortcut named '+
+    '<b style="color:#fff">Feed Alarm</b> with the single action <b style="color:#fff">Create Alarm</b>, '+
+    'Time set to <b style="color:#fff">Shortcut Input</b>. This button then hands it the time and the alarm '+
+    'appears in the native Clock app.</div></div>';
+  h += saveBar(C.mint, true, "fSave");
+  return h;
+}
+
 /* ============ edit an existing entry ============ */
 function vEdit(){
   var e=S.entries[S.eidx];
@@ -1564,15 +1633,15 @@ function vTrends(){
     h += '<div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
       ic("clock",22,C.mint)+
       '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+
-      (un.next<Date.now()?'Feed due now':'Next feed likely ~'+tClock(un.next))+'</span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Feeding every ~'+fmtMin(un.med/1000)+
+      (un.next<Date.now()?'Feed due now':(un.manual?'Next feed ~':'Next feed likely ~')+tClock(un.next))+'</span>'+
+      '<span style="display:block;font-size:13px;color:var(--sub)">Feeding every '+(un.manual?"":"~")+fmtMin(un.med/1000)+
       ' \u00B7 Suggested start: '+un.side+'</span></span></div>';
   }
   var ins="";
   if(cl>=3) ins+='<span class="hchip" style="color:'+C.orange+'">Cluster feeding \u00B7 '+cl+' feeds in 2h</span>';
   var lg=0, i; for(i=0;i<w.length;i++) if(w[i].longest>lg) lg=w[i].longest;
   if(lg>0) ins+='<span class="hchip" style="color:'+C.lav+'">Longest sleep \u00B7 '+fmtMin(lg)+'</span>';
-  if(un&&un.med) ins+='<span class="hchip">~'+fmtMin(un.med/1000)+' between feeds</span>';
+  if(un&&un.med) ins+='<span class="hchip">'+(un.manual?"":"~")+fmtMin(un.med/1000)+' between feeds</span>';
   if(ins) h+='<div class="card" style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--sub);margin-bottom:10px">INSIGHTS</div><div class="hchips">'+ins+'</div></div>';
   h += '<div class="card" style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--sub)">FEEDS PER DAY</div>'+
     barsHtml(w.map(function(x){return x.feeds;}), labels, C.pink)+'</div>';
@@ -1831,6 +1900,7 @@ function render(){
     h = S.sub==="hist" ? vHistory()
       : S.sub==="trends" ? vTrends()
       : S.sub==="baby" ? vBaby()
+      : S.sub==="feed" ? vFeed()
       : vSummary();
   }
   else if(S.tab==="sharing") h = vSharing();
@@ -1961,6 +2031,7 @@ byId("impf").addEventListener("change", function(){
       if(!confirm("Import "+d.entries.length+" entries"+(d.baby&&d.baby.dob?" + baby profile":"")+
         "? This replaces the current "+S.entries.length+" entries on this device.")) return;
       S.entries=d.entries; S.custom=d.custom||[]; S.order=d.order||[]; S.baby=d.baby||{};
+      S.feedIv=(typeof d.feedIv==="number")?d.feedIv:null;
       S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
       ensureOrder(); save(); S.tab="summary"; S.sub=""; S.route="list"; render();
       toast("Imported "+S.entries.length+" entries");
