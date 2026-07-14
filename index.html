@@ -826,6 +826,24 @@ var A = {
     if(nsWake){ nsWake.release().catch(function(){}); nsWake=null; }
     render();
   },
+  nstop: function(x){
+    var a=act(x), se=S.sess[x]; if(!a || !se) return;
+    if(a.kind==="dual"){
+      dsFold(se); se.run=false;
+      var l=Math.round(se.l), r=Math.round(se.r), tot=l+r;
+      var ss2=se.startSide||null;
+      delete S.sess[x];
+      if(tot<1){ save(); render(); return; }
+      if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2});
+      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2});
+    } else {
+      sFold(se); se.run=false;
+      var sec=Math.round(se.sec);
+      delete S.sess[x];
+      if(sec<1){ save(); render(); return; }
+      addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
+    }
+  },
   laopen: function(x){
     if(!x || !S.sess[x] || !act(x)) return;
     S.night=false; S.tab="activity"; S.route=x; S.pmode=false; ui.sheet=false; render();
@@ -1143,7 +1161,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.9</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.10</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1831,31 +1849,64 @@ function liveBarHtml(ls){
     (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'+
     '</div>';
 }
-function nightInfo(){
-  var out="", i, lastFeed=null, lastNap=null;
+function nightBits(){
+  var i, lastFeed=null, lastNap=null;
   for(i=0;i<S.entries.length;i++){
     var e=S.entries[i];
     if(!lastFeed && isFeed(e)) lastFeed=e;
     if(!lastNap && e.act==="nappy") lastNap=e;
     if(lastFeed && lastNap) break;
   }
-  var ls=liveSession();
-  if(ls && ls.run) out+='<div><span class="pulse">\u25CF</span> '+ls.a.t+' \u00B7 '+fmt(ls.secs)+
-    (ls.a.kind==="dual"&&ls.s.side?' \u00B7 '+(ls.s.side==="L"?"Left":"Right"):"")+'</div>';
-  if(lastFeed) out+='<div>Last feed \u00B7 '+agoStr(new Date(lastFeed.ts).getTime())+
-    (lastFeed.act==="nursing"?' \u00B7 next: '+suggSide():"")+'</div>';
-  else out+='<div>No feeds logged yet</div>';
-  if(lastNap) out+='<div>Last nappy \u00B7 '+agoStr(new Date(lastNap.ts).getTime())+'</div>';
-  return out;
+  var ls=liveSession(), actTxt="";
+  if(ls) actTxt = ls.a.t+" \u00B7 "+fmt(ls.secs)+
+    ((ls.a.kind==="dual" && ls.s.side) ? " \u00B7 "+(ls.s.side==="L"?"Left":"Right") : "")+
+    (ls.run ? "" : " \u00B7 paused");
+  var lf = lastFeed
+    ? "Last feed \u00B7 "+agoStr(new Date(lastFeed.ts).getTime())+
+      (lastFeed.act==="nursing" ? " \u00B7 next: "+suggSide() : "")
+    : "No feeds logged yet";
+  var lfd="";
+  if(lastFeed){
+    var d=lastFeed.data||{};
+    if(lastFeed.act==="nursing" && d.total) lfd="Fed for "+fmtMin(d.total);
+    else if(d.ml!=null) lfd="Last bottle \u00B7 "+d.ml+" ml";
+  }
+  var np = lastNap ? "Last nappy \u00B7 "+agoStr(new Date(lastNap.ts).getTime()) : "";
+  return {ls:ls, act:actTxt, lf:lf, lfd:lfd, np:np};
+}
+function nightCol(){
+  if(S.baby && S.baby.sex==="Girl") return C.pink;
+  if(S.baby && S.baby.sex==="Boy") return "#6FA8FF";
+  return "#FF9A62";
 }
 function nightHtml(){
-  return '<button class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#000;'+
-    'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;width:100%">'+
-    '<div id="nclk" class="num" style="font-size:78px;font-weight:700;letter-spacing:-1px;color:#FF9A62">'+
-    new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
-    '<div id="nfo" style="font-size:17px;line-height:2;color:#C97B4A">'+nightInfo()+'</div>'+
-    '<div style="font-size:12px;color:#5c4a3a;margin-top:8px">Tap anywhere to exit \u00B7 screen stays awake</div>'+
-    '</button>';
+  var b=nightBits(), nc=nightCol();
+  var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#000;'+
+    'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
+    'padding:96px 24px 40px;cursor:pointer">'+
+    '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
+    new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
+  if(b.ls){
+    h += '<div style="margin-top:56px;display:flex;align-items:center;justify-content:center;gap:10px;'+
+      'font-size:24px;font-weight:700;color:'+nc+'">'+
+      '<span class="pulse" style="font-size:13px;'+(b.ls.run?"":"opacity:.35")+'">\u25CF</span>'+
+      '<span id="nact">'+b.act+'</span></div>';
+    var bs='display:flex;align-items:center;gap:8px;border-radius:999px;padding:13px 24px;'+
+      'font-size:16px;font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
+    h += '<div style="display:flex;gap:14px;margin-top:24px">'+
+      '<button class="press" data-a="lapause" data-x="'+b.ls.k+'" style="'+bs+'">'+
+      (b.ls.run ? ic("pause",15,nc,{fill:true})+'Pause' : ic("play",15,nc,{fill:true})+'Resume')+'</button>'+
+      '<button class="press" data-a="nstop" data-x="'+b.ls.k+'" style="'+bs+'">'+
+      ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div>';
+  }
+  h += '<div style="margin-top:'+(b.ls?'52':'64')+'px;font-size:17px;line-height:2.1;color:'+alpha(nc,0.8)+'">'+
+    '<div id="nlf">'+b.lf+'</div>'+
+    (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
+    (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
+    '</div>'+
+    '<div style="margin-top:auto;font-size:12px;color:'+alpha(nc,0.4)+'">Tap anywhere to exit \u00B7 screen stays awake</div>'+
+    '</div>';
+  return h;
 }
 
 /* ============ Sharing tab (mirrors JSX) ============ */
@@ -1993,9 +2044,16 @@ setInterval(function(){
 
   /* nightstand */
   if(S.night){
-    var nc=document.getElementById("nclk"), nf=document.getElementById("nfo");
-    if(nc) nc.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
-    if(nf) nf.innerHTML = nightInfo();
+    var nc3=document.getElementById("nclk");
+    if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
+    var nb=nightBits(), na=document.getElementById("nact");
+    if((!!nb.ls)!==(!!na)) render();
+    else {
+      if(na) na.textContent=nb.act;
+      var xlf=document.getElementById("nlf"); if(xlf) xlf.textContent=nb.lf;
+      var xld=document.getElementById("nlfd"); if(xld) xld.textContent=nb.lfd;
+      var xnp=document.getElementById("nnp"); if(xnp) xnp.textContent=nb.np;
+    }
   }
 
   /* in-screen timers */
