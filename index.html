@@ -387,17 +387,23 @@ function gChart(t){
     '<path d="'+line(ref.p50)+'" fill="none" stroke="'+alpha(C.blue,0.5)+'" stroke-width="1.5" stroke-dasharray="4 4"/>'+
     (dline?'<path d="'+dline+'" fill="none" stroke="'+C.blue+'" stroke-width="2"/>':"")+dots+ax+'</svg>';
 }
-function liveSession(){
-  var keys=Object.keys(S.sess), best=null, i;
+function liveSessions(){
+  var keys=Object.keys(S.sess), out=[], i;
   for(i=0;i<keys.length;i++){
     var k=keys[i], se=S.sess[k], a=act(k);
     if(!a) continue;
     var secs=(a.kind==="dual") ? (dsE(se).l+dsE(se).r) : sE(se);
     if(secs<0.5) continue;
-    var o={k:k, a:a, s:se, secs:secs, run:!!se.run};
-    if(!best || (o.run && !best.run)) best=o;
+    out.push({k:k, a:a, s:se, secs:secs, run:!!se.run, st:se.st||0});
   }
-  return best;
+  out.sort(function(x,y){ return x.st-y.st; });
+  return out;
+}
+function liveSession(){
+  var l=liveSessions();
+  if(!l.length) return null;
+  for(var i=l.length-1;i>=0;i--) if(l[i].run) return l[i];
+  return l[l.length-1];
 }
 
 /* ---- generic iOS-style wheel ---- */
@@ -652,13 +658,14 @@ var A = {
   press: function(x){
     var s=ds(S.route);
     if(!s.startSide) s.startSide=x;
+    if(!s.st) s.st=Date.now();
     if(s.run && s.side===x){ dsFold(s); s.run=false; }
     else { dsFold(s); s.side=x; s.run=true; s.at=Date.now(); }
     save(); render();
   },
   tgl: function(){
     var s=ssn(S.route);
-    if(s.run){ sFold(s); s.run=false; } else { s.run=true; s.at=Date.now(); }
+    if(s.run){ sFold(s); s.run=false; } else { s.run=true; s.at=Date.now(); if(!s.st) s.st=Date.now(); }
     save(); render();
   },
   stop: function(){
@@ -852,9 +859,9 @@ var A = {
     var a=act(x), se=S.sess[x]; if(!a||!se) return;
     if(a.kind==="dual"){
       if(se.run){ dsFold(se); se.run=false; }
-      else { se.side=se.side||"L"; if(!se.startSide) se.startSide=se.side; se.run=true; se.at=Date.now(); }
+      else { se.side=se.side||"L"; if(!se.startSide) se.startSide=se.side; se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now(); }
     } else {
-      if(se.run){ sFold(se); se.run=false; } else { se.run=true; se.at=Date.now(); }
+      if(se.run){ sFold(se); se.run=false; } else { se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now(); }
     }
     save(); render();
   },
@@ -864,6 +871,7 @@ var A = {
     se.side = se.side==="L" ? "R" : "L";
     if(!se.startSide) se.startSide=se.side;
     se.run=true; se.at=Date.now();
+    if(!se.st) se.st=Date.now();
     save(); render();
   },
   impJson: function(){ var f=byId("impf"); f.value=""; f.click(); },
@@ -1161,7 +1169,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.10</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.12</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1835,19 +1843,39 @@ function vBaby(){
 }
 
 /* ============ live session bar + nightstand ============ */
-function liveBarHtml(ls){
-  var dual = ls.a.kind==="dual";
-  return '<div class="labar">'+
-    '<button class="press" data-a="laopen" data-x="'+ls.k+'" style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;text-align:left">'+
-    '<span class="circ" style="width:34px;height:34px;background:'+ls.a.c+'">'+ic(ls.a.icon,17,"#000")+'</span>'+
-    '<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700">'+ls.a.t+
-    (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+'</span>'+
-    '<span id="lat" class="num" style="display:block;font-size:12px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
-    fmt(ls.secs)+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
-    (dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+ic("repeat",15,"#fff")+'</button>':"")+
-    '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
-    (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'+
-    '</div>';
+function liveBarHtml(list){
+  if(list.length===1){
+    var ls=list[0], dual = ls.a.kind==="dual";
+    return '<div class="labar">'+
+      '<button class="press" data-a="laopen" data-x="'+ls.k+'" style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;text-align:left">'+
+      '<span class="circ" style="width:34px;height:34px;background:'+ls.a.c+'">'+ic(ls.a.icon,17,"#000")+'</span>'+
+      '<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700">'+ls.a.t+
+      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+'</span>'+
+      '<span id="lat-'+ls.k+'" class="num" style="display:block;font-size:12px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
+      fmt(ls.secs)+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
+      (dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+ic("repeat",15,"#fff")+'</button>':"")+
+      '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
+      (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'+
+      '</div>';
+  }
+  function half(ls, right){
+    var dual = ls.a.kind==="dual";
+    return '<div style="flex:1;min-width:0;min-height:34px;display:flex;align-items:center;gap:6px'+
+      (right?';justify-content:flex-end':'')+'">'+
+      '<button class="press" data-a="laopen" data-x="'+ls.k+'" style="display:flex;align-items:center;gap:7px;min-width:0;text-align:left">'+
+      '<span class="circ" style="width:28px;height:28px;flex:none;background:'+ls.a.c+'">'+ic(ls.a.icon,14,"#000")+'</span>'+
+      '<span style="min-width:0"><span style="display:block;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ls.a.t+
+      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+'</span>'+
+      '<span id="lat-'+ls.k+'" class="num" style="display:block;font-size:11px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
+      fmt(ls.secs)+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
+      (dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>':"")+
+      '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
+      (ls.run?ic("pause",13,"#fff",{fill:true}):ic("play",13,"#fff",{fill:true,style:"margin-left:1px"}))+'</button>'+
+      '</div>';
+  }
+  return '<div class="labar">'+half(list[0],false)+
+    '<span style="width:1px;align-self:stretch;flex:none;background:rgba(255,255,255,.12);margin:0 8px"></span>'+
+    half(list[list.length-1],true)+'</div>';
 }
 function nightBits(){
   var i, lastFeed=null, lastNap=null;
@@ -1857,10 +1885,6 @@ function nightBits(){
     if(!lastNap && e.act==="nappy") lastNap=e;
     if(lastFeed && lastNap) break;
   }
-  var ls=liveSession(), actTxt="";
-  if(ls) actTxt = ls.a.t+" \u00B7 "+fmt(ls.secs)+
-    ((ls.a.kind==="dual" && ls.s.side) ? " \u00B7 "+(ls.s.side==="L"?"Left":"Right") : "")+
-    (ls.run ? "" : " \u00B7 paused");
   var lf = lastFeed
     ? "Last feed \u00B7 "+agoStr(new Date(lastFeed.ts).getTime())+
       (lastFeed.act==="nursing" ? " \u00B7 next: "+suggSide() : "")
@@ -1872,7 +1896,28 @@ function nightBits(){
     else if(d.ml!=null) lfd="Last bottle \u00B7 "+d.ml+" ml";
   }
   var np = lastNap ? "Last nappy \u00B7 "+agoStr(new Date(lastNap.ts).getTime()) : "";
-  return {ls:ls, act:actTxt, lf:lf, lfd:lfd, np:np};
+  return {lss:liveSessions(), lf:lf, lfd:lfd, np:np};
+}
+function nTime(ls){
+  return fmt(ls.secs)+
+    ((ls.a.kind==="dual" && ls.s.side) ? " \u00B7 "+(ls.s.side==="L"?"Left":"Right") : "")+
+    (ls.run ? "" : " \u00B7 paused");
+}
+function nCol(ls, nc, pill){
+  var dual = ls.a.kind==="dual";
+  return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px">'+
+    '<div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:'+nc+';max-width:100%">'+
+    '<span class="pulse" style="font-size:11px;'+(ls.run?"":"opacity:.35")+'">\u25CF</span>'+
+    '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ls.a.t+'</span></div>'+
+    '<div id="nact-'+ls.k+'" class="num" style="font-size:15px;font-weight:600;color:'+alpha(nc,0.85)+'">'+nTime(ls)+'</div>'+
+    '<div style="display:flex;flex-direction:column;gap:9px;width:100%;margin-top:8px">'+
+    '<button class="press" data-a="lapause" data-x="'+ls.k+'" style="'+pill+';padding:11px 0;font-size:14px;width:100%">'+
+    (ls.run ? ic("pause",13,nc,{fill:true})+'Pause' : ic("play",13,nc,{fill:true})+'Resume')+'</button>'+
+    (dual ? '<button class="press" data-a="laswitch" data-x="'+ls.k+'" style="'+pill+';padding:11px 0;font-size:14px;width:100%">'+
+      ic("repeat",13,nc)+'Switch side</button>' : "")+
+    '<button class="press" data-a="nstop" data-x="'+ls.k+'" style="'+pill+';padding:11px 0;font-size:14px;width:100%">'+
+    ic("square",12,nc,{fill:true})+'Stop &amp; save</button>'+
+    '</div></div>';
 }
 function nightCol(){
   if(S.baby && S.baby.sex==="Girl") return C.pink;
@@ -1886,20 +1931,30 @@ function nightHtml(){
     'padding:96px 24px 40px;cursor:pointer">'+
     '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
-  if(b.ls){
-    h += '<div style="margin-top:56px;display:flex;align-items:center;justify-content:center;gap:10px;'+
+  var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;'+
+    'font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
+  var keys=[], ki;
+  for(ki=0;ki<b.lss.length;ki++) keys.push(b.lss[ki].k);
+  if(b.lss.length===1){
+    var ls=b.lss[0];
+    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:56px;width:100%">'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:10px;'+
       'font-size:24px;font-weight:700;color:'+nc+'">'+
-      '<span class="pulse" style="font-size:13px;'+(b.ls.run?"":"opacity:.35")+'">\u25CF</span>'+
-      '<span id="nact">'+b.act+'</span></div>';
-    var bs='display:flex;align-items:center;gap:8px;border-radius:999px;padding:13px 24px;'+
-      'font-size:16px;font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
-    h += '<div style="display:flex;gap:14px;margin-top:24px">'+
-      '<button class="press" data-a="lapause" data-x="'+b.ls.k+'" style="'+bs+'">'+
-      (b.ls.run ? ic("pause",15,nc,{fill:true})+'Pause' : ic("play",15,nc,{fill:true})+'Resume')+'</button>'+
-      '<button class="press" data-a="nstop" data-x="'+b.ls.k+'" style="'+bs+'">'+
-      ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div>';
+      '<span class="pulse" style="font-size:13px;'+(ls.run?"":"opacity:.35")+'">\u25CF</span>'+
+      '<span>'+ls.a.t+' \u00B7 <span id="nact-'+ls.k+'">'+nTime(ls)+'</span></span></div>'+
+      '<div style="display:flex;gap:14px;margin-top:24px;justify-content:center">'+
+      '<button class="press" data-a="lapause" data-x="'+ls.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
+      (ls.run ? ic("pause",15,nc,{fill:true})+'Pause' : ic("play",15,nc,{fill:true})+'Resume')+'</button>'+
+      '<button class="press" data-a="nstop" data-x="'+ls.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
+      ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div></div>';
+  } else if(b.lss.length>=2){
+    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:44px;width:100%;'+
+      'display:flex;gap:12px;align-items:stretch">'+
+      nCol(b.lss[0], nc, pill)+
+      '<span style="width:1px;flex:none;background:'+alpha(nc,0.22)+'"></span>'+
+      nCol(b.lss[b.lss.length-1], nc, pill)+'</div>';
   }
-  h += '<div style="margin-top:'+(b.ls?'52':'64')+'px;font-size:17px;line-height:2.1;color:'+alpha(nc,0.8)+'">'+
+  h += '<div style="margin-top:'+(b.lss.length?'44':'64')+'px;font-size:17px;line-height:2.1;color:'+alpha(nc,0.8)+'">'+
     '<div id="nlf">'+b.lf+'</div>'+
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
@@ -2001,10 +2056,11 @@ function render(){
       initDT("e1", new Date(ee.ts));
     }
   }
-  var ls=liveSession();
+  var lss=liveSessions(), vis=[], li;
+  for(li=0;li<lss.length;li++)
+    if(!(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
   document.getElementById("la").innerHTML =
-    (ls && S.eidx==null && !S.night && !ui.sheet && !(S.tab==="activity" && S.route===ls.k))
-      ? liveBarHtml(ls) : "";
+    (vis.length && S.eidx==null && !S.night && !ui.sheet) ? liveBarHtml(vis) : "";
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
   tb.innerHTML = inSession ? "" : tabbarHtml();
@@ -2019,8 +2075,11 @@ setInterval(function(){
 
   /* live session bar + Dynamic Island */
   var ls=liveSession();
-  var lat=document.getElementById("lat");
-  if(lat && ls) lat.textContent = fmt(ls.secs)+(ls.run?"":" \u00B7 paused");
+  var lss2=liveSessions(), li2;
+  for(li2=0;li2<lss2.length;li2++){
+    var lel=document.getElementById("lat-"+lss2[li2].k);
+    if(lel) lel.textContent = fmt(lss2[li2].secs)+(lss2[li2].run?"":" \u00B7 paused");
+  }
   var ic1=document.getElementById("isl-ic"), it=document.getElementById("isl-t"), isl=document.getElementById("isl");
   if(ic1 && it){
     if(ls){
@@ -2046,10 +2105,14 @@ setInterval(function(){
   if(S.night){
     var nc3=document.getElementById("nclk");
     if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
-    var nb=nightBits(), na=document.getElementById("nact");
-    if((!!nb.ls)!==(!!na)) render();
+    var nb=nightBits(), nw=document.getElementById("nacts"), nk=[], ni;
+    for(ni=0;ni<nb.lss.length;ni++) nk.push(nb.lss[ni].k);
+    if((nw ? nw.getAttribute("data-k") : "") !== nk.join("|")) render();
     else {
-      if(na) na.textContent=nb.act;
+      for(ni=0;ni<nb.lss.length;ni++){
+        var ne=document.getElementById("nact-"+nb.lss[ni].k);
+        if(ne) ne.textContent=nTime(nb.lss[ni]);
+      }
       var xlf=document.getElementById("nlf"); if(xlf) xlf.textContent=nb.lf;
       var xld=document.getElementById("nlfd"); if(xld) xld.textContent=nb.lfd;
       var xnp=document.getElementById("nnp"); if(xnp) xnp.textContent=nb.np;
@@ -2108,12 +2171,12 @@ byId("impf").addEventListener("change", function(){
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
   function dual(k, side){
     var se=ds(k); dsFold(se); se.side=side; if(!se.startSide) se.startSide=side;
-    se.run=true; se.at=Date.now();
+    se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now();
     S.tab="activity"; S.route=k; save();
     setTimeout(function(){ toast("Started "+act(k).t+" ("+(side==="L"?"Left":"Right")+") via Shortcut"); }, 350);
   }
   function single(k){
-    var se=ssn(k); se.run=true; se.at=Date.now();
+    var se=ssn(k); se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now();
     S.tab="activity"; S.route=k; save();
     setTimeout(function(){ toast("Started "+act(k).t+" via Shortcut"); }, 350);
   }
