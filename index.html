@@ -220,7 +220,7 @@ var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
   if (MEM) return;
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -234,7 +234,8 @@ function load(){
       } else if(typeof d.feedIv==="number"){ S.feedIvD=d.feedIv; S.feedIvN=d.feedIv; }
       else { S.feedIvD=null; S.feedIvN=null; }
       S.who = d.who || "";
-      if(d.meds!==undefined) S.meds=d.meds; } } catch(e){}
+      if(d.meds!==undefined) S.meds=d.meds;
+      S.del=d.del||[]; S.setUp=d.setUp||0; } } catch(e){}
 }
 
 /* ============ helpers ============ */
@@ -837,7 +838,7 @@ function ssn(k){ if(!S.sess[k]) S.sess[k]={sec:0,run:false,at:0}; return S.sess[
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
 function addEntryAt(k, detail, data, ts){
-  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined)});
+  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined), up:Date.now()});
   S.entries.sort(function(x,y){ return x.ts<y.ts ? 1 : (x.ts>y.ts ? -1 : 0); });
   save();
   S.route="list"; S.pmode=false; ui.sheet=false;
@@ -917,6 +918,7 @@ var A = {
     var a=act(k); if(!a) return;
     if(!confirm('Remove "'+a.t+'"? Past entries stay in history.')) return;
     S.custom=S.custom.filter(function(c){ return c.k!==k; });
+    bumpSet();
     S.order=S.order.filter(function(o){ return o!==k; });
     delete S.sess[k]; save(); render();
   },
@@ -937,6 +939,7 @@ var A = {
     var name=(inp && inp.value ? inp.value : "").replace(/[<>]/g,"").replace(/\s+/g," ").trim();
     if(!name){ toast("Give the card a name"); if(inp) inp.focus(); return; }
     var k="c"+Date.now();
+    bumpSet();
     S.custom.push({k:k, t:name.slice(0,24), icon:ui.icon, c:ui.col, kind:"qty", unit:ui.unit});
     ensureOrder(); save(); S.route="list"; render(); toast("Card added");
   },
@@ -1036,6 +1039,7 @@ var A = {
     var n=byId("medname"), nm=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,24);
     if(!nm){ toast("Name the medication"); return; }
     if(!ui.mt.m && !ui.mt.n && !ui.mt.ni){ toast("Pick at least one time of day"); return; }
+    bumpSet();
     S.meds.push({id:Date.now(), name:nm, ml:ui.mml, times:{m:ui.mt.m, n:ui.mt.n, ni:ui.mt.ni}});
     ui.mname=""; ui.mml=1; ui.mt={m:false,n:true,ni:false};
     save(); render(); toast("Added "+nm);
@@ -1044,12 +1048,14 @@ var A = {
     var id=+x, i;
     for(i=0;i<S.meds.length;i++) if(S.meds[i].id===id){
       if(!confirm("Remove "+S.meds[i].name+"?")) return;
+      bumpSet();
       S.meds.splice(i,1); save(); render(); return;
     }
   },
   medTi: function(x){
     var p=x.split("|"), id=+p[0], slot=p[1], i;
     for(i=0;i<S.meds.length;i++) if(S.meds[i].id===id){
+      bumpSet();
       S.meds[i].times[slot]=!S.meds[i].times[slot];
       save(); render(); return;
     }
@@ -1062,6 +1068,7 @@ var A = {
     for(i=0;i<S.entries.length;i++){
       var e=S.entries[i];
       if(e.act==="medicine" && e.data && e.data.mid===id && e.data.slot===slot && dayKey(e.ts)===tk){
+        syTomb(e.id);
         S.entries.splice(i,1); save(); render(); toast("Unchecked"); return;
       }
     }
@@ -1069,7 +1076,7 @@ var A = {
     S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
       detail:m.name+" \u00B7 "+m.ml+" ml \u00B7 "+sn,
       data:{mid:id, name:m.name, ml:m.ml, slot:slot},
-      ts:new Date().toISOString(), by:(S.who||undefined)});
+      ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
     save(); render(); toast("Logged");
   },
@@ -1087,6 +1094,20 @@ var A = {
     save(); render();
   },
   mbstop: function(){ if(saveMidBurp()){ save(); render(); } },
+  syTog: function(){
+    var u=byId("syurl"), p=byId("sypass");
+    if(u) SY.url=u.value.trim();
+    if(p) SY.pass=p.value;
+    if(!SY.on){
+      if(!SY.url || !SY.pass){ toast("Enter the endpoint URL and passphrase"); return; }
+      SY.on=true; SY.key=null; SY.pushSig=""; SY.err="";
+      sySaveCfg(); render(); toast("Sync on \u00B7 first sync in a moment");
+      syTick();
+    } else {
+      SY.on=false;
+      sySaveCfg(); render(); toast("Sync off");
+    }
+  },
   saveWho: function(){
     var n=byId("whoin");
     S.who=((n && n.value)||"").replace(/[<>]/g,"").trim().slice(0,16);
@@ -1198,6 +1219,7 @@ var A = {
     render();
   },
   fSave: function(){
+    bumpSet();
     S.feedIvD = ui.fmD ? ui.fivD : null;
     S.feedIvN = ui.fmN ? ui.fivN : null;
     save(); S.sub=""; render();
@@ -1284,6 +1306,7 @@ var A = {
       }
       else { e.ts=ts; }
     }
+    e.up=Date.now();
     S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
     S.eidx=null; save(); render(); toast("Updated");
   },
@@ -1291,6 +1314,7 @@ var A = {
     var e=S.entries[S.eidx];
     if(!e){ S.eidx=null; render(); return; }
     if(!confirm("Delete this entry? This can\u2019t be undone.")) return;
+    syTomb(S.entries[S.eidx].id);
     S.entries.splice(S.eidx,1);
     S.eidx=null; save(); render(); toast("Deleted");
   },
@@ -1317,6 +1341,7 @@ var A = {
     var m=null, i;
     for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i];
     if(!m) return;
+    bumpSet();
     if(S.baby.mst[x]){ delete S.baby.mst[x]; toast("Unchecked"); }
     else { S.baby.mst[x]=dISO(new Date()); toast(m.t+" \u2713"); }
     save(); render();
@@ -1344,6 +1369,7 @@ var A = {
     render();
   },
   hsConQ: function(){
+    bumpSet();
     var b=S.baby||{};
     if(b.hsCon){
       delete b.hsCon; delete b.hsConDate;
@@ -1359,6 +1385,7 @@ var A = {
   hsDelAsk: function(){ ui.hsDel=true; render(); },
   hsDelNo: function(){ ui.hsDel=false; render(); },
   hsDelYes: function(){
+    bumpSet();
     var b=S.baby||{};
     delete b.hsR; delete b.hsL; delete b.hsDate;
     delete b.hsRe2R; delete b.hsRe2L; delete b.hsRe2Date; delete b.hsAbrDate;
@@ -1401,6 +1428,7 @@ var A = {
       if(!b.hsCon) delete b.hsConDate;
     }
     S.baby=b;
+    bumpSet();
     ui.bedit=false;
     save();
     if(wasNew) S.sub="";
@@ -1785,7 +1813,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.32</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.33</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3116,6 +3144,16 @@ function vSharing(){
   return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:20px">Sharing</div>'+
 
     '<div class="card" style="padding:20px">'+ic("users",30,C.pink)+
+    '<div style="font-size:20px;font-weight:700;margin-top:12px">Live sync <span style="font-size:11px;font-weight:700;color:#FF9F0A;vertical-align:middle">TESTING</span></div>'+
+    '<div style="font-size:13px;color:var(--sub);margin:4px 0 10px;line-height:1.5">Both phones enter the same endpoint URL and passphrase. Everything is encrypted on-device before upload \u2014 the server only ever sees ciphertext. Syncs about every 25 s while the app is open.</div>'+
+    '<div class="card" style="padding:0;margin-bottom:10px"><input id="syurl" class="ninput" autocomplete="off" placeholder="Endpoint URL \u00B7 e.g. https://\u2026.firebaseio.com/iza.json" value="'+esc(SY.url)+'"></div>'+
+    '<div class="card" style="padding:0;margin-bottom:10px"><input id="sypass" class="ninput" autocomplete="off" placeholder="Shared passphrase" value="'+esc(SY.pass)+'"></div>'+
+    '<div class="rowsb" style="margin-bottom:8px">'+
+    '<span style="font-size:12px;color:var(--sub)">'+
+    (SY.on ? (SY.err ? '<span style="color:'+C.red+'">'+esc(SY.err)+'</span>'
+      : (SY.lastOk ? 'Synced \u00B7 '+tClock(SY.lastOk) : 'Connecting\u2026')) : 'Off')+'</span>'+
+    '<button class="press" data-a="syTog" style="padding:8px 18px;border-radius:999px;background:'+(SY.on?'rgba(255,69,58,.2)':'rgba(52,199,123,.2)')+';color:'+(SY.on?C.red:'#34C77B')+';font-size:14px;font-weight:700">'+(SY.on?'Turn off':'Turn on')+'</button></div>'+
+    '<div style="font-size:11px;color:var(--sub);line-height:1.55;margin-bottom:18px">Free endpoint in ~2 min: console.firebase.google.com \u2192 create project \u2192 Realtime Database \u2192 start in test mode \u2192 use <span class="num">https://YOUR-DB.firebaseio.com/iza.json</span>. Last-writer-wins per entry; deletions carry over; \u201CLogged by\u201D stays per phone so Mum and Dad entries stay attributed.</div>'+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Caregiver handoff</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">AirDrop the full log to your partner\u2019s phone, '+
     'save it to Files, then on their device use <b style="color:#fff">Merge from partner</b>. Merging only adds entries the device doesn\u2019t already have \u2014 nothing is overwritten.</div>'+
@@ -3252,6 +3290,155 @@ function render(){
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
 var islKey=null;
+/* ============ sync plugin (testing) \u00B7 E2E-encrypted polling ============ */
+var SY={on:false, url:"", pass:"", key:null, busy:false, err:"", lastOk:0, pushSig:"", t:null};
+function syTomb(id){
+  S.del=S.del||[];
+  S.del.push({id:id, up:Date.now()});
+  if(S.del.length>500) S.del=S.del.slice(-500);
+}
+function bumpSet(){ S.setUp=Date.now(); }
+function syLoadCfg(){
+  try{
+    var d=JSON.parse(localStorage.getItem("babycare.sync")||"{}");
+    SY.on=!!d.on; SY.url=d.url||""; SY.pass=d.pass||"";
+  }catch(e){}
+}
+function sySaveCfg(){
+  try{ localStorage.setItem("babycare.sync", JSON.stringify({on:SY.on, url:SY.url, pass:SY.pass})); }catch(e){}
+}
+function b64e(buf){
+  var b=new Uint8Array(buf), st="", i;
+  for(i=0;i<b.length;i++) st+=String.fromCharCode(b[i]);
+  return btoa(st);
+}
+function b64d(st){
+  var bin=atob(st), b=new Uint8Array(bin.length), i;
+  for(i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+  return b;
+}
+function syKey(cb){
+  if(SY.key) return cb(SY.key);
+  if(typeof crypto==="undefined" || !crypto.subtle){ SY.err="No WebCrypto"; return; }
+  var enc=new TextEncoder();
+  crypto.subtle.importKey("raw", enc.encode(SY.pass), "PBKDF2", false, ["deriveKey"])
+    .then(function(k){
+      return crypto.subtle.deriveKey(
+        {name:"PBKDF2", salt:enc.encode("babycare-sync-v1"), iterations:150000, hash:"SHA-256"},
+        k, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+    })
+    .then(function(k){ SY.key=k; cb(k); })
+    .catch(function(){ SY.err="Key derivation failed"; });
+}
+function syEnc(key, obj, cb){
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, key, new TextEncoder().encode(JSON.stringify(obj)))
+    .then(function(ct){ cb(b64e(iv)+"."+b64e(ct)); })
+    .catch(function(){ SY.err="Encrypt failed"; });
+}
+function syDec(key, blob, cb, fail){
+  try{
+    var p=blob.split("."), iv=b64d(p[0]), ct=b64d(p[1]);
+    crypto.subtle.decrypt({name:"AES-GCM", iv:iv}, key, ct)
+      .then(function(pt){ cb(JSON.parse(new TextDecoder().decode(pt))); })
+      .catch(function(){ fail(); });
+  }catch(e){ fail(); }
+}
+function syDoc(){
+  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0,
+    set:{baby:S.baby, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN}};
+}
+function sySig(){
+  var d=syDoc(), sum=0, i;
+  for(i=0;i<d.entries.length;i++) sum+=(d.entries[i].up||0)+d.entries[i].id;
+  return d.entries.length+"|"+sum+"|"+(S.del||[]).length+"|"+d.setUp;
+}
+function syMerge(doc){
+  if(!doc || !doc.entries) return false;
+  var changed=false, byId={}, i;
+  for(i=0;i<S.entries.length;i++) byId[S.entries[i].id]=i;
+  var tomb={};
+  (S.del||[]).forEach(function(t){ tomb[t.id]=Math.max(tomb[t.id]||0, t.up||0); });
+  (doc.del||[]).forEach(function(t){
+    var tu=t.up||0;
+    if(!tomb[t.id] || tu>tomb[t.id]){
+      tomb[t.id]=tu;
+      S.del=S.del||[]; S.del.push({id:t.id, up:tu}); changed=true;
+    }
+  });
+  for(i=0;i<doc.entries.length;i++){
+    var re=doc.entries[i], ru=re.up||0;
+    if(tomb[re.id] && tomb[re.id]>=ru) continue;
+    if(byId[re.id]!==undefined){
+      var le=S.entries[byId[re.id]];
+      if(ru>(le.up||0)){ S.entries[byId[re.id]]=re; changed=true; }
+    } else {
+      S.entries.push(re); changed=true;
+    }
+  }
+  var keep=[];
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(tomb[e.id] && tomb[e.id]>=(e.up||0)){ changed=true; continue; }
+    keep.push(e);
+  }
+  S.entries=keep;
+  if(S.del && S.del.length>500) S.del=S.del.slice(-500);
+  if(doc.set && (doc.setUp||0)>(S.setUp||0)){
+    S.baby=doc.set.baby||S.baby;
+    S.meds=doc.set.meds||S.meds;
+    S.order=doc.set.order||S.order;
+    S.custom=doc.set.custom||S.custom;
+    S.feedIvD=(typeof doc.set.feedIvD==="number")?doc.set.feedIvD:null;
+    S.feedIvN=(typeof doc.set.feedIvN==="number")?doc.set.feedIvN:null;
+    S.setUp=doc.setUp;
+    ensureOrder();
+    changed=true;
+  }
+  if(changed){
+    S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+    save();
+    if(!S.editing && !ui.sheet) render();
+  }
+  return changed;
+}
+function syTick(){
+  if(!SY.on || SY.busy || !SY.url || !SY.pass) return;
+  if(typeof fetch==="undefined"){ SY.err="No fetch"; return; }
+  SY.busy=true;
+  syKey(function(key){
+    fetch(SY.url, {method:"GET", headers:{"Accept":"application/json"}})
+      .then(function(r){
+        if(r.status===404) return null;
+        if(!r.ok) throw new Error("GET "+r.status);
+        return r.json();
+      })
+      .then(function(body){
+        function pushIfDirty(){
+          var sig=sySig();
+          if(sig===SY.pushSig){ SY.busy=false; SY.lastOk=Date.now(); SY.err=""; return; }
+          syEnc(key, syDoc(), function(blob){
+            fetch(SY.url, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({c:blob})})
+              .then(function(r2){
+                if(!r2.ok) throw new Error("PUT "+r2.status);
+                SY.pushSig=sig; SY.lastOk=Date.now(); SY.err=""; SY.busy=false;
+              })
+              .catch(function(e2){ SY.err=String(e2.message||e2); SY.busy=false; });
+          });
+        }
+        if(body && body.c){
+          syDec(key, body.c, function(doc){ syMerge(doc); pushIfDirty(); },
+            function(){ SY.err="Wrong passphrase or corrupt data"; SY.busy=false; });
+        } else pushIfDirty();
+      })
+      .catch(function(e){ SY.err=String(e.message||e); SY.busy=false; });
+  });
+}
+function sySoon(){
+  if(!SY.on) return;
+  if(SY.t) clearTimeout(SY.t);
+  SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
+}
 var medNudged={};
 function slotOfHour(h){ return (h>=5 && h<11) ? "m" : (h>=11 && h<16) ? "n" : "ni"; }
 function medFeedNudge(ts){
@@ -3781,7 +3968,7 @@ function saveMidBurp(){
   if(sec<1) return true;
   S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"burp",
     detail:fmt(sec)+" \u00B7 Mid burp", data:{sec:sec, type:"Mid"},
-    ts:new Date().toISOString(), by:(S.who||undefined)});
+    ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
   S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
   toast("Mid burp saved");
   return true;
@@ -3955,6 +4142,14 @@ byId("impf").addEventListener("change", function(){
 });
 
 /* Merge import: adds partner entries it doesn't already have */
+syLoadCfg();
+(function(){
+  var _s=save;
+  save=function(){ _s(); sySoon(); };
+})();
+setInterval(syTick, 25000);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) syTick(); });
+syTick();
 mstNudge();
 (function(){
   var sx=0, sy=0, sc=byId("scroll");
