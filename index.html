@@ -1060,6 +1060,29 @@ var A = {
     if(sD.getTime()>eD.getTime()){ toast("Start date is after end date"); return; }
     openDoc(docHtml(sD, eD), today());
   },
+  cardplay: function(x){
+    if(S.pmode) return;
+    var a=act(x); if(!a) return;
+    var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp");
+    if(!timed){ A.open(x); return; }
+    var s=S.sess[x];
+    S.night=false; S.tab="activity"; S.route=x; ui.sheet=false;
+    if(s && s.run){ render(); return; }
+    if(s && !s.run){ A.lapause(x); return; }
+    if(a.kind==="dual"){
+      var sd="L";
+      if(x==="nursing"){ sd=(upNext().side||"Left").charAt(0); }
+      else {
+        for(var i=0;i<S.entries.length;i++){
+          var e=S.entries[i];
+          if(e.act===x){ sd=(((e.data||{}).startSide)==="L")?"R":"L"; break; }
+        }
+      }
+      A.press(sd);
+    } else {
+      A.tgl();
+    }
+  },
   dashback: function(){ S.sub="hist"; render(); },
   dnav: function(x){
     var dn=new Date(), tmax=new Date(dn.getFullYear(), dn.getMonth(), dn.getDate()).getTime();
@@ -1564,7 +1587,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.19</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.20</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1614,7 +1637,7 @@ function vList(){
         ? '<button class="delbadge press" data-a="delc" data-x="'+a.k+'">'+ic("minus",14,"#fff",{sw:3})+'</button>'
         : "")+
       '<div class="rowsb" style="align-items:flex-start">'+ic(a.icon,38,a.c)+
-      '<span class="circ" style="width:56px;height:56px;background:'+a.c+'">'+
+      '<span class="circ press" data-a="cardplay" data-x="'+a.k+'" style="width:56px;height:56px;background:'+a.c+'">'+
       (timed ? ic("play",24,"#000",{fill:true,style:"margin-left:3px"}) : ic("plus",26,"#000",{sw:2.6}))+
       '</span></div>'+
       '<div style="font-size:25px;font-weight:700;margin-top:20px">'+a.t+'</div>'+st+
