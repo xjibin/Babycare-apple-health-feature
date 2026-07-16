@@ -1204,6 +1204,8 @@ var A = {
   },
   nightoff: function(){
     S.night=false;
+    var a0=act(S.route);
+    if(a0 && S.sess[a0.k] && S.sess[a0.k].run) nsSup=a0.k;
     if(nsWake){ nsWake.release().catch(function(){}); nsWake=null; }
     render();
   },
@@ -1229,6 +1231,7 @@ var A = {
   },
   laopen: function(x){
     if(!x || !S.sess[x] || !act(x)) return;
+    if(S.night && S.sess[x] && S.sess[x].run) nsSup=x;
     S.night=false; S.tab="activity"; S.route=x; S.pmode=false; ui.sheet=false; render();
   },
   lapause: function(x){
@@ -1265,6 +1268,7 @@ var A = {
   }
 };
 document.addEventListener("click", function(e){
+  anT=0;
   var el=e.target.closest("[data-a]");
   if(!el || el.hasAttribute("disabled")) return;
   var fn=A[el.getAttribute("data-a")];
@@ -1560,7 +1564,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.18</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.19</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2770,6 +2774,19 @@ function render(){
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
 var islKey=null;
+var anT=0, anKey="", nsSup="";
+function autoNightTick(){
+  if(S.night){ anT=0; return; }
+  var a=act(S.route), s=a?S.sess[a.k]:null;
+  var timed=a && (a.kind==="dual"||a.kind==="single"||a.kind==="burp");
+  var key=(timed && s && s.run) ? a.k : "";
+  if(nsSup && key!==nsSup) nsSup="";
+  if(!key || ui.sheet || S.editing || S.pmode){ anT=0; anKey=""; return; }
+  if(key!==anKey){ anKey=key; anT=0; }
+  if(key===nsSup) return;
+  anT++;
+  if(anT>=10){ anT=0; A.night(); }
+}
 var asT=null;
 function armAutosave(){
   if(asT) clearTimeout(asT);
@@ -2830,6 +2847,7 @@ function saveMidBurp(){
 })();
 
 setInterval(function(){
+  autoNightTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
