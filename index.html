@@ -1652,7 +1652,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.23</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.24</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1780,7 +1780,7 @@ function vDual(a){
     : "";
   var h = '<div class="full">'+timerHead(a, tot, status, s.run)+hint+
     '<div style="display:flex;align-items:flex-start;gap:56px;margin-top:48px">'+sideBtn("L",e.l)+sideBtn("R",e.r)+'</div>'+
-    stopBtn(tot>0.5)+mbSlot+pastLink(a)+'</div>';
+    nasWrap(stopBtn(tot>0.5), a)+mbSlot+pastLink(a)+'</div>';
   if(ui.sheet){
     var l=Math.round(s.l), r=Math.round(s.r);
     var extra = a.pump ?
@@ -3151,6 +3151,64 @@ function seatDraw(){
     }catch(eL){}
   }
 }
+var nasDL=0, NASCIRC=226.19;
+function autoSaveNursing(){
+  var se=S.sess.nursing; if(!se) return;
+  dsFold(se); se.run=false;
+  var l=Math.round(se.l), r=Math.round(se.r), tot=l+r;
+  var ss2=se.startSide||null, st0=se.st;
+  delete S.sess.nursing;
+  ui.sheet=false; disarmAutosave(); disarmMB();
+  if(tot<1){ save(); render(); return; }
+  if(st0) addEntryAt("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2}, new Date(st0).toISOString());
+  else addEntry("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2});
+}
+function nasWrap(inner, a){
+  if(a.k!=="nursing" || !nasDL || !S.sess.nursing || S.sess.nursing.run) return inner;
+  var left=Math.max(0, Math.ceil((nasDL-Date.now())/1000));
+  return '<span style="position:relative;display:inline-block">'+
+    '<svg width="80" height="80" viewBox="0 0 80 80" style="position:absolute;left:50%;top:28px;transform:translateX(-50%);pointer-events:none">'+
+    '<circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/>'+
+    '<circle id="nasring" cx="40" cy="40" r="36" fill="none" stroke="'+C.brown+'" stroke-width="3" stroke-linecap="round" transform="rotate(-90 40 40)" stroke-dasharray="'+NASCIRC+'" stroke-dashoffset="'+(NASCIRC*(1-left/120)).toFixed(1)+'"/></svg>'+
+    inner+
+    '<span id="nast" style="display:block;text-align:center;font-size:11px;font-weight:700;color:'+C.brown+';margin-top:6px">auto-save in '+fmt(left)+'</span>'+
+    '</span>';
+}
+function capTick(){
+  var bs=S.sess.burp;
+  /* mid burp: hard cap at 5 min, then arm the 2-min nursing countdown */
+  if(bs && bs.mid && bs.run && sE(bs)>=300){
+    saveMidBurp();
+    if(S.sess.nursing && !S.sess.nursing.run) nasDL=Date.now()+120000;
+    save(); render();
+    toast("Mid burp capped at 5:00 \u00B7 nursing auto-saves in 2:00");
+  }
+  /* direct burp: hard cap at 10 min, saved as Short */
+  bs=S.sess.burp;
+  if(bs && !bs.mid && bs.run && sE(bs)>=600){
+    sFold(bs); bs.run=false;
+    var bsec=Math.round(bs.sec);
+    delete S.sess.burp;
+    addEntry("burp", fmt(bsec)+" \u00B7 Short burp", {sec:bsec, type:"Short"});
+    toast("Burp capped at 10:00 \u00B7 saved");
+  }
+  /* nursing 2-min countdown */
+  if(nasDL){
+    var ns=S.sess.nursing;
+    if(!ns || ns.run || ui.sheet){ nasDL=0; if(!ns||ns.run) {} }
+    else if(Date.now()>=nasDL){
+      nasDL=0;
+      autoSaveNursing();
+      toast("Nursing auto-saved");
+    } else {
+      var left=Math.max(0, Math.ceil((nasDL-Date.now())/1000));
+      var nr=document.getElementById("nasring");
+      if(nr) nr.setAttribute("stroke-dashoffset", (NASCIRC*(1-left/120)).toFixed(1));
+      var nt=document.getElementById("nast");
+      if(nt) nt.textContent="auto-save in "+fmt(left);
+    }
+  }
+}
 function cCol(){
   var se=S.sess.carseat;
   if(!se) return "#34C77B";
@@ -3312,6 +3370,7 @@ function saveMidBurp(){
       var did=false;
       if(hadMid && S.sess.burp && S.sess.burp.mid){ saveMidBurp(); save(); did=true; }
       if(ui.mb || mbT){ disarmMB(); did=true; }
+      if(nasDL){ nasDL=0; did=true; }
       if(did) render();
     }
   };
@@ -3345,6 +3404,7 @@ function saveMidBurp(){
 setInterval(function(){
   autoNightTick();
   seatTick();
+  capTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
