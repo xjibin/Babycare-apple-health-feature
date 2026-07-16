@@ -819,6 +819,7 @@ var A = {
   subback: function(){ S.sub=""; render(); },
   open: function(x){
     if(S.editing) return;
+    if(x==="growth"){ gg.s=1; gg.tx=0; gg.ty=0; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
     ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
     render();
@@ -1065,9 +1066,23 @@ var A = {
     if(sD.getTime()>eD.getTime()){ toast("Start date is after end date"); return; }
     openDoc(docHtml(sD, eD), today());
   },
+  gz: function(x){
+    var v=document.getElementById("ggview");
+    var W=v?(v.clientWidth||330):330, H=v?(v.clientHeight||180):180;
+    if(x==="0"){ gg.s=1; gg.tx=0; gg.ty=0; ggApply(); return; }
+    var f=(x==="+")?1.5:(1/1.5);
+    var ns=Math.max(1, Math.min(6, gg.s*f));
+    gg.tx=W/2-(W/2-gg.tx)*(ns/gg.s);
+    gg.ty=H/2-(H/2-gg.ty)*(ns/gg.s);
+    gg.s=ns; ggClamp(); ggApply();
+  },
   seaton: function(){
     var go=function(){
       seatSens.on=true; seatAttach();
+      try{
+        if(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function")
+          DeviceOrientationEvent.requestPermission().catch(function(){});
+      }catch(e0){}
       try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(e){}
       render();
     };
@@ -1624,7 +1639,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.21</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.22</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2371,7 +2386,47 @@ function vEdit(){
       stepRow("Duration","pd",ui.pdur,"min",1,5,true)+'</div>'+
       lbl("TYPE")+'<div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 4px">'+bch+'</div>';
   } else if(a.kind==="seat"){
-    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+    var d0=e.data||{}, rep="";
+    if(d0.jit && d0.jit.length>1){
+      var th=d0.th||jitThresh(), lo=th[0], hi=th[1], jm=hi*1.3, k;
+      for(k=0;k<d0.jit.length;k++) if(d0.jit[k]>jm) jm=d0.jit[k];
+      var W2=Math.max(300, d0.jit.length*5), H2=90;
+      var yf=function(v){ return H2-(v/jm)*(H2-6)-3; };
+      var ptsS="";
+      for(k=0;k<d0.jit.length;k++) ptsS+=(k?" ":"")+(k/(d0.jit.length-1)*W2).toFixed(1)+","+yf(d0.jit[k]).toFixed(1);
+      rep = lbl("RIDE COMFORT")+
+        '<div class="card" style="padding:12px;margin-bottom:16px">'+
+        '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'+
+        '<svg width="'+W2+'" height="'+H2+'" style="display:block">'+
+        '<rect x="0" y="0" width="'+W2+'" height="'+yf(hi).toFixed(1)+'" fill="rgba(255,69,58,.13)"/>'+
+        '<rect x="0" y="'+yf(hi).toFixed(1)+'" width="'+W2+'" height="'+(yf(lo)-yf(hi)).toFixed(1)+'" fill="rgba(255,159,10,.13)"/>'+
+        '<rect x="0" y="'+yf(lo).toFixed(1)+'" width="'+W2+'" height="'+(H2-yf(lo)).toFixed(1)+'" fill="rgba(52,199,123,.11)"/>'+
+        '<polyline points="'+ptsS+'" fill="none" stroke="'+C.sky+'" stroke-width="1.5"/>'+
+        '</svg></div>'+
+        '<div class="rowsb" style="margin-top:6px;font-size:10px;color:var(--sub)"><span>start</span><span>green smooth \u00B7 amber bumpy \u00B7 red rough</span><span>end</span></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+
+        '<span style="font-size:12px;font-weight:600;background:var(--card2);border-radius:999px;padding:4px 10px">'+fmt(d0.sec||0)+'</span>'+
+        '<span style="font-size:12px;font-weight:600;background:var(--card2);border-radius:999px;padding:4px 10px">limit '+fmtMin((d0.limitMin||120)*60)+'</span>'+
+        (d0.over
+          ? '<span style="font-size:12px;font-weight:700;background:rgba(255,69,58,.2);color:'+C.red+';border-radius:999px;padding:4px 10px">over limit</span>'
+          : '<span style="font-size:12px;font-weight:700;background:rgba(52,199,123,.18);color:#34C77B;border-radius:999px;padding:4px 10px">within limit</span>')+
+        '<span style="font-size:12px;font-weight:600;background:var(--card2);border-radius:999px;padding:4px 10px">'+(d0.rough||0)+' rough</span>'+
+        '<span style="font-size:12px;font-weight:600;background:var(--card2);border-radius:999px;padding:4px 10px">peak '+(d0.maxRms!=null?d0.maxRms:0)+' m/s\u00B2</span>'+
+        '</div></div>';
+    }
+    if(d0.sens){
+      var rows2="", n2=0, si;
+      for(si=0;si<SEAT_CH.length;si++){
+        var sv2=d0.sens[SEAT_CH[si][0]];
+        if(!sv2) continue;
+        rows2+='<div class="srow"'+(n2?' style="border-top:1px solid var(--hair)"':'')+'>'+
+          '<span style="font-size:13px;color:var(--sub)">'+SEAT_CH[si][1]+'</span>'+
+          '<span class="num" style="font-size:12px">'+sv2.min+' / '+sv2.avg+' / '+sv2.max+'</span></div>';
+        n2++;
+      }
+      if(n2) rep+=lbl("SENSORS \u00B7 MIN / AVG / MAX")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+rows2+'</div>';
+    }
+    body = rep + lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
       lbl("DURATION")+'<div class="card" style="padding:0;overflow:hidden">'+
       stepRow("Duration","pd",ui.pdur,"min",1,5,true)+'</div>';
   } else if(a.kind==="med"){
@@ -2511,7 +2566,15 @@ function vGrowth(a){
     '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 16px">'+ic(a.icon,30,a.c)+
     '<span style="font-size:28px;font-weight:700">Growth</span></div>'+
     '<div style="display:flex;background:var(--card);border-radius:999px;padding:4px;margin-bottom:16px">'+sh+'</div>'+
-    '<div class="card" style="margin-bottom:20px">'+chart+'</div>'+
+    '<div class="card" style="margin-bottom:20px;padding-bottom:8px">'+
+    '<div class="rowsb" style="margin-bottom:6px"><span style="font-size:11px;color:var(--sub)">Pinch to zoom · drag to pan · double-tap resets</span>'+
+    '<span style="display:flex;gap:8px">'+
+    '<button class="circ press" data-a="gz" data-x="-" style="width:28px;height:28px;background:var(--card2)">'+ic("minus",14,"#fff",{sw:2.6})+'</button>'+
+    '<button class="circ press" data-a="gz" data-x="+" style="width:28px;height:28px;background:var(--card2)">'+ic("plus",14,"#fff",{sw:2.6})+'</button>'+
+    '<button class="circ press" data-a="gz" data-x="0" style="width:28px;height:28px;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>'+
+    '</span></div>'+
+    '<div id="ggview" style="overflow:hidden;border-radius:10px;touch-action:none">'+
+    '<div id="ggwrap" style="transform-origin:0 0">'+chart+'</div></div></div>'+
     lbl("MEASUREMENT")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+st+'</div>'+
     lbl("MEASURED ON")+dtPicker("g1")+
@@ -2859,7 +2922,7 @@ function render(){
         initDT("sw", new Date(), refreshSleepLen);
         refreshSleepLen();
       }
-      else if(ia && ia.kind==="growth") initDT("g1", new Date());
+      else if(ia && ia.kind==="growth"){ initDT("g1", new Date()); ggInit(); }
       else if(ia && ia.kind==="vax"){ initVax(); initDT("v1", new Date()); }
     }
   }
@@ -2918,6 +2981,8 @@ var SEAT_CH=[["ax","Accel X"],["ay","Accel Y"],["az","Accel Z"],["gx","Grav X"],
 var seatSens={on:false, listening:false, geoId:null, sessSt:0, buf:{}, agg:{}, jitWin:[], jitLog:[],
   ema:null, status:-1, rough:0, maxRms:0, lastSamp:0, lastOri:0, lastJitLog:0};
 function seatPush(ch, v){
+  v=+v;
+  if(!isFinite(v)) return;
   var b=seatSens.buf[ch] || (seatSens.buf[ch]=[]);
   b.push(v); if(b.length>240) b.shift();
   var ag=seatSens.agg[ch] || (seatSens.agg[ch]={min:v, max:v, sum:0, n:0});
@@ -2997,7 +3062,7 @@ function seatEntryData(sec){
     var ag=seatSens.agg[SEAT_CH[i][0]];
     if(ag && ag.n) sens[SEAT_CH[i][0]]={min:Math.round(ag.min*100)/100, max:Math.round(ag.max*100)/100, avg:Math.round(ag.sum/ag.n*100)/100};
   }
-  return {sec:sec, limitMin:lim.min, over:sec>lim.min*60,
+  return {sec:sec, limitMin:lim.min, over:sec>lim.min*60, th:jitThresh(),
     rough:seatSens.rough, maxRms:Math.round(seatSens.maxRms*100)/100,
     jit:decim(seatSens.jitLog, 120), sens:sens};
 }
@@ -3017,7 +3082,7 @@ function seatTick(){
     if(seatSens.listening) seatDetach();
     seatSens.sessSt=0;
   }
-  if(S.route==="carseat") seatDraw();
+  if(S.route==="carseat"){ try{ seatDraw(); }catch(eD){} }
 }
 function seatDraw(){
   var se=S.sess.carseat, bar=document.getElementById("seatbar");
@@ -3035,24 +3100,77 @@ function seatDraw(){
   }
   var i;
   for(i=0;i<SEAT_CH.length;i++){
-    var ch=SEAT_CH[i][0], b=seatSens.buf[ch];
-    var sv=document.getElementById("sv_"+ch), cv=document.getElementById("sc_"+ch);
-    if(sv && b && b.length) sv.textContent=String(Math.round(b[b.length-1]*10)/10);
-    if(!cv || !b || b.length<2) continue;
-    var ctx=null;
-    try{ ctx=cv.getContext("2d"); }catch(e2){}
-    if(!ctx) continue;
-    var W=cv.width, H=cv.height, mn=Infinity, mx=-Infinity, j;
-    for(j=0;j<b.length;j++){ if(b[j]<mn) mn=b[j]; if(b[j]>mx) mx=b[j]; }
-    if(mx-mn<1e-6) mx=mn+1;
-    ctx.clearRect(0,0,W,H);
-    ctx.strokeStyle=C.sky; ctx.lineWidth=1.5; ctx.beginPath();
-    for(j=0;j<b.length;j++){
-      var X=j/(b.length-1)*W, Y=H-((b[j]-mn)/(mx-mn))*(H-4)-2;
-      if(j) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
-    }
-    ctx.stroke();
+    try{
+      var ch=SEAT_CH[i][0], b=seatSens.buf[ch];
+      var sv=document.getElementById("sv_"+ch), cv=document.getElementById("sc_"+ch);
+      if(sv && b && b.length) sv.textContent=String(Math.round(b[b.length-1]*10)/10);
+      if(!cv || !b || b.length<2) continue;
+      var ctx=cv.getContext("2d");
+      if(!ctx) continue;
+      var W=cv.width, H=cv.height, mn=Infinity, mx=-Infinity, j;
+      for(j=0;j<b.length;j++){ if(b[j]<mn) mn=b[j]; if(b[j]>mx) mx=b[j]; }
+      if(mx-mn<1e-6) mx=mn+1;
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle=C.sky; ctx.lineWidth=1.5; ctx.beginPath();
+      for(j=0;j<b.length;j++){
+        var X=j/(b.length-1)*W, Y=H-((b[j]-mn)/(mx-mn))*(H-4)-2;
+        if(j) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
+      }
+      ctx.stroke();
+    }catch(eL){}
   }
+}
+var gg={s:1, tx:0, ty:0};
+function ggApply(){
+  var wrap=document.getElementById("ggwrap");
+  if(wrap) wrap.style.transform="translate("+gg.tx+"px,"+gg.ty+"px) scale("+gg.s+")";
+}
+function ggClamp(){
+  var v=document.getElementById("ggview");
+  if(!v) return;
+  var W=v.clientWidth||330, H=v.clientHeight||180;
+  var minX=W*(1-gg.s), minY=H*(1-gg.s);
+  if(gg.tx>0) gg.tx=0; if(gg.tx<minX) gg.tx=minX;
+  if(gg.ty>0) gg.ty=0; if(gg.ty<minY) gg.ty=minY;
+}
+function ggInit(){
+  var v=document.getElementById("ggview");
+  if(!v || v._gg) { ggApply(); return; }
+  v._gg=1;
+  var d0=0, s0=1, m0=null, px=0, py=0, tx0=0, ty0=0, lastTap=0;
+  function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+  function mid(t, r){ return {x:(t[0].clientX+t[1].clientX)/2-r.left, y:(t[0].clientY+t[1].clientY)/2-r.top}; }
+  v.addEventListener("touchstart", function(ev){
+    var r=v.getBoundingClientRect();
+    if(ev.touches.length===2){
+      d0=dist(ev.touches); s0=gg.s; m0=mid(ev.touches, r); tx0=gg.tx; ty0=gg.ty;
+    } else if(ev.touches.length===1){
+      var now=Date.now();
+      if(now-lastTap<300){ gg.s=1; gg.tx=0; gg.ty=0; ggApply(); }
+      lastTap=now;
+      px=ev.touches[0].clientX; py=ev.touches[0].clientY; tx0=gg.tx; ty0=gg.ty;
+    }
+  }, {passive:true});
+  v.addEventListener("touchmove", function(ev){
+    ev.preventDefault();
+    if(ev.touches.length===2 && d0>0){
+      var ns=Math.max(1, Math.min(6, s0*dist(ev.touches)/d0));
+      gg.tx=m0.x-(m0.x-tx0)*(ns/s0);
+      gg.ty=m0.y-(m0.y-ty0)*(ns/s0);
+      gg.s=ns; ggClamp(); ggApply();
+    } else if(ev.touches.length===1){
+      gg.tx=tx0+(ev.touches[0].clientX-px);
+      gg.ty=ty0+(ev.touches[0].clientY-py);
+      ggClamp(); ggApply();
+    }
+  }, {passive:false});
+  v.addEventListener("touchend", function(ev){
+    d0=0;
+    if(ev.touches.length===1){
+      px=ev.touches[0].clientX; py=ev.touches[0].clientY; tx0=gg.tx; ty0=gg.ty;
+    }
+  }, {passive:true});
+  ggApply();
 }
 var anT=0, anKey="", nsSup="";
 function autoNightTick(){
