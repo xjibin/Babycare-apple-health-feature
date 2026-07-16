@@ -217,7 +217,7 @@ var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night
   entries:[], sess:{}, order:[], custom:[], baby:{}, feedIv:null, feedIvD:null, feedIvN:null, who:"",
   meds:[{id:1, name:"Vitamin D3 drops", ml:1, times:{m:false, n:true, ni:false}}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
-  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
+  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, ss:null, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
@@ -326,18 +326,9 @@ function suggSide(){
 function bandOf(ms){ var hh=new Date(ms).getHours(); return (hh>=8 && hh<20) ? "d" : "n"; }
 function upNext(){
   var f=feedTimes(); if(!f.length) return null;
-  var gd=[], gn=[], ga=[], i;
-  for(i=Math.max(1,f.length-16); i<f.length; i++){
-    var g=f[i]-f[i-1];
-    if(g>10*6e4 && g<12*36e5){
-      ga.push(g);
-      if(bandOf(f[i-1])==="d") gd.push(g); else gn.push(g);
-    }
-  }
-  function med(a){ if(!a.length) return null; var b=a.slice().sort(function(x,y){return x-y;}); return b[Math.floor(b.length/2)]; }
-  var mA=med(ga), autoD=med(gd)||mA, autoN=med(gn)||mA;
-  var ivD=(S.feedIvD!=null)? S.feedIvD*6e4 : (autoD||150*6e4);
-  var ivN=(S.feedIvN!=null)? S.feedIvN*6e4 : (autoN||150*6e4);
+  var autoD=120*6e4, autoN=180*6e4;
+  var ivD=(S.feedIvD!=null)? S.feedIvD*6e4 : autoD;
+  var ivN=(S.feedIvN!=null)? S.feedIvN*6e4 : autoN;
   var band=bandOf(f[f.length-1]);
   var iv=(band==="d")?ivD:ivN;
   return {last:f[f.length-1], band:band, iv:iv, ivD:ivD, ivN:ivN, autoD:autoD, autoN:autoN,
@@ -857,10 +848,9 @@ var A = {
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
-      var u2=upNext();
       ui.fmD=(S.feedIvD!=null); ui.fmN=(S.feedIvN!=null);
-      ui.fivD = S.feedIvD!=null ? S.feedIvD : (u2&&u2.autoD ? Math.round(u2.autoD/6e4) : 150);
-      ui.fivN = S.feedIvN!=null ? S.feedIvN : (u2&&u2.autoN ? Math.round(u2.autoN/6e4) : 150);
+      ui.fivD = S.feedIvD!=null ? S.feedIvD : 120;
+      ui.fivN = S.feedIvN!=null ? S.feedIvN : 180;
     }
     render();
   },
@@ -1111,6 +1101,31 @@ var A = {
           .catch(function(e){ SY.err=String(e.message||e); SY.busy=false; render(); });
       });
     });
+  },
+  faland: function(){
+    var un=upNext(); if(!un) return;
+    var ivMs=(un.band==="d"?ui.fivD:ui.fivN)*6e4, nx=un.last+ivMs;
+    var t = nx>Date.now() ? nx : Date.now()+ivMs;
+    var d=new Date(t);
+    var url="intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR="+d.getHours()+
+      ";i.android.intent.extra.alarm.MINUTES="+d.getMinutes()+
+      ";S.android.intent.extra.alarm.MESSAGE=Next%20feed;end";
+    A._alarmUrl=url;
+    try{ location.href=url; }catch(err){}
+    toast("Opening Clock with "+tClock(t));
+  },
+  synow: function(){
+    if(!SY.on){ S.tab="sharing"; S.route="list"; S.sub=""; render(); return; }
+    toast("Syncing\u2026");
+    syTick();
+    setTimeout(syChipTick, 1800);
+    setTimeout(syChipTick, 4200);
+  },
+  ssgo: function(){
+    if(!ui.ss) return;
+    var other = ui.ss.side==="L" ? "R" : "L";
+    ui.ss=null;
+    A.press(other);
   },
   syTog: function(){
     var u=byId("syurl"), p=byId("sypass");
@@ -1716,8 +1731,9 @@ function vSummary(){
 
     '<div class="rowsb" style="align-items:flex-end;padding-top:24px">'+
       '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Summary</span>'+
+      '<span style="display:flex;align-items:center;gap:10px">'+syChipHtml()+
       '<span class="circ" style="width:44px;height:44px;background:linear-gradient(135deg,#7BAE5C,#4E7A3A)">'+
-        ic("baby",22,"#fff")+'</span></div>'+
+        ic("baby",22,"#fff")+'</span></span></div>'+
 
     '<button class="press" data-a="tab" data-x="activity" style="width:100%;display:flex;align-items:center;gap:12px;'+
       'border-radius:24px;padding:16px;margin-top:20px;margin-bottom:12px;background:'+alpha(C.pink,0.14)+';border:1px solid '+alpha(C.pink,0.35)+'">'+
@@ -1831,7 +1847,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.35</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.36</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1848,7 +1864,7 @@ function vHistory(){
 function vList(){
   var acts=allActs(), i, edit=S.editing;
   var h = '<div class="rowsb" style="padding-top:16px;margin-bottom:'+(edit?'8':'20')+'px">'+
-    '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Activity</span>'+
+    '<span style="display:flex;align-items:center;gap:10px"><span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Activity</span>'+syChipHtml()+'</span>'+
     (edit
       ? '<button class="press" data-a="editdone" style="color:var(--blue);font-size:17px;font-weight:600">Done</button>'
       : '<span style="display:flex;gap:12px">'+
@@ -1959,7 +1975,7 @@ function vDual(a){
     }
   }
   var mbSlot = (a.k==="nursing")
-    ? '<div style="height:64px;margin-top:14px;display:flex;align-items:center;justify-content:center;width:100%">'+mbHtml+'</div>'
+    ? '<div style="height:64px;margin-top:14px;display:flex;align-items:center;justify-content:center;width:100%">'+(ui.ss ? ssCapHtml() : mbHtml)+'</div>'
     : "";
   var h = '<div class="full">'+timerHead(a, tot, status, s.run)+hint+
     '<div style="display:flex;align-items:flex-start;gap:56px;margin-top:48px">'+sideBtn("L",e.l)+sideBtn("R",e.r)+'</div>'+
@@ -2486,7 +2502,7 @@ function vFeed(){
     stepRow("Night \u00B7 8pm\u20138am","fivn", fmtMin(ui.fivN*60), "", 5, 15, true)+'</div>'+
     '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:6px">'+
     'Day '+(ui.fmD?'manual':'auto')+' \u00B7 night '+(ui.fmN?'manual':'auto')+
-    '. Auto = median of that band\u2019s recent gaps; stepping switches the band to manual. Predictions use the band of the last feed.</div>';
+    '. Suggested: day 2h \u00B7 night 3h. Stepping switches a band to manual; predictions use the band of the last feed.</div>';
   var rl="";
   if(un.autoD && ui.fmD)
     rl+='<button class="press" data-a="fauto" data-x="d" style="color:'+C.mint+';font-size:14px;font-weight:600;padding:4px 10px">Day \u2192 suggested ('+fmtMin(un.autoD/1000)+')</button>';
@@ -2506,6 +2522,13 @@ function vFeed(){
     '<div style="margin-top:8px">This button sends the time as text (<span class="mono" style="color:'+C.teal+'">\u201C'+tClock(al)+'\u201D</span>); '+
     'step 1 converts it to a real time, so Shortcuts creates the alarm without asking. '+
     'If you already made the one-action version, just add step 1 above Create Alarm and point Time at <b style="color:#fff">Dates</b>.</div></div></div>';
+  h += '<div style="height:14px"></div>'+lbl("ANDROID ALARM")+
+    '<div class="card">'+
+    '<button class="press" data-a="faland" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left">'+
+    ic("clock",20,"#34C77B")+
+    '<span style="flex:1;font-size:15px;font-weight:600">Set Android alarm for '+tClock(al)+'</span>'+
+    ic("chevron-right",16,C.sub)+'</button>'+
+    '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">Opens the Clock app\u2019s set-alarm screen with this time pre-filled \u2014 confirm with one tap. Works in Chrome and the installed app.</div></div>';
   var eod=new Date(); eod.setHours(23,59,59,999); eod=eod.getTime();
   var t0d=new Date(); t0d.setHours(0,0,0,0); t0d=t0d.getTime();
   var srows="", scnt=0, doneN=0, k2, tf=[];
@@ -2527,21 +2550,33 @@ function vFeed(){
     doneN++;
   }
   var t=due ? Date.now()+ivMs : nx, sside=un.side;
-  while(scnt<8){
-    var stm = t>eod;
-    if(stm && scnt>0) break;
+  while(scnt<8 && t<=eod){
     srows+='<div class="srow"'+((doneN+scnt)?' style="border-top:1px solid var(--hair)"':'')+'>'+
-      '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+
-      (stm?' <span style="font-size:11px;font-weight:500;color:var(--sub)">tomorrow</span>':'')+'</span>'+
+      '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+'</span>'+
       '<span style="font-size:13px;color:var(--sub)">'+sside+' side</span></div>';
     scnt++;
-    if(stm) break;
+    sside = sside==="Left" ? "Right" : "Left";
+    t += (bandOf(t)==="d" ? ui.fivD : ui.fivN)*6e4;
+  }
+  if(!srows) srows='<div class="srow"><span style="font-size:13px;color:var(--sub)">No more feeds expected today</span></div>';
+  var trows="", tcnt=0, tguard=0;
+  while(tcnt<3 && tguard<60){
+    tguard++;
+    if(t>eod){
+      trows+='<div class="srow"'+(tcnt?' style="border-top:1px solid var(--hair)"':'')+'>'+
+        '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+'</span>'+
+        '<span style="font-size:13px;color:var(--sub)">'+sside+' side</span></div>';
+      tcnt++;
+    }
     sside = sside==="Left" ? "Right" : "Left";
     t += (bandOf(t)==="d" ? ui.fivD : ui.fivN)*6e4;
   }
   h += '<div style="height:16px"></div>'+lbl("TODAY\u2019S FEED SCHEDULE")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">'+srows+'</div>'+
-    '<div style="font-size:12px;color:var(--sub);padding:0 4px">\u2713 done \u00B7 day every '+fmtMin(ui.fivD*60)+' \u00B7 night every '+fmtMin(ui.fivN*60)+' \u00B7 sides alternate \u00B7 updates live.</div>';
+    '<div style="font-size:12px;color:var(--sub);padding:0 4px">\u2713 done \u00B7 day every '+fmtMin(ui.fivD*60)+' \u00B7 night every '+fmtMin(ui.fivN*60)+' \u00B7 sides alternate \u00B7 updates live.</div>'+
+    '<div style="height:16px"></div>'+lbl("TOMORROW\u2019S FEED SCHEDULE")+
+    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">'+trows+'</div>'+
+    '<div style="font-size:12px;color:var(--sub);padding:0 4px">First three \u00B7 projected with the same day/night intervals.</div>';
   h += saveBar(C.mint, true, "fSave");
   return h;
 }
@@ -3462,6 +3497,43 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
+function syChipHtml(){
+  if(!SY.on) return "";
+  var ok = !!(SY.lastOk && !SY.err);
+  var col = ok ? "#34C77B" : "#FF9F0A";
+  var bg = ok ? "rgba(52,199,123,.15)" : "rgba(255,159,10,.15)";
+  var txt = ok ? "Synced \u00B7 "+tClock(SY.lastOk) : "Tap to sync now";
+  return '<button id="sychip" class="press" data-a="synow" style="display:inline-flex;align-items:center;gap:6px;background:'+bg+';border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:'+col+'">'+ic("repeat",12,col)+txt+'</button>';
+}
+function syChipTick(){
+  var el=byId("sychip"); if(!el) return;
+  var ok = !!(SY.lastOk && !SY.err);
+  var col = ok ? "#34C77B" : "#FF9F0A";
+  el.style.color=col;
+  el.style.background = ok ? "rgba(52,199,123,.15)" : "rgba(255,159,10,.15)";
+  el.innerHTML = ic("repeat",12,col)+(ok ? "Synced \u00B7 "+tClock(SY.lastOk) : "Tap to sync now");
+}
+function ssCapHtml(){
+  if(!ui.ss) return "";
+  var left=ui.ss.until-Date.now();
+  if(left<=0) return "";
+  var pct=Math.max(0, Math.min(100, left/8000*100));
+  var lastS = ui.ss.side==="L" ? "Left" : "Right";
+  return '<div style="position:relative;overflow:hidden;border-radius:999px;background:var(--card);height:52px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;width:100%;max-width:340px">'+
+    '<div id="ssfill" style="position:absolute;left:0;top:0;bottom:0;width:'+pct.toFixed(1)+'%;background:rgba(255,159,10,.16)"></div>'+
+    '<span style="position:relative;flex:1;font-size:13px;font-weight:600;min-width:0">'+lastS+' again \u2014 last feed was '+lastS+'</span>'+
+    '<button class="press" data-a="ssgo" style="position:relative;height:36px;padding:0 14px;border-radius:999px;background:#FF9F0A;color:#000;font-size:13px;font-weight:700;flex-shrink:0">Switch sides</button></div>';
+}
+function sscapTick(){
+  if(!ui.ss) return;
+  if(Date.now()>=ui.ss.until){
+    ui.ss=null;
+    if(S.route==="nursing" && !ui.sheet) render();
+    return;
+  }
+  var f=byId("ssfill");
+  if(f) f.style.width=(Math.max(0,(ui.ss.until-Date.now())/8000*100)).toFixed(1)+"%";
+}
 var medNudged={};
 function slotOfHour(h){ return (h>=5 && h<11) ? "m" : (h>=11 && h<16) ? "n" : "ni"; }
 function medFeedNudge(ts){
@@ -4000,11 +4072,20 @@ function saveMidBurp(){
   var _press=A.press;
   A.press=function(x){
     var hadMid = !!(S.sess.burp && S.sess.burp.mid);
+    var preFresh = S.route==="nursing" &&
+      (!S.sess.nursing || (!S.sess.nursing.run && (dsE(S.sess.nursing).l+dsE(S.sess.nursing).r)<1));
+    var sug = null;
+    if(preFresh){ var u9=upNext(); sug = u9 ? u9.side : null; }
     _press(x);
     if(S.route!=="nursing") return;
     var s=S.sess.nursing;
+    if(preFresh && sug && s && s.run && s.side && sug.charAt(0)!==s.side){
+      ui.ss={side:s.side, until:Date.now()+8000};
+      render();
+    }
     var paused = !!(s && !s.run && (dsE(s).l+dsE(s).r)>0.5);
     if(paused && !S.sess.burp && !ui.sheet){
+      ui.ss=null;
       armMB(); render();
     } else if(!paused){
       var did=false;
@@ -4046,6 +4127,8 @@ setInterval(function(){
   seatTick();
   capTick();
   if(Date.now()-mstLast>36e5){ mstLast=Date.now(); mstNudge(); }
+  syChipTick();
+  sscapTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
