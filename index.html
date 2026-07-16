@@ -842,6 +842,7 @@ function addEntryAt(k, detail, data, ts){
   save();
   S.route="list"; S.pmode=false; ui.sheet=false;
   render(); toast("Saved");
+  if(k==="nursing") medFeedNudge(ts);
 }
 function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISOString()); }
 
@@ -1749,7 +1750,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.28</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.29</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3163,6 +3164,34 @@ function render(){
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
 var islKey=null;
+var medNudged={};
+function slotOfHour(h){ return (h>=5 && h<11) ? "m" : (h>=11 && h<16) ? "n" : "ni"; }
+function medFeedNudge(ts){
+  if(!S.meds || !S.meds.length) return;
+  var tk=dayKey(new Date().toISOString());
+  if(dayKey(ts)!==tk) return;                 /* backfilled past feeds never nudge */
+  var slot=slotOfHour(new Date(ts).getHours());
+  var due=[], i, j;
+  for(i=0;i<S.meds.length;i++){
+    var m=S.meds[i];
+    if(!m.times || !m.times[slot]) continue;
+    var done=false;
+    for(j=0;j<S.entries.length;j++){
+      var e=S.entries[j];
+      if(e.act==="medicine" && e.data && e.data.mid===m.id && e.data.slot===slot && dayKey(e.ts)===tk){ done=true; break; }
+    }
+    if(done) continue;
+    var key=tk+"|"+m.id+"|"+slot;
+    if(medNudged[key]) continue;
+    medNudged[key]=1;
+    due.push(m);
+  }
+  if(!due.length) return;
+  var sn = slot==="m" ? "Morning" : slot==="n" ? "Noon" : "Night";
+  var msg="Medicine time \u00B7 "+due[0].name+" \u00B7 "+due[0].ml+" ml ("+sn+")"+
+    (due.length>1 ? " +"+(due.length-1)+" more" : "")+" \u2014 give after this feed";
+  setTimeout(function(){ toast(msg); notif(msg); }, 1200);
+}
 function dISO(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 function dShort(iso){ if(!iso) return ""; var p=iso.split("-"); return (+p[2])+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+p[1]-1]; }
 var MST=[
