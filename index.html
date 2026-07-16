@@ -1343,6 +1343,19 @@ var A = {
     ui.dob=null;
     render();
   },
+  hsConQ: function(){
+    var b=S.baby||{};
+    if(b.hsCon){
+      delete b.hsCon; delete b.hsConDate;
+      ui.b.hsCon=false;
+      toast("Hearing concern cleared");
+    } else {
+      b.hsCon=true; b.hsConDate=dISO(new Date());
+      ui.b.hsCon=true;
+      toast("Concern flagged \u2014 book a hearing/speech check");
+    }
+    save(); render();
+  },
   hsDelAsk: function(){ ui.hsDel=true; render(); },
   hsDelNo: function(){ ui.hsDel=false; render(); },
   hsDelYes: function(){
@@ -1772,7 +1785,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.31</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.32</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2838,7 +2851,9 @@ function hsCompact(){
     inner='<div class="rowsb">'+
       '<span style="display:inline-flex;align-items:center;gap:8px;background:var(--card2);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700">'+
       ic("calendar",15,"#34C77B")+dMed(S.baby.hsDate)+'</span>'+
-      '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></div>'+
+      '<span style="display:flex;gap:8px">'+
+      '<button class="circ press" data-a="hsConQ" style="width:34px;height:34px;background:'+(S.baby.hsCon?'rgba(255,159,10,.25)':'var(--card2)')+';border:1.5px solid '+(S.baby.hsCon?'#FF9F0A':'transparent')+'" title="Flag a hearing concern">'+bang(S.baby.hsCon?'#FF9F0A':'#fff',16)+'</button>'+
+      '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></span></div>'+
       '<div style="font-size:12px;color:var(--sub);margin-top:10px">'+res+'</div>';
   }
   return lbl("NEONATAL HEARING SCREENING (OAE)")+
@@ -2909,8 +2924,8 @@ function vBabyView(){
     '<div class="card" style="margin-bottom:20px">'+
     '<div style="font-size:22px;font-weight:700">'+esc(b.name||"\u2014")+'</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chips+'</div>'+
-    (b.uhid ? '<div style="font-size:12px;color:var(--sub);margin-top:12px">UHID '+esc(b.uhid)+'</div>' : "")+
     '</div>'+
+    (b.uhid ? lbl("HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</span></div>' : "")+
     ((b.hsR||b.hsL) ? hsCompact()
       : '<div style="font-size:12px;color:var(--sub);padding:0 4px">No hearing screening recorded \u00B7 tap '+ic("pencil",11,C.pink)+' to add.</div>')+
     '</div>';
@@ -3535,13 +3550,15 @@ function autoSaveNursing(){
 function nasWrap(inner, a){
   if(a.k!=="nursing" || !nasDL || !S.sess.nursing || S.sess.nursing.run) return inner;
   var left=Math.max(0, Math.ceil((nasDL-Date.now())/1000));
-  return '<span style="position:relative;display:inline-block">'+
-    '<svg width="80" height="80" viewBox="0 0 80 80" style="position:absolute;left:50%;top:28px;transform:translateX(-50%);pointer-events:none">'+
-    '<circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3"/>'+
-    '<circle id="nasring" cx="40" cy="40" r="36" fill="none" stroke="'+C.brown+'" stroke-width="3" stroke-linecap="round" transform="rotate(-90 40 40)" stroke-dasharray="'+NASCIRC+'" stroke-dashoffset="'+(NASCIRC*(1-left/120)).toFixed(1)+'"/></svg>'+
-    inner+
-    '<span id="nast" style="display:block;text-align:center;font-size:11px;font-weight:700;color:'+C.brown+';margin-top:6px">auto-save in '+fmt(left)+'</span>'+
-    '</span>';
+  return '<button class="press" data-a="stop" style="margin-top:36px;display:flex;flex-direction:column;align-items:center;gap:8px">'+
+    '<span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px">'+
+    '<svg width="80" height="80" viewBox="0 0 80 80" style="position:absolute;left:0;top:0;pointer-events:none">'+
+    '<circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3.5"/>'+
+    '<circle id="nasring" cx="40" cy="40" r="36" fill="none" stroke="'+C.brown+'" stroke-width="3.5" stroke-linecap="round" transform="rotate(-90 40 40)" stroke-dasharray="'+NASCIRC+'" stroke-dashoffset="'+(NASCIRC*(1-left/120)).toFixed(1)+'"/></svg>'+
+    '<span class="circ" style="width:64px;height:64px;background:var(--card2)">'+ic("square",22,C.red,{fill:true})+'</span>'+
+    '</span>'+
+    '<span id="nast" style="color:'+C.brown+';font-size:12px;font-weight:700">auto-save in '+fmt(left)+'</span>'+
+    '</button>';
 }
 function capTick(){
   var bs=S.sess.burp;
