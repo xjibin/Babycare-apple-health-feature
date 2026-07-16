@@ -140,8 +140,6 @@
 .mbfill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(192,138,94,.28);animation:asgrow 3s linear forwards}
 .asfill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(0,0,0,.18);animation:asgrow 3s linear forwards}
 @keyframes asgrow{from{width:0}to{width:100%}}
-.cnight{animation:dissolve .8s ease}
-@keyframes dissolve{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
@@ -378,40 +376,71 @@ function growthPts(t){
   out.sort(function(a,b){return a.mo-b.mo;});
   return out;
 }
+function gCol(){
+  return (S.baby && S.baby.sex==="Girl") ? C.pink : (S.baby && S.baby.sex==="Boy") ? "#6FA8FF" : C.blue;
+}
 function gChart(t){
   var sex=(S.baby && S.baby.sex==="Boy")?"M":"F";
-  var ref=WHO[t][sex], pts=growthPts(t);
-  var xmax=24; for(var i=0;i<pts.length;i++) if(pts[i].mo>xmax) xmax=Math.ceil(pts[i].mo);
+  var ref=WHO[t][sex], pts=growthPts(t), gc=gCol();
+  var xmaxAll=24; for(var i=0;i<pts.length;i++) if(pts[i].mo>xmaxAll) xmaxAll=Math.ceil(pts[i].mo);
+  if(gg.x1==null) gg.x1=xmaxAll;
+  var MINSPAN=0.7;
+  if(gg.x0<0){ gg.x1=Math.min(xmaxAll, gg.x1-gg.x0); gg.x0=0; }
+  if(gg.x1>xmaxAll){ gg.x0=Math.max(0, gg.x0-(gg.x1-xmaxAll)); gg.x1=xmaxAll; }
+  if(gg.x0<0) gg.x0=0;
+  if(gg.x1-gg.x0<MINSPAN){ gg.x1=Math.min(xmaxAll, gg.x0+MINSPAN); gg.x0=Math.max(0, gg.x1-MINSPAN); }
+  if(gg.x1-gg.x0>xmaxAll){ gg.x0=0; gg.x1=xmaxAll; }
+  var x0=gg.x0, x1=gg.x1, span=x1-x0;
+  var xmax=x1; /* retained name for minimal diff below */
+  var W=330,H=180,L=34,B=20,T=8,R=8, plotW=W-L-R;
+  function fx(a){ return L+((a-x0)/span)*plotW; }
+  var N=40, cols=[], ci;
+  for(ci=0;ci<=N;ci++) cols.push(x0+span*ci/N);
   var ymin=1e9, ymax=-1e9, j;
-  for(j=0;j<WHOAGE.length;j++){ if(WHOAGE[j]<=xmax){ if(ref.p3[j]<ymin)ymin=ref.p3[j]; if(ref.p97[j]>ymax)ymax=ref.p97[j]; } }
-  for(j=0;j<pts.length;j++){ if(pts[j].v<ymin)ymin=pts[j].v; if(pts[j].v>ymax)ymax=pts[j].v; }
+  for(ci=0;ci<=N;ci++){
+    var v3=interp(WHOAGE, ref.p3, cols[ci]), v97=interp(WHOAGE, ref.p97, cols[ci]);
+    if(v3<ymin) ymin=v3; if(v97>ymax) ymax=v97;
+  }
+  for(j=0;j<pts.length;j++){
+    if(pts[j].mo>=x0 && pts[j].mo<=x1){ if(pts[j].v<ymin)ymin=pts[j].v; if(pts[j].v>ymax)ymax=pts[j].v; }
+  }
   var pad=(ymax-ymin)*0.08; ymin-=pad; ymax+=pad;
-  var W=330,H=180,L=34,B=20,T=8,R=8;
-  function fx(a){ return L+(a/xmax)*(W-L-R); }
   function fy(v){ return T+(1-(v-ymin)/(ymax-ymin))*(H-T-B); }
   function line(ys){
-    var p="",k;
-    for(k=0;k<WHOAGE.length;k++){ if(WHOAGE[k]>xmax) break;
-      p+=(k?" L":"M")+fx(WHOAGE[k]).toFixed(1)+" "+fy(ys[k]).toFixed(1); }
+    var p="", k;
+    for(k=0;k<=N;k++) p+=(k?" L":"M")+fx(cols[k]).toFixed(1)+" "+fy(interp(WHOAGE, ys, cols[k])).toFixed(1);
     return p;
   }
-  var band=line(ref.p3), k2, rev="";
-  for(k2=WHOAGE.length-1;k2>=0;k2--){ if(WHOAGE[k2]>xmax) continue;
-    rev+=" L"+fx(WHOAGE[k2]).toFixed(1)+" "+fy(ref.p97[k2]).toFixed(1); }
-  var dline="", dots="";
+  var band=line(ref.p3), rev="", k2;
+  for(k2=N;k2>=0;k2--) rev+=" L"+fx(cols[k2]).toFixed(1)+" "+fy(interp(WHOAGE, ref.p97, cols[k2])).toFixed(1);
+  var dline="", dots="", seg=false;
   for(j=0;j<pts.length;j++){
-    dline+=(j?" L":"M")+fx(pts[j].mo).toFixed(1)+" "+fy(pts[j].v).toFixed(1);
-    dots+='<circle cx="'+fx(pts[j].mo).toFixed(1)+'" cy="'+fy(pts[j].v).toFixed(1)+'" r="3.5" fill="'+C.blue+'"/>';
+    var inW = pts[j].mo>=x0-span*0.05 && pts[j].mo<=x1+span*0.05;
+    if(inW){
+      dline+=(seg?" L":"M")+fx(pts[j].mo).toFixed(1)+" "+fy(pts[j].v).toFixed(1);
+      seg=true;
+      if(pts[j].mo>=x0 && pts[j].mo<=x1)
+        dots+='<circle cx="'+fx(pts[j].mo).toFixed(1)+'" cy="'+fy(pts[j].v).toFixed(1)+'" r="3.5" fill="'+gc+'"/>';
+    } else seg=false;
   }
-  var ax="", xs=[0,6,12,18,24];
-  for(j=0;j<xs.length;j++){ if(xs[j]<=xmax)
-    ax+='<text x="'+fx(xs[j])+'" y="'+(H-5)+'" fill="#8E8E93" font-size="9" text-anchor="middle">'+xs[j]+'m</text>'; }
+  var ax="", WK=7/30.4375;
+  if(span<=2.6){
+    var wstep=(span<=1.3)?1:2;
+    var w0=Math.max(wstep, Math.ceil((x0/WK)/wstep)*wstep);
+    if(x0<=1e-9) ax+='<text x="'+fx(0).toFixed(1)+'" y="'+(H-5)+'" fill="#8E8E93" font-size="9" text-anchor="middle">0</text>';
+    for(j=w0; j*WK<=x1+1e-9; j+=wstep)
+      ax+='<text x="'+fx(j*WK).toFixed(1)+'" y="'+(H-5)+'" fill="#8E8E93" font-size="9" text-anchor="middle">'+j+'w</text>';
+  } else {
+    var mstep = span<=8 ? 1 : (span<=16 ? 2 : (span<=32 ? 3 : 6));
+    var m0=Math.ceil((x0-1e-9)/mstep)*mstep;
+    for(j=m0; j<=x1+1e-9; j+=mstep)
+      ax+='<text x="'+fx(j).toFixed(1)+'" y="'+(H-5)+'" fill="#8E8E93" font-size="9" text-anchor="middle">'+j+'m</text>'; }
   ax+='<text x="4" y="'+(fy(ymax-pad)+3)+'" fill="#8E8E93" font-size="9">'+(ymax-pad).toFixed(t==="weight"?1:0)+'</text>';
   ax+='<text x="4" y="'+(fy(ymin+pad)+3)+'" fill="#8E8E93" font-size="9">'+(ymin+pad).toFixed(t==="weight"?1:0)+'</text>';
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block">'+
-    '<path d="'+band+rev+' Z" fill="'+alpha(C.blue,0.13)+'"/>'+
-    '<path d="'+line(ref.p50)+'" fill="none" stroke="'+alpha(C.blue,0.5)+'" stroke-width="1.5" stroke-dasharray="4 4"/>'+
-    (dline?'<path d="'+dline+'" fill="none" stroke="'+C.blue+'" stroke-width="2"/>':"")+dots+ax+'</svg>';
+    '<path d="'+band+rev+' Z" fill="'+alpha(gc,0.13)+'"/>'+
+    '<path d="'+line(ref.p50)+'" fill="none" stroke="'+alpha(gc,0.5)+'" stroke-width="1.5" stroke-dasharray="4 4"/>'+
+    (dline?'<path d="'+dline+'" fill="none" stroke="'+gc+'" stroke-width="2"/>':"")+dots+ax+'</svg>';
 }
 function liveSessions(){
   var keys=Object.keys(S.sess), out=[], i;
@@ -834,7 +863,7 @@ var A = {
   subback: function(){ S.sub=""; render(); },
   open: function(x){
     if(S.editing) return;
-    if(x==="growth"){ gg.s=1; gg.tx=0; gg.ty=0; }
+    if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
     ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
     render();
@@ -1082,14 +1111,12 @@ var A = {
     openDoc(docHtml(sD, eD), today());
   },
   gz: function(x){
-    var v=document.getElementById("ggview");
-    var W=v?(v.clientWidth||330):330, H=v?(v.clientHeight||180):180;
-    if(x==="0"){ gg.s=1; gg.tx=0; gg.ty=0; ggApply(); return; }
-    var f=(x==="+")?1.5:(1/1.5);
-    var ns=Math.max(1, Math.min(6, gg.s*f));
-    gg.tx=W/2-(W/2-gg.tx)*(ns/gg.s);
-    gg.ty=H/2-(H/2-gg.ty)*(ns/gg.s);
-    gg.s=ns; ggClamp(); ggApply();
+    if(x==="0"){ gg.x0=0; gg.x1=null; ggRedraw(); return; }
+    if(gg.x1==null) gg.x1=24;
+    var span=gg.x1-gg.x0, c=gg.x0+span/2;
+    var ns=(x==="+") ? Math.max(0.7, span/1.5) : span*1.5;
+    gg.x0=c-ns/2; gg.x1=c+ns/2;
+    ggRedraw();
   },
   seaton: function(){
     var go=function(){
@@ -1292,7 +1319,7 @@ var A = {
   },
   gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||""}; ui.dob=null; render(); },
   cnight: function(){
-    S.cnight=true; cnFresh=true; render();
+    S.cnight=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
   },
   cnightoff: function(){
@@ -1669,7 +1696,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.26</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.27</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2621,14 +2648,14 @@ function vGrowth(a){
     '<span style="font-size:28px;font-weight:700">Growth</span></div>'+
     '<div style="display:flex;background:var(--card);border-radius:999px;padding:4px;margin-bottom:16px">'+sh+'</div>'+
     '<div class="card" style="margin-bottom:20px;padding-bottom:8px">'+
-    '<div class="rowsb" style="margin-bottom:6px"><span style="font-size:11px;color:var(--sub)">Pinch to zoom · drag to pan · double-tap resets</span>'+
+    '<div class="rowsb" style="margin-bottom:6px"><span style="font-size:11px;color:var(--sub)">Pinch: zoom the age axis (months → weeks) · drag: pan · double-tap: reset</span>'+
     '<span style="display:flex;gap:8px">'+
     '<button class="circ press" data-a="gz" data-x="-" style="width:28px;height:28px;background:var(--card2)">'+ic("minus",14,"#fff",{sw:2.6})+'</button>'+
     '<button class="circ press" data-a="gz" data-x="+" style="width:28px;height:28px;background:var(--card2)">'+ic("plus",14,"#fff",{sw:2.6})+'</button>'+
     '<button class="circ press" data-a="gz" data-x="0" style="width:28px;height:28px;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>'+
     '</span></div>'+
     '<div id="ggview" style="overflow:hidden;border-radius:10px;touch-action:none">'+
-    '<div id="ggwrap" style="transform-origin:0 0">'+chart+'</div></div></div>'+
+    '<div id="ggwrap">'+chart+'</div></div></div>'+
     lbl("MEASUREMENT")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+st+'</div>'+
     lbl("MEASURED ON")+dtPicker("g1")+
@@ -3148,7 +3175,7 @@ function seatTick(){
       se.alerted=1; save();
       toast("Time for a break \u2014 car seat limit reached");
       notif("Take a break \u2014 over the "+fmtMin(lim)+" car seat limit for baby\u2019s age");
-      render();
+      if(S.cnight) cTint(); else render();
     }
   } else if(!se){
     if(seatSens.listening) seatDetach();
@@ -3284,14 +3311,11 @@ function cWarnText(){
   if(seatSens.status===1) return "Jitter detected \u2014 bumpy ride";
   return "";
 }
-var cnFresh=false;
 function cnightHtml(){
   var se=S.sess.carseat;
   if(!se) return "";
   var nc=cCol(), sec=sE(se), wt=cWarnText();
-  var cls = cnFresh ? ' class="cnight"' : '';
-  cnFresh=false;
-  return '<div'+cls+' id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;'+
+  return '<div id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;padding:96px 24px 40px">'+
     '<div id="cclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
@@ -3337,57 +3361,59 @@ function cTint(){
     if(at) at.textContent=wt;
   }
 }
-var gg={s:1, tx:0, ty:0};
-function ggApply(){
+var gg={x0:0, x1:null};
+function ggRedraw(){
   var wrap=document.getElementById("ggwrap");
-  if(wrap) wrap.style.transform="translate("+gg.tx+"px,"+gg.ty+"px) scale("+gg.s+")";
-}
-function ggClamp(){
-  var v=document.getElementById("ggview");
-  if(!v) return;
-  var W=v.clientWidth||330, H=v.clientHeight||180;
-  var minX=W*(1-gg.s), minY=H*(1-gg.s);
-  if(gg.tx>0) gg.tx=0; if(gg.tx<minX) gg.tx=minX;
-  if(gg.ty>0) gg.ty=0; if(gg.ty<minY) gg.ty=minY;
+  if(wrap) wrap.innerHTML=gChart(ui.gtype);
 }
 function ggInit(){
   var v=document.getElementById("ggview");
-  if(!v || v._gg) { ggApply(); return; }
+  if(!v || v._gg) return;
   v._gg=1;
-  var d0=0, s0=1, m0=null, px=0, py=0, tx0=0, ty0=0, lastTap=0;
+  var d0=0, sp0=0, mF=0, px=0, x00=0, lastTap=0, lastDraw=0, moved=false, movedPrev=false;
+  function plotX(clientX, r){
+    var W=330, L=34, R2=8;
+    var rel=(clientX-r.left)/r.width*W;
+    var x1=(gg.x1==null?24:gg.x1);
+    return gg.x0+((rel-L)/(W-L-R2))*(x1-gg.x0);
+  }
   function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
-  function mid(t, r){ return {x:(t[0].clientX+t[1].clientX)/2-r.left, y:(t[0].clientY+t[1].clientY)/2-r.top}; }
+  function draw(){ var now=Date.now(); if(now-lastDraw<30) return; lastDraw=now; ggRedraw(); }
   v.addEventListener("touchstart", function(ev){
     var r=v.getBoundingClientRect();
     if(ev.touches.length===2){
-      d0=dist(ev.touches); s0=gg.s; m0=mid(ev.touches, r); tx0=gg.tx; ty0=gg.ty;
+      d0=dist(ev.touches);
+      sp0=(gg.x1==null?24:gg.x1)-gg.x0;
+      mF=plotX((ev.touches[0].clientX+ev.touches[1].clientX)/2, r);
+      x00=gg.x0;
     } else if(ev.touches.length===1){
       var now=Date.now();
-      if(now-lastTap<300){ gg.s=1; gg.tx=0; gg.ty=0; ggApply(); }
-      lastTap=now;
-      px=ev.touches[0].clientX; py=ev.touches[0].clientY; tx0=gg.tx; ty0=gg.ty;
+      if(now-lastTap<300 && !movedPrev){ gg.x0=0; gg.x1=null; ggRedraw(); }
+      lastTap=now; moved=false;
+      px=ev.touches[0].clientX; x00=gg.x0; d0=0;
     }
   }, {passive:true});
   v.addEventListener("touchmove", function(ev){
     ev.preventDefault();
+    moved=true;
+    var r=v.getBoundingClientRect();
     if(ev.touches.length===2 && d0>0){
-      var ns=Math.max(1, Math.min(6, s0*dist(ev.touches)/d0));
-      gg.tx=m0.x-(m0.x-tx0)*(ns/s0);
-      gg.ty=m0.y-(m0.y-ty0)*(ns/s0);
-      gg.s=ns; ggClamp(); ggApply();
-    } else if(ev.touches.length===1){
-      gg.tx=tx0+(ev.touches[0].clientX-px);
-      gg.ty=ty0+(ev.touches[0].clientY-py);
-      ggClamp(); ggApply();
+      var ns=Math.max(0.7, sp0*d0/dist(ev.touches));
+      gg.x0=mF-(mF-x00)*(ns/sp0);
+      gg.x1=gg.x0+ns;
+      draw();
+    } else if(ev.touches.length===1 && gg.x1!=null){
+      var span=gg.x1-gg.x0;
+      var dMo=-(ev.touches[0].clientX-px)/r.width*span*1.15;
+      gg.x0=x00+dMo; gg.x1=gg.x0+span;
+      draw();
     }
   }, {passive:false});
   v.addEventListener("touchend", function(ev){
-    d0=0;
-    if(ev.touches.length===1){
-      px=ev.touches[0].clientX; py=ev.touches[0].clientY; tx0=gg.tx; ty0=gg.ty;
-    }
+    d0=0; movedPrev=moved;
+    if(ev.touches.length===1){ px=ev.touches[0].clientX; x00=gg.x0; }
+    else if(ev.touches.length===0){ ggRedraw(); }
   }, {passive:true});
-  ggApply();
 }
 var anT=0, anKey="", nsSup="";
 function autoNightTick(){
