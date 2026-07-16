@@ -851,7 +851,7 @@ var A = {
   tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; render(); },
   sub: function(x){
     S.sub=x;
-    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; }
+    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
       var u2=upNext();
@@ -1337,6 +1337,18 @@ var A = {
     else ui.b.hsRe2L=(ui.b.hsRe2L===p[1]?"":p[1]);
     render();
   },
+  hsDelAsk: function(){ ui.hsDel=true; render(); },
+  hsDelNo: function(){ ui.hsDel=false; render(); },
+  hsDelYes: function(){
+    var b=S.baby||{};
+    delete b.hsR; delete b.hsL; delete b.hsDate;
+    delete b.hsRe2R; delete b.hsRe2L; delete b.hsRe2Date; delete b.hsAbrDate;
+    delete b.hsCon; delete b.hsConDate;
+    ui.b.hsR=""; ui.b.hsL=""; ui.b.hsRe2R=""; ui.b.hsRe2L=""; ui.b.hsCon=false;
+    ui.hsDel=false;
+    save(); render();
+    toast("Hearing screening data removed");
+  },
   hscon: function(){
     var n=byId("bname"); if(n) ui.b.name=n.value;
     var u=byId("uhid"); if(u) ui.b.uhid=u.value;
@@ -1350,7 +1362,7 @@ var A = {
     b.name=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,20);
     b.dob=d.toISOString(); b.sex=ui.b.sex||""; b.blood=ui.b.blood||"";
     b.uhid=((u&&u.value)||ui.b.uhid||"").replace(/[<>]/g,"").trim().slice(0,24);
-    b.hsR=ui.b.hsR||""; b.hsL=ui.b.hsL||"";
+    if(!(b.hsR||b.hsL) || byId("w_hsd_D")){ b.hsR=ui.b.hsR||""; b.hsL=ui.b.hsL||""; }
     if((b.hsR||b.hsL) && byId("w_hsd_D")) b.hsDate=dISO(dValue("hsd"));
     if(!b.hsR && !b.hsL) delete b.hsDate;
     var refAny=(b.hsR==="REFER"||b.hsL==="REFER");
@@ -1371,7 +1383,7 @@ var A = {
     S.baby=b;
     save(); S.sub=""; render(); toast("Profile saved");
   },
-  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; render(); },
+  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; render(); },
   cnight: function(){
     S.cnight=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
@@ -1750,7 +1762,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.29</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.30</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2801,6 +2813,30 @@ function initVax(){
 
 /* ============ Baby profile ============ */
 function hsBlock(){
+  if(S.baby && (S.baby.hsR || S.baby.hsL)){
+    var res="Right "+(S.baby.hsR||"\u2014")+" \u00B7 Left "+(S.baby.hsL||"\u2014");
+    if(S.baby.hsRe2R==="REFER"||S.baby.hsRe2L==="REFER") res+=" \u00B7 repeat REFER \u00B7 ABR "+(dMed(S.baby.hsAbrDate)||"pending");
+    else if(S.baby.hsRe2Date) res+=" \u00B7 repeat "+dMed(S.baby.hsRe2Date);
+    else if(S.baby.hsR==="PASS" && S.baby.hsL==="PASS") res+=" \u2014 normal study";
+    if(S.baby.hsCon) res+=" \u00B7 concern flagged"+(S.baby.hsConDate?" "+dMed(S.baby.hsConDate):"");
+    var inner;
+    if(ui.hsDel){
+      inner='<div style="font-size:14px;font-weight:600;line-height:1.5">Do you want to remove the Neonatal Hearing Screening data for '+esc(S.baby.name||"baby")+'?</div>'+
+        '<div style="display:flex;gap:10px;margin-top:14px">'+
+        '<button class="press" data-a="hsDelYes" style="flex:1;height:44px;border-radius:14px;background:'+C.red+';color:#000;font-size:15px;font-weight:700">Yes</button>'+
+        '<button class="press" data-a="hsDelNo" style="flex:1;height:44px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700">No</button></div>';
+    } else {
+      inner='<div class="rowsb">'+
+        '<span style="display:inline-flex;align-items:center;gap:8px;background:var(--card2);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700">'+
+        ic("calendar",15,"#34C77B")+dMed(S.baby.hsDate)+'</span>'+
+        '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></div>'+
+        '<div style="font-size:12px;color:var(--sub);margin-top:10px">'+res+'</div>';
+    }
+    return '<div style="height:20px"></div>'+lbl("HOSPITAL ID")+
+      '<div class="card" style="padding:0;margin-bottom:20px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+
+      lbl("NEONATAL HEARING SCREENING (OAE)")+
+      '<div class="card" style="margin-bottom:12px">'+inner+'</div>';
+  }
   function chip2(act, x, val, cur){
     var on=cur===val, col=val==="PASS"?"#34C77B":C.red;
     return '<button class="pchip press" data-a="'+act+'" data-x="'+x+'|'+val+'" style="'+(on?'background:'+col+';color:#000':'')+'">'+val+'</button>';
@@ -3193,6 +3229,7 @@ function medFeedNudge(ts){
   setTimeout(function(){ toast(msg); notif(msg); }, 1200);
 }
 function dISO(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function dMed(iso){ if(!iso) return ""; var p=iso.split("-"); return (+p[2])+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+p[1]-1]+" "+p[0]; }
 function dShort(iso){ if(!iso) return ""; var p=iso.split("-"); return (+p[2])+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+p[1]-1]; }
 var MST=[
   {k:"smile",     t:"Social smile",                       a:1,    b:4},
@@ -3674,7 +3711,7 @@ function armMB(){
     if(ui.mb!=="offer") return;
     ui.mb=null;
     var s=S.sess.nursing;
-    if((S.route!=="nursing" && !S.night) || ui.sheet || !s || s.run || S.sess.burp){ render(); return; }
+    if(ui.sheet || !s || s.run || S.sess.burp){ render(); return; }
     S.sess.burp={sec:0, run:true, at:Date.now(), st:Date.now(), mid:true};
     save(); render(); toast("Mid burp started");
   }, 3000);
@@ -3719,7 +3756,7 @@ function saveMidBurp(){
   function nursePost(hadMid){
     var s=S.sess.nursing;
     var paused = !!(s && !s.run && (dsE(s).l+dsE(s).r)>0.5);
-    if(paused && S.night && !S.sess.burp && !ui.sheet){
+    if(paused && !S.sess.burp && !ui.sheet){
       armMB(); render();
     } else if(!paused){
       var did=false;
