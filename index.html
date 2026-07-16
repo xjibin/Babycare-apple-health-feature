@@ -1096,10 +1096,26 @@ var A = {
     save(); render();
   },
   mbstop: function(){ if(saveMidBurp()){ save(); render(); } },
+  syForce: function(){
+    if(!SY.on || !SY.url || !SY.pass) return;
+    if(!confirm("Replace the synced copy with THIS phone\u2019s data? Do this on the phone whose log is correct. The other phone must then use the same passphrase.")) return;
+    SY.busy=true;
+    syKey(function(key){
+      syEnc(key, syDoc(), function(blob){
+        fetch(SY.url, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({c:blob})})
+          .then(function(r){
+            if(!r.ok) throw new Error("PUT "+r.status);
+            SY.pushSig=sySig(); SY.lastOk=Date.now(); SY.err=""; SY.busy=false;
+            render(); toast("Synced copy replaced with this phone\u2019s data");
+          })
+          .catch(function(e){ SY.err=String(e.message||e); SY.busy=false; render(); });
+      });
+    });
+  },
   syTog: function(){
     var u=byId("syurl"), p=byId("sypass");
     if(u) SY.url=u.value.trim();
-    if(p) SY.pass=p.value;
+    if(p) SY.pass=p.value.trim();
     if(!SY.on){
       if(!SY.url || !SY.pass){ toast("Enter the endpoint URL and passphrase"); return; }
       SY.on=true; SY.key=null; SY.pushSig=""; SY.err="";
@@ -1815,7 +1831,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.34</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.35</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3155,6 +3171,11 @@ function vSharing(){
     (SY.on ? (SY.err ? '<span style="color:'+C.red+'">'+esc(SY.err)+'</span>'
       : (SY.lastOk ? 'Synced \u00B7 '+tClock(SY.lastOk) : 'Connecting\u2026')) : 'Off')+'</span>'+
     '<button class="press" data-a="syTog" style="padding:8px 18px;border-radius:999px;background:'+(SY.on?'rgba(255,69,58,.2)':'rgba(52,199,123,.2)')+';color:'+(SY.on?C.red:'#34C77B')+';font-size:14px;font-weight:700">'+(SY.on?'Turn off':'Turn on')+'</button></div>'+
+    (SY.on && SY.err && SY.err.indexOf("passphrase")>=0 ?
+      '<div class="card" style="margin-bottom:10px;border:1px solid rgba(255,69,58,.5)">'+
+      '<div style="font-size:13px;font-weight:700;color:'+C.red+'">Passphrases don\u2019t match</div>'+
+      '<div style="font-size:12px;color:var(--sub);line-height:1.55;margin-top:6px">The synced copy was encrypted with a different passphrase (watch for auto-added spaces or capitals). Fix the passphrase and turn sync off/on \u2014 or, on the phone whose log is correct, replace the synced copy:</div>'+
+      '<button class="press" data-a="syForce" style="margin-top:12px;width:100%;height:44px;border-radius:14px;background:rgba(255,69,58,.2);color:'+C.red+';font-size:14px;font-weight:700">Use this phone\u2019s data</button></div>' : "")+
     '<div style="font-size:11px;color:var(--sub);line-height:1.55;margin-bottom:18px">Free endpoint in ~2 min: console.firebase.google.com \u2192 create project \u2192 Realtime Database \u2192 start in test mode \u2192 use <span class="num">https://YOUR-DB.firebaseio.com/iza.json</span>. Last-writer-wins per entry; deletions carry over; \u201CLogged by\u201D stays per phone so Mum and Dad entries stay attributed.</div>'+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Caregiver handoff</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">AirDrop the full log to your partner\u2019s phone, '+
