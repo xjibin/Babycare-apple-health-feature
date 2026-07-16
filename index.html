@@ -214,15 +214,15 @@ var NAPPIES = [
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
 var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, cnight:false, eidx:null,
-  entries:[], sess:{}, order:[], custom:[], baby:{}, feedIv:null, who:"",
+  entries:[], sess:{}, order:[], custom:[], baby:{}, feedIv:null, feedIvD:null, feedIvN:null, who:"",
   meds:[{id:1, name:"Vitamin D3 drops", ml:1, times:{m:false, n:true, ni:false}}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
-  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
+  pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
   if (MEM) return;
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIv:S.feedIv, who:S.who, meds:S.meds})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -230,7 +230,11 @@ function load(){
   try { var j = localStorage.getItem(KEY);
     if (j){ var d = JSON.parse(j); S.entries = d.entries || []; S.sess = d.sess || {};
       S.order = d.order || []; S.custom = d.custom || []; S.baby = d.baby || {};
-      S.feedIv = (typeof d.feedIv==="number") ? d.feedIv : null;
+      if(d.feedIvD!==undefined || d.feedIvN!==undefined){
+        S.feedIvD=(typeof d.feedIvD==="number")?d.feedIvD:null;
+        S.feedIvN=(typeof d.feedIvN==="number")?d.feedIvN:null;
+      } else if(typeof d.feedIv==="number"){ S.feedIvD=d.feedIv; S.feedIvN=d.feedIv; }
+      else { S.feedIvD=null; S.feedIvN=null; }
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds; } } catch(e){}
 }
@@ -318,19 +322,27 @@ function suggSide(){
   }
   return "Left";
 }
+function bandOf(ms){ var hh=new Date(ms).getHours(); return (hh>=8 && hh<20) ? "d" : "n"; }
 function upNext(){
   var f=feedTimes(); if(!f.length) return null;
-  var gaps=[], i;
-  for(i=Math.max(1,f.length-8); i<f.length; i++){
+  var gd=[], gn=[], ga=[], i;
+  for(i=Math.max(1,f.length-16); i<f.length; i++){
     var g=f[i]-f[i-1];
-    if(g>10*6e4 && g<12*36e5) gaps.push(g);
+    if(g>10*6e4 && g<12*36e5){
+      ga.push(g);
+      if(bandOf(f[i-1])==="d") gd.push(g); else gn.push(g);
+    }
   }
-  var auto=null;
-  if(gaps.length){ gaps.sort(function(a,b){return a-b;}); auto=gaps[Math.floor(gaps.length/2)]; }
-  var manual=(S.feedIv!=null);
-  var iv = manual ? S.feedIv*6e4 : auto;
-  return {last:f[f.length-1], med:iv, auto:auto, manual:manual,
-    next:(iv ? f[f.length-1]+iv : null), side:suggSide()};
+  function med(a){ if(!a.length) return null; var b=a.slice().sort(function(x,y){return x-y;}); return b[Math.floor(b.length/2)]; }
+  var mA=med(ga), autoD=med(gd)||mA, autoN=med(gn)||mA;
+  var ivD=(S.feedIvD!=null)? S.feedIvD*6e4 : (autoD||150*6e4);
+  var ivN=(S.feedIvN!=null)? S.feedIvN*6e4 : (autoN||150*6e4);
+  var band=bandOf(f[f.length-1]);
+  var iv=(band==="d")?ivD:ivN;
+  return {last:f[f.length-1], band:band, iv:iv, ivD:ivD, ivN:ivN, autoD:autoD, autoN:autoN,
+    mD:(S.feedIvD!=null), mN:(S.feedIvN!=null),
+    med:iv, auto:(band==="d"?autoD:autoN), manual:(band==="d"?(S.feedIvD!=null):(S.feedIvN!=null)),
+    next:f[f.length-1]+iv, side:suggSide()};
 }
 function agoStr(ms){
   var m=Math.max(0,Math.round((Date.now()-ms)/6e4));
@@ -813,8 +825,9 @@ var A = {
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
       var u2=upNext();
-      ui.fauto=(S.feedIv==null);
-      ui.fiv = S.feedIv!=null ? S.feedIv : (u2&&u2.auto ? Math.round(u2.auto/6e4) : 150);
+      ui.fmD=(S.feedIvD!=null); ui.fmN=(S.feedIvN!=null);
+      ui.fivD = S.feedIvD!=null ? S.feedIvD : (u2&&u2.autoD ? Math.round(u2.autoD/6e4) : 150);
+      ui.fivN = S.feedIvN!=null ? S.feedIvN : (u2&&u2.autoN ? Math.round(u2.autoN/6e4) : 150);
     }
     render();
   },
@@ -1052,7 +1065,7 @@ var A = {
   },
   shareJson: function(){
     var payload=JSON.stringify({exported:new Date().toISOString(), app:"BabyCare test build", who:S.who,
-      baby:S.baby, feedIv:S.feedIv, order:S.order, custom:S.custom, entries:S.entries}, null, 2);
+      baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, order:S.order, custom:S.custom, entries:S.entries}, null, 2);
     var f=null;
     try{ f=new File([payload], "baby-care-"+today()+".json", {type:"application/json"}); }catch(err){}
     if(f && navigator.share && navigator.canShare && navigator.canShare({files:[f]})){
@@ -1148,19 +1161,23 @@ var A = {
     var iso=d0.getFullYear()+"-"+("0"+(d0.getMonth()+1)).slice(-2)+"-"+("0"+d0.getDate()).slice(-2);
     openDoc(docHtml(d0, d0), iso);
   },
-  fiv: function(x){ ui.fiv=Math.min(720, Math.max(15, ui.fiv+(+x))); ui.fauto=false; render(); },
-  fauto: function(){
-    var u2=upNext();
-    if(u2 && u2.auto){ ui.fauto=true; ui.fiv=Math.round(u2.auto/6e4); render(); }
+  fivd: function(x){ ui.fivD=Math.min(720, Math.max(15, ui.fivD+(+x))); ui.fmD=true; render(); },
+  fivn: function(x){ ui.fivN=Math.min(720, Math.max(15, ui.fivN+(+x))); ui.fmN=true; render(); },
+  fauto: function(x){
+    var u2=upNext(); if(!u2) return;
+    if(x==="d" && u2.autoD){ ui.fmD=false; ui.fivD=Math.round(u2.autoD/6e4); }
+    if(x==="n" && u2.autoN){ ui.fmN=false; ui.fivN=Math.round(u2.autoN/6e4); }
+    render();
   },
   fSave: function(){
-    S.feedIv = ui.fauto ? null : ui.fiv;
+    S.feedIvD = ui.fmD ? ui.fivD : null;
+    S.feedIvN = ui.fmN ? ui.fivN : null;
     save(); S.sub=""; render();
     toast("Feed schedule updated");
   },
   falarm: function(){
     var un=upNext(); if(!un) return;
-    var ivMs=ui.fiv*6e4, nx=un.last+ivMs;
+    var ivMs=(un.band==="d"?ui.fivD:ui.fivN)*6e4, nx=un.last+ivMs;
     var t = nx>Date.now() ? nx : Date.now()+ivMs;
     var url="shortcuts://run-shortcut?name=Feed%20Alarm&input=text&text="+encodeURIComponent(tClock(t));
     try{ location.href=url; }catch(err){}
@@ -1348,7 +1365,7 @@ var A = {
   edit: function(){ toast("Editing isn\u2019t in this test build"); },
   expCsv: function(){ exportFile("baby-care-"+today()+".csv", buildCsv(), "text/csv"); },
   expJson: function(){ exportFile("baby-care-"+today()+".json",
-    JSON.stringify({exported:new Date().toISOString(), app:"BabyCare test build", who:S.who, meds:S.meds, baby:S.baby, feedIv:S.feedIv,
+    JSON.stringify({exported:new Date().toISOString(), app:"BabyCare test build", who:S.who, meds:S.meds, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN,
       order:S.order, custom:S.custom, entries:S.entries}, null, 2), "application/json"); },
   clear: function(){
     if(!confirm("Delete ALL "+S.entries.length+" entries and any running sessions? Export first if you need a backup.")) return;
@@ -1520,7 +1537,7 @@ function vSummary(){
       ic("clock",22,C.mint)+
       '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">'+
       (due ? 'Feed due now' : 'Next feed ~'+tClock(un.next))+'</span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Every '+(un.manual?"":"~")+fmtMin(un.med/1000)+
+      '<span style="display:block;font-size:13px;color:var(--sub)">Day '+(un.mD?"":"~")+fmtMin(un.ivD/1000)+' \u00B7 night '+(un.mN?"":"~")+fmtMin(un.ivN/1000)+
       ' \u00B7 Start on the '+un.side+'</span></span>'+ic("chevron-right",18,C.sub)+'</button>';
   }
   var ot=outToday(), dol=dayOfLife(), tgt=wetTarget(dol);
@@ -1652,7 +1669,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.25</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.26</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2287,7 +2304,7 @@ function vFeed(){
     return h+'<div class="card" style="margin-top:16px;color:var(--sub);font-size:14px;line-height:1.6">'+
       'Predictions unlock after the first feed. Log a Nursing, Expressed or Formula entry and come back.</div>';
   }
-  var ivMs=ui.fiv*6e4, nx=un.last+ivMs, due=nx<Date.now();
+  var ivNow=(un.band==="d"?ui.fivD:ui.fivN), ivMs=ivNow*6e4, nx=un.last+ivMs, due=nx<Date.now();
   var al = due ? Date.now()+ivMs : nx;
   h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Last feed '+agoStr(un.last)+' \u00B7 '+tClock(un.last)+'</div>';
   h += '<div class="card" style="margin-bottom:16px;text-align:center;padding:22px 16px">'+
@@ -2298,13 +2315,18 @@ function vFeed(){
     (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+'</div></div>';
   h += lbl("FEED INTERVAL")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
-    stepRow("Interval","fiv", fmtMin(ui.fiv*60), "", 5, 15, true)+'</div>'+
+    stepRow("Day \u00B7 8am\u20138pm","fivd", fmtMin(ui.fivD*60), "", 5, 15, true)+
+    '<div style="height:1px;background:var(--hair);margin:0 16px"></div>'+
+    stepRow("Night \u00B7 8pm\u20138am","fivn", fmtMin(ui.fivN*60), "", 5, 15, true)+'</div>'+
     '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:6px">'+
-    (ui.fauto ? 'Auto \u00B7 median of your recent feed gaps. Stepping switches to manual.'
-              : 'Manual interval \u00B7 the Summary card and predictions use this.')+'</div>';
-  if(un.auto && !ui.fauto)
-    h += '<button class="press" data-a="fauto" style="display:block;margin:4px auto 8px;color:'+C.mint+
-      ';font-size:15px;font-weight:600">Reset to suggested ('+fmtMin(un.auto/1000)+')</button>';
+    'Day '+(ui.fmD?'manual':'auto')+' \u00B7 night '+(ui.fmN?'manual':'auto')+
+    '. Auto = median of that band\u2019s recent gaps; stepping switches the band to manual. Predictions use the band of the last feed.</div>';
+  var rl="";
+  if(un.autoD && ui.fmD)
+    rl+='<button class="press" data-a="fauto" data-x="d" style="color:'+C.mint+';font-size:14px;font-weight:600;padding:4px 10px">Day \u2192 suggested ('+fmtMin(un.autoD/1000)+')</button>';
+  if(un.autoN && ui.fmN)
+    rl+='<button class="press" data-a="fauto" data-x="n" style="color:'+C.mint+';font-size:14px;font-weight:600;padding:4px 10px">Night \u2192 suggested ('+fmtMin(un.autoN/1000)+')</button>';
+  if(rl) h += '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:2px 0 8px">'+rl+'</div>';
   h += '<div style="height:14px"></div>'+lbl("IPHONE ALARM")+
     '<div class="card">'+
     '<button class="press" data-a="falarm" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left">'+
@@ -2319,22 +2341,41 @@ function vFeed(){
     'step 1 converts it to a real time, so Shortcuts creates the alarm without asking. '+
     'If you already made the one-action version, just add step 1 above Create Alarm and point Time at <b style="color:#fff">Dates</b>.</div></div></div>';
   var eod=new Date(); eod.setHours(23,59,59,999); eod=eod.getTime();
-  var t=due ? Date.now()+ivMs : nx, sside=un.side, srows="", scnt=0;
+  var t0d=new Date(); t0d.setHours(0,0,0,0); t0d=t0d.getTime();
+  var srows="", scnt=0, doneN=0, k2, tf=[];
+  for(k2=S.entries.length-1;k2>=0;k2--){
+    var e2=S.entries[k2];
+    if(!isFeed(e2)) continue;
+    var tms=new Date(e2.ts).getTime();
+    if(tms<t0d || tms>Date.now()) continue;
+    tf.push(e2);
+  }
+  for(k2=0;k2<tf.length;k2++){
+    var e3=tf[k2], d3=e3.data||{};
+    var lab = e3.act==="nursing"
+      ? ((d3.startSide==="R"?"Right":"Left")+" side")
+      : "Bottle"+(d3.ml?" \u00B7 "+d3.ml+" ml":"");
+    srows+='<div class="srow"'+(doneN?' style="border-top:1px solid var(--hair)"':'')+'>'+
+      '<span class="num" style="font-size:16px;font-weight:600;color:#34C77B">\u2713 '+tClock(new Date(e3.ts).getTime())+'</span>'+
+      '<span style="font-size:13px;color:#34C77B">'+lab+'</span></div>';
+    doneN++;
+  }
+  var t=due ? Date.now()+ivMs : nx, sside=un.side;
   while(scnt<8){
     var stm = t>eod;
     if(stm && scnt>0) break;
-    srows+='<div class="srow"'+(scnt?' style="border-top:1px solid var(--hair)"':'')+'>'+
+    srows+='<div class="srow"'+((doneN+scnt)?' style="border-top:1px solid var(--hair)"':'')+'>'+
       '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+
       (stm?' <span style="font-size:11px;font-weight:500;color:var(--sub)">tomorrow</span>':'')+'</span>'+
       '<span style="font-size:13px;color:var(--sub)">'+sside+' side</span></div>';
     scnt++;
     if(stm) break;
     sside = sside==="Left" ? "Right" : "Left";
-    t+=ivMs;
+    t += (bandOf(t)==="d" ? ui.fivD : ui.fivN)*6e4;
   }
   h += '<div style="height:16px"></div>'+lbl("TODAY\u2019S FEED SCHEDULE")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">'+srows+'</div>'+
-    '<div style="font-size:12px;color:var(--sub);padding:0 4px">Every '+fmtMin(ui.fiv*60)+' from the last feed \u00B7 sides alternate \u00B7 updates live with the interval above.</div>';
+    '<div style="font-size:12px;color:var(--sub);padding:0 4px">\u2713 done \u00B7 day every '+fmtMin(ui.fivD*60)+' \u00B7 night every '+fmtMin(ui.fivN*60)+' \u00B7 sides alternate \u00B7 updates live.</div>';
   h += saveBar(C.mint, true, "fSave");
   return h;
 }
@@ -3554,7 +3595,11 @@ byId("impf").addEventListener("change", function(){
       if(!confirm("Import "+d.entries.length+" entries"+(d.baby&&d.baby.dob?" + baby profile":"")+
         "? This replaces the current "+S.entries.length+" entries on this device.")) return;
       S.entries=d.entries; S.custom=d.custom||[]; S.order=d.order||[]; S.baby=d.baby||{};
-      S.feedIv=(typeof d.feedIv==="number")?d.feedIv:null;
+      if(d.feedIvD!==undefined || d.feedIvN!==undefined){
+        S.feedIvD=(typeof d.feedIvD==="number")?d.feedIvD:null;
+        S.feedIvN=(typeof d.feedIvN==="number")?d.feedIvN:null;
+      } else if(typeof d.feedIv==="number"){ S.feedIvD=d.feedIv; S.feedIvN=d.feedIv; }
+      else { S.feedIvD=null; S.feedIvN=null; }
       if(d.meds!==undefined) S.meds=d.meds;
       S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
       ensureOrder(); save(); S.tab="summary"; S.sub=""; S.route="list"; render();
