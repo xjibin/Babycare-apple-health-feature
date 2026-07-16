@@ -851,7 +851,7 @@ var A = {
   tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; render(); },
   sub: function(x){
     S.sub=x;
-    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; }
+    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
       var u2=upNext();
@@ -1337,6 +1337,12 @@ var A = {
     else ui.b.hsRe2L=(ui.b.hsRe2L===p[1]?"":p[1]);
     render();
   },
+  bedit: function(){
+    ui.bedit=true; ui.hsDel=false;
+    ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon};
+    ui.dob=null;
+    render();
+  },
   hsDelAsk: function(){ ui.hsDel=true; render(); },
   hsDelNo: function(){ ui.hsDel=false; render(); },
   hsDelYes: function(){
@@ -1358,6 +1364,7 @@ var A = {
   saveBaby: function(){
     var n=byId("bname"), u=byId("uhid"), d=dobValue();
     if(d.getTime()>Date.now()){ toast("Birth can\u2019t be in the future"); return; }
+    var wasNew=!(S.baby && S.baby.dob);
     var b=S.baby||{};
     b.name=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,20);
     b.dob=d.toISOString(); b.sex=ui.b.sex||""; b.blood=ui.b.blood||"";
@@ -1381,9 +1388,12 @@ var A = {
       if(!b.hsCon) delete b.hsConDate;
     }
     S.baby=b;
-    save(); S.sub=""; render(); toast("Profile saved");
+    ui.bedit=false;
+    save();
+    if(wasNew) S.sub="";
+    render(); toast("Profile saved");
   },
-  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; render(); },
+  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); render(); },
   cnight: function(){
     S.cnight=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
@@ -1762,7 +1772,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.30</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.31</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2812,30 +2822,33 @@ function initVax(){
 }
 
 /* ============ Baby profile ============ */
+function hsCompact(){
+  var res="Right "+(S.baby.hsR||"\u2014")+" \u00B7 Left "+(S.baby.hsL||"\u2014");
+  if(S.baby.hsRe2R==="REFER"||S.baby.hsRe2L==="REFER") res+=" \u00B7 repeat REFER \u00B7 ABR "+(dMed(S.baby.hsAbrDate)||"pending");
+  else if(S.baby.hsRe2Date) res+=" \u00B7 repeat "+dMed(S.baby.hsRe2Date);
+  else if(S.baby.hsR==="PASS" && S.baby.hsL==="PASS") res+=" \u2014 normal study";
+  if(S.baby.hsCon) res+=" \u00B7 concern flagged"+(S.baby.hsConDate?" "+dMed(S.baby.hsConDate):"");
+  var inner;
+  if(ui.hsDel){
+    inner='<div style="font-size:14px;font-weight:600;line-height:1.5">Do you want to remove the Neonatal Hearing Screening data for '+esc(S.baby.name||"baby")+'?</div>'+
+      '<div style="display:flex;gap:10px;margin-top:14px">'+
+      '<button class="press" data-a="hsDelYes" style="flex:1;height:44px;border-radius:14px;background:'+C.red+';color:#000;font-size:15px;font-weight:700">Yes</button>'+
+      '<button class="press" data-a="hsDelNo" style="flex:1;height:44px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700">No</button></div>';
+  } else {
+    inner='<div class="rowsb">'+
+      '<span style="display:inline-flex;align-items:center;gap:8px;background:var(--card2);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700">'+
+      ic("calendar",15,"#34C77B")+dMed(S.baby.hsDate)+'</span>'+
+      '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></div>'+
+      '<div style="font-size:12px;color:var(--sub);margin-top:10px">'+res+'</div>';
+  }
+  return lbl("NEONATAL HEARING SCREENING (OAE)")+
+    '<div class="card" style="margin-bottom:12px">'+inner+'</div>';
+}
 function hsBlock(){
   if(S.baby && (S.baby.hsR || S.baby.hsL)){
-    var res="Right "+(S.baby.hsR||"\u2014")+" \u00B7 Left "+(S.baby.hsL||"\u2014");
-    if(S.baby.hsRe2R==="REFER"||S.baby.hsRe2L==="REFER") res+=" \u00B7 repeat REFER \u00B7 ABR "+(dMed(S.baby.hsAbrDate)||"pending");
-    else if(S.baby.hsRe2Date) res+=" \u00B7 repeat "+dMed(S.baby.hsRe2Date);
-    else if(S.baby.hsR==="PASS" && S.baby.hsL==="PASS") res+=" \u2014 normal study";
-    if(S.baby.hsCon) res+=" \u00B7 concern flagged"+(S.baby.hsConDate?" "+dMed(S.baby.hsConDate):"");
-    var inner;
-    if(ui.hsDel){
-      inner='<div style="font-size:14px;font-weight:600;line-height:1.5">Do you want to remove the Neonatal Hearing Screening data for '+esc(S.baby.name||"baby")+'?</div>'+
-        '<div style="display:flex;gap:10px;margin-top:14px">'+
-        '<button class="press" data-a="hsDelYes" style="flex:1;height:44px;border-radius:14px;background:'+C.red+';color:#000;font-size:15px;font-weight:700">Yes</button>'+
-        '<button class="press" data-a="hsDelNo" style="flex:1;height:44px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700">No</button></div>';
-    } else {
-      inner='<div class="rowsb">'+
-        '<span style="display:inline-flex;align-items:center;gap:8px;background:var(--card2);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700">'+
-        ic("calendar",15,"#34C77B")+dMed(S.baby.hsDate)+'</span>'+
-        '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></div>'+
-        '<div style="font-size:12px;color:var(--sub);margin-top:10px">'+res+'</div>';
-    }
     return '<div style="height:20px"></div>'+lbl("HOSPITAL ID")+
       '<div class="card" style="padding:0;margin-bottom:20px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+
-      lbl("NEONATAL HEARING SCREENING (OAE)")+
-      '<div class="card" style="margin-bottom:12px">'+inner+'</div>';
+      hsCompact();
   }
   function chip2(act, x, val, cur){
     var on=cur===val, col=val==="PASS"?"#34C77B":C.red;
@@ -2879,7 +2892,31 @@ function hsBlock(){
   }
   return h;
 }
+function vBabyView(){
+  var b=S.baby;
+  function pchipV(icn, txt, col){
+    return '<span style="display:inline-flex;align-items:center;gap:7px;background:var(--card2);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700">'+
+      ic(icn,14,col||"#98989F")+'<span style="color:'+(col||"#fff")+'">'+esc(txt)+'</span></span>';
+  }
+  var chips = pchipV("calendar", dMed(b.dob.slice(0,10)))+
+    pchipV("clock", tClock(new Date(b.dob).getTime()))+
+    (b.sex ? pchipV("baby", b.sex, C.pink) : "")+
+    (b.blood ? pchipV("droplet", b.blood, "#FF7AB6") : "");
+  return '<div class="full" style="padding:0 4px">'+backBtn(C.pink, "Summary", "subback")+
+    '<div class="rowsb" style="margin:8px 0 4px"><span style="font-size:28px;font-weight:700">Baby Profile</span>'+
+    '<button class="circ press" data-a="bedit" style="width:36px;height:36px;background:var(--card2)">'+ic("pencil",16,C.pink)+'</button></div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">'+(babyAge()||"")+'</div>'+
+    '<div class="card" style="margin-bottom:20px">'+
+    '<div style="font-size:22px;font-weight:700">'+esc(b.name||"\u2014")+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chips+'</div>'+
+    (b.uhid ? '<div style="font-size:12px;color:var(--sub);margin-top:12px">UHID '+esc(b.uhid)+'</div>' : "")+
+    '</div>'+
+    ((b.hsR||b.hsL) ? hsCompact()
+      : '<div style="font-size:12px;color:var(--sub);padding:0 4px">No hearing screening recorded \u00B7 tap '+ic("pencil",11,C.pink)+' to add.</div>')+
+    '</div>';
+}
 function vBaby(){
+  if(!ui.bedit && S.baby && S.baby.dob) return vBabyView();
   var sx="", bl="", i;
   var sexes=["Girl","Boy"];
   for(i=0;i<sexes.length;i++)
@@ -3168,7 +3205,7 @@ function render(){
     initD("re", new Date());
   }
   if(S.tab==="summary" && S.sub==="baby"){
-    initDOB();
+    if(byId("w_b_D")) initDOB();
     var pd9=function(iso, def){ if(!iso) return def; var p9=iso.split("-"); return new Date(+p9[0], +p9[1]-1, +p9[2]); };
     if(byId("w_hsd_D")) initD("hsd", pd9(S.baby.hsDate, new Date()));
     if(byId("w_hsr2_D")) initD("hsr2", pd9(S.baby.hsRe2Date, new Date()));
