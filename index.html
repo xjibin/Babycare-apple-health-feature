@@ -173,7 +173,7 @@
 <script>
 "use strict";
 /* ============ lucide icons (exact path data from lucide 0.383.0) ============ */
-var ICONS = {"heart":"<path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><path d=\"M16 3.13a4 4 0 0 1 0 7.75\" />","search":"<circle cx=\"11\" cy=\"11\" r=\"8\" /><path d=\"m21 21-4.3-4.3\" />","baby":"<path d=\"M9 12h.01\" /><path d=\"M15 12h.01\" /><path d=\"M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5\" /><path d=\"M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1\" />","droplet":"<path d=\"M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z\" />","droplets":"<path d=\"M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z\" /><path d=\"M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97\" />","milk":"<path d=\"M8 2h8\" /><path d=\"M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2\" /><path d=\"M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0\" />","pill":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","layers":"<path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\" /><path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\" /><path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\" />","moon":"<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\" />","bed-double":"<path d=\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\" /><path d=\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\" /><path d=\"M12 4v6\" /><path d=\"M2 18h20\" />","zap":"<path d=\"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z\" />","play":"<polygon points=\"6 3 20 12 6 21 6 3\" />","pause":"<rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" /><rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" />","square":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","minus":"<path d=\"M5 12h14\" />","chevron-left":"<path d=\"m15 18-6-6 6-6\" />","chevron-right":"<path d=\"m9 18 6-6-6-6\" />","loader":"<path d=\"M12 2v4\" /><path d=\"m16.2 7.8 2.9-2.9\" /><path d=\"M18 12h4\" /><path d=\"m16.2 16.2 2.9 2.9\" /><path d=\"M12 18v4\" /><path d=\"m4.9 19.1 2.9-2.9\" /><path d=\"M2 12h4\" /><path d=\"m4.9 4.9 2.9 2.9\" />","flame":"<path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\" />","music":"<path d=\"M9 18V5l12-2v13\" /><circle cx=\"6\" cy=\"18\" r=\"3\" /><circle cx=\"18\" cy=\"16\" r=\"3\" />","mic":"<path d=\"M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z\" /><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /><line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\" />","timer":"<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /><line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /><circle cx=\"12\" cy=\"14\" r=\"8\" />","sparkles":"<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\" /><path d=\"M20 3v4\" /><path d=\"M22 5h-4\" /><path d=\"M4 17v2\" /><path d=\"M5 18H3\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","pencil":"<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\" /><path d=\"m15 5 4 4\" />","circle-dot":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><circle cx=\"12\" cy=\"12\" r=\"1\" />","activity":"<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />","wifi":"<path d=\"M12 20h.01\" /><path d=\"M2 8.82a15 15 0 0 1 20 0\" /><path d=\"M5 12.859a10 10 0 0 1 14 0\" /><path d=\"M8.5 16.429a5 5 0 0 1 7 0\" />","ruler":"<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\" /><path d=\"m14.5 12.5 2-2\" /><path d=\"m11.5 9.5 2-2\" /><path d=\"m8.5 6.5 2-2\" /><path d=\"m17.5 15.5 2-2\" />","syringe":"<path d=\"m18 2 4 4\" /><path d=\"m17 7 3-3\" /><path d=\"M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5\" /><path d=\"m9 11 4 4\" /><path d=\"m5 19-3 3\" /><path d=\"m14 4 6 6\" />","cake":"<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /><path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /><path d=\"M2 21h20\" /><path d=\"M7 8v3\" /><path d=\"M12 8v3\" /><path d=\"M17 8v3\" /><path d=\"M7 4h0.01\" /><path d=\"M12 4h0.01\" /><path d=\"M17 4h0.01\" />","calendar":"<path d=\"M8 2v4\" /><path d=\"M16 2v4\" /><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /><path d=\"M3 10h18\" />","line-chart":"<path d=\"M3 3v18h18\" /><path d=\"m19 9-5 5-4-4-3 3\" />","trending-up":"<polyline points=\"22 7 13.5 15.5 8.5 10.5 2 17\" /><polyline points=\"16 7 22 7 22 13\" />","upload":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><polyline points=\"17 8 12 3 7 8\" /><line x1=\"12\" x2=\"12\" y1=\"3\" y2=\"15\" />","download":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><polyline points=\"7 10 12 15 17 10\" /><line x1=\"12\" x2=\"12\" y1=\"15\" y2=\"3\" />","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><polyline points=\"12 6 12 12 16 14\" />","user":"<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /><circle cx=\"12\" cy=\"7\" r=\"4\" />","repeat":"<path d=\"m17 2 4 4-4 4\" /><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /><path d=\"m7 22-4-4 4-4\" /><path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","cross":"<path d=\"M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z\" />","wind":"<path d=\"M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2\" /><path d=\"M9.6 4.6A2 2 0 1 1 11 8H2\" /><path d=\"M12.6 19.4A2 2 0 1 0 14 16H2\" />"};
+var ICONS = {"heart":"<path d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\" />","users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /><circle cx=\"9\" cy=\"7\" r=\"4\" /><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /><path d=\"M16 3.13a4 4 0 0 1 0 7.75\" />","search":"<circle cx=\"11\" cy=\"11\" r=\"8\" /><path d=\"m21 21-4.3-4.3\" />","baby":"<path d=\"M9 12h.01\" /><path d=\"M15 12h.01\" /><path d=\"M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5\" /><path d=\"M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1\" />","droplet":"<path d=\"M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z\" />","droplets":"<path d=\"M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z\" /><path d=\"M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97\" />","milk":"<path d=\"M8 2h8\" /><path d=\"M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2\" /><path d=\"M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0\" />","pill":"<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z\" /><path d=\"m8.5 8.5 7 7\" />","layers":"<path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\" /><path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\" /><path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\" />","moon":"<path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\" />","bed-double":"<path d=\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\" /><path d=\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\" /><path d=\"M12 4v6\" /><path d=\"M2 18h20\" />","zap":"<path d=\"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z\" />","play":"<polygon points=\"6 3 20 12 6 21 6 3\" />","pause":"<rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" /><rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" />","square":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","minus":"<path d=\"M5 12h14\" />","chevron-left":"<path d=\"m15 18-6-6 6-6\" />","chevron-right":"<path d=\"m9 18 6-6-6-6\" />","loader":"<path d=\"M12 2v4\" /><path d=\"m16.2 7.8 2.9-2.9\" /><path d=\"M18 12h4\" /><path d=\"m16.2 16.2 2.9 2.9\" /><path d=\"M12 18v4\" /><path d=\"m4.9 19.1 2.9-2.9\" /><path d=\"M2 12h4\" /><path d=\"m4.9 4.9 2.9 2.9\" />","flame":"<path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\" />","music":"<path d=\"M9 18V5l12-2v13\" /><circle cx=\"6\" cy=\"18\" r=\"3\" /><circle cx=\"18\" cy=\"16\" r=\"3\" />","mic":"<path d=\"M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z\" /><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /><line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\" />","timer":"<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /><line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /><circle cx=\"12\" cy=\"14\" r=\"8\" />","sparkles":"<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\" /><path d=\"M20 3v4\" /><path d=\"M22 5h-4\" /><path d=\"M4 17v2\" /><path d=\"M5 18H3\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","pencil":"<path d=\"M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z\" /><path d=\"m15 5 4 4\" />","circle-dot":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><circle cx=\"12\" cy=\"12\" r=\"1\" />","activity":"<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />","wifi":"<path d=\"M12 20h.01\" /><path d=\"M2 8.82a15 15 0 0 1 20 0\" /><path d=\"M5 12.859a10 10 0 0 1 14 0\" /><path d=\"M8.5 16.429a5 5 0 0 1 7 0\" />","ruler":"<path d=\"M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z\" /><path d=\"m14.5 12.5 2-2\" /><path d=\"m11.5 9.5 2-2\" /><path d=\"m8.5 6.5 2-2\" /><path d=\"m17.5 15.5 2-2\" />","syringe":"<path d=\"m18 2 4 4\" /><path d=\"m17 7 3-3\" /><path d=\"M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5\" /><path d=\"m9 11 4 4\" /><path d=\"m5 19-3 3\" /><path d=\"m14 4 6 6\" />","cake":"<path d=\"M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8\" /><path d=\"M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1\" /><path d=\"M2 21h20\" /><path d=\"M7 8v3\" /><path d=\"M12 8v3\" /><path d=\"M17 8v3\" /><path d=\"M7 4h0.01\" /><path d=\"M12 4h0.01\" /><path d=\"M17 4h0.01\" />","calendar":"<path d=\"M8 2v4\" /><path d=\"M16 2v4\" /><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /><path d=\"M3 10h18\" />","line-chart":"<path d=\"M3 3v18h18\" /><path d=\"m19 9-5 5-4-4-3 3\" />","trending-up":"<polyline points=\"22 7 13.5 15.5 8.5 10.5 2 17\" /><polyline points=\"16 7 22 7 22 13\" />","upload":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><polyline points=\"17 8 12 3 7 8\" /><line x1=\"12\" x2=\"12\" y1=\"3\" y2=\"15\" />","download":"<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" /><polyline points=\"7 10 12 15 17 10\" /><line x1=\"12\" x2=\"12\" y1=\"15\" y2=\"3\" />","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\" /><polyline points=\"12 6 12 12 16 14\" />","user":"<path d=\"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\" /><circle cx=\"12\" cy=\"7\" r=\"4\" />","repeat":"<path d=\"m17 2 4 4-4 4\" /><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /><path d=\"m7 22-4-4 4-4\" /><path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","cross":"<path d=\"M11 2a2 2 0 0 0-2 2v5H4a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2h5v5c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-5V4a2 2 0 0 0-2-2h-2z\" />","wind":"<path d=\"M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2\" /><path d=\"M9.6 4.6A2 2 0 1 1 11 8H2\" /><path d=\"M12.6 19.4A2 2 0 1 0 14 16H2\" />","car":"<path d=\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\" /><circle cx=\"7\" cy=\"17\" r=\"2\" /><path d=\"M9 17h6\" /><circle cx=\"17\" cy=\"17\" r=\"2\" />","gauge":"<path d=\"m12 14 4-4\" /><path d=\"M3.34 19a10 10 0 1 1 17.32 0\" />"};
 function ic(n, s, c, o){
   o = o || {};
   var fill = o.fill ? c : "none";
@@ -185,7 +185,7 @@ function ic(n, s, c, o){
 /* ============ palette & activities (same as the JSX mockup) ============ */
 var C = { card:"#1C1C1E", card2:"#2C2C2E", sub:"#98989F", blue:"#3D82F7", pink:"#FF6482", lav:"#BF5AF2",
   teal:"#64D2FF", orange:"#FF9F0A", green:"#30D158", yellow:"#FFD60A", indigo:"#7D7AFF", mint:"#66D4CF",
-  red:"#FF453A", brown:"#C08A5E", coral:"#FF6961", rose:"#FF7AB6" };
+  red:"#FF453A", brown:"#C08A5E", coral:"#FF6961", rose:"#FF7AB6", sky:"#5AC8FA" };
 var ACTS = [
   {k:"nursing",    t:"Nursing",      icon:"baby",       c:C.pink,   kind:"dual"},
   {k:"expressed",  t:"Expressed",    icon:"droplets",   c:C.teal,   kind:"amount", hint:"Expressed breast milk given by bottle"},
@@ -196,6 +196,7 @@ var ACTS = [
   {k:"nappy",      t:"Nappy Status", icon:"layers",     c:C.yellow, kind:"nappy"},
   {k:"babysleep",  t:"Baby Sleep",   icon:"moon",       c:C.lav,    kind:"single"},
   {k:"mothersleep",t:"Mother Sleep", icon:"bed-double", c:C.indigo, kind:"single"},
+  {k:"carseat",    t:"Car Seat",     icon:"car",        c:C.sky,    kind:"seat"},
   {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
   {k:"growth",     t:"Growth",       icon:"ruler",      c:C.blue,   kind:"growth"},
   {k:"vaccine",    t:"Vaccines",     icon:"syringe",    c:C.coral,  kind:"vax"}
@@ -948,7 +949,11 @@ var A = {
     } else {
       var s2=ssn(a.k), sec=Math.round(s2.sec);
       delete S.sess[a.k];
-      addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
+      if(a.kind==="seat"){
+        var sd2=seatEntryData(sec);
+        addEntry(a.k, fmt(sec)+" in car seat"+(sd2.over?" \u00B7 over the "+fmtMin(sd2.limitMin*60)+" limit":""), sd2);
+      }
+      else addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
     }
   },
   ml: function(x){ ui.ml=Math.max(0, ui.ml+(+x)); render(); },
@@ -1060,10 +1065,34 @@ var A = {
     if(sD.getTime()>eD.getTime()){ toast("Start date is after end date"); return; }
     openDoc(docHtml(sD, eD), today());
   },
+  seaton: function(){
+    var go=function(){
+      seatSens.on=true; seatAttach();
+      try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(e){}
+      render();
+    };
+    try{
+      if(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function"){
+        DeviceMotionEvent.requestPermission().then(function(r){
+          if(r==="granted") go(); else toast("Motion access declined");
+        }).catch(function(){ toast("Motion access unavailable"); });
+      } else go();
+    }catch(e){ go(); }
+  },
+  seatgps: function(){
+    if(!navigator.geolocation){ toast("GPS unavailable"); return; }
+    if(seatSens.geoId!=null){
+      navigator.geolocation.clearWatch(seatSens.geoId); seatSens.geoId=null; render(); return;
+    }
+    seatSens.geoId=navigator.geolocation.watchPosition(function(p){
+      if(p.coords && p.coords.speed!=null && p.coords.speed>=0) seatPush("sp", Math.round(p.coords.speed*3.6*10)/10);
+    }, function(){ toast("GPS unavailable"); seatSens.geoId=null; render(); }, {enableHighAccuracy:true});
+    render();
+  },
   cardplay: function(x){
     if(S.pmode) return;
     var a=act(x); if(!a) return;
-    var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp");
+    var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     if(!timed){ A.open(x); return; }
     var s=S.sess[x];
     S.night=false; S.tab="activity"; S.route=x; ui.sheet=false;
@@ -1134,6 +1163,7 @@ var A = {
       else if(a.kind==="supp"||a.kind==="nappy") ui.sel=d.type||null;
       else if(a.kind==="growth"){ ui.gtype=d.gtype||"weight"; ui.gv=(d.v!=null?d.v:0); }
       else if(a.kind==="burp"){ ui.bt=d.type||"Short"; ui.pdur=Math.max(1,Math.round((d.sec||0)/60)); }
+      else if(a.kind==="seat"){ ui.pdur=Math.max(1,Math.round((d.sec||0)/60)); }
     }
     render();
   },
@@ -1183,6 +1213,12 @@ var A = {
         if(bsec<=0){ toast("Set a duration"); return; }
         e.detail=fmt(bsec)+" \u00B7 "+(ui.bt||"Short")+" burp";
         e.data={sec:bsec, type:ui.bt||"Short"}; e.ts=ts;
+      }
+      else if(a.kind==="seat"){
+        var csec=ui.pdur*60;
+        if(csec<=0){ toast("Set a duration"); return; }
+        e.detail=fmt(csec)+" in car seat";
+        e.data=e.data||{}; e.data.sec=csec; e.ts=ts;
       }
       else { e.ts=ts; }
     }
@@ -1249,6 +1285,7 @@ var A = {
       delete S.sess[x];
       if(sec<1){ save(); render(); return; }
       if(a.kind==="burp"){ var bt2=wasMid?"Mid":(ui.bt||"Short"); addEntry(a.k, fmt(sec)+" \u00B7 "+bt2+" burp", {sec:sec, type:bt2}); }
+      else if(a.kind==="seat"){ var sd3=seatEntryData(sec); addEntry(a.k, fmt(sec)+" in car seat"+(sd3.over?" \u00B7 over the "+fmtMin(sd3.limitMin*60)+" limit":""), sd3); }
       else addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
     }
   },
@@ -1587,7 +1624,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.20</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.21</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1615,7 +1652,7 @@ function vList(){
   else h += bannerHtml();
   h += '<div id="cards"'+(edit?' class="wigmode"':'')+'>';
   for(i=0;i<acts.length;i++){
-    var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp");
+    var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     var chips = timed ? ["music","mic","timer"] : ["plus","pencil","timer"], ch="";
     for(var q=0;q<chips.length;q++) ch+='<span class="chip">'+ic(chips[q],17,"rgba(255,255,255,.55)")+'</span>';
     var st="", s=S.sess[a.k];
@@ -1967,6 +2004,61 @@ function vBurp(a){
     '</div></div>';
 }
 
+/* ============ car seat ============ */
+function vSeat(a){
+  var s=ssn(a.k), sec=sE(s), lim=seatLimit(), limS=lim.min*60;
+  var pct=Math.min(100, Math.round(sec/limS*100));
+  var status = s.run ? "Riding" : (sec>0.5 ? "Paused" : "Tap play when the ride starts");
+  var capsule="";
+  if(s.run && (s.alerted || sec>=limS)){
+    capsule='<div class="mbcap" style="border-color:rgba(255,69,58,.5)">'+ic("clock",18,C.red)+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:14px;font-weight:700;color:'+C.red+'">Take a break</span>'+
+      '<span style="display:block;font-size:12px;color:var(--sub)">Over the '+fmtMin(limS)+' limit \u2014 stop and take baby out</span></span>'+
+      '<button class="circ press" data-a="tgl" style="width:38px;height:38px;background:'+C.red+'">'+ic("pause",16,"#000",{fill:true})+'</button></div>';
+  }
+  var sensors="";
+  if(!seatSens.on){
+    sensors='<button class="card press" data-a="seaton" style="width:100%;display:flex;align-items:center;gap:12px;margin-top:20px">'+
+      ic("gauge",22,a.c)+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">Enable ride sensing</span>'+
+      '<span style="display:block;font-size:12px;color:var(--sub)">Motion \u00B7 tilt \u00B7 GPS speed \u2014 detects jitter and rough roads in realtime</span></span>'+
+      ic("chevron-right",16,"#98989F")+'</button>';
+  } else {
+    var lanes="", ci;
+    for(ci=0;ci<SEAT_CH.length;ci++){
+      lanes+='<div style="flex:0 0 200px;background:var(--card2);border-radius:14px;padding:10px 12px">'+
+        '<div class="rowsb"><span style="font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.5px">'+SEAT_CH[ci][1].toUpperCase()+'</span>'+
+        '<span id="sv_'+SEAT_CH[ci][0]+'" class="num" style="font-size:11px;color:'+a.c+'"></span></div>'+
+        '<canvas id="sc_'+SEAT_CH[ci][0]+'" width="176" height="52" style="width:176px;height:52px;display:block;margin-top:6px"></canvas></div>';
+    }
+    sensors='<div class="rowsb" style="margin-top:20px"><span style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--sub)">RIDE SENSORS \u00B7 13 LIVE CHANNELS</span>'+
+      '<span id="jpill" style="font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--card2);color:#98989F">\u2013</span></div>'+
+      '<div style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 2px 4px;margin:0 -4px">'+lanes+'</div>'+
+      '<button class="press" data-a="seatgps" style="margin-top:8px;padding:4px;font-size:12px;font-weight:600;color:'+a.c+'">'+
+      (seatSens.geoId!=null ? "GPS speed on \u00B7 tap to stop" : "Add GPS speed")+'</button>';
+  }
+  var h='<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;flex-direction:column;align-items:center;margin-top:10px">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+ic(a.icon,18,a.c)+
+    '<span style="color:'+a.c+';font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase">'+a.t+'</span></div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-bottom:6px">'+lim.lbl+'</div>'+
+    '<div id="tt" class="bigtimer num">'+fmt(sec)+'</div>'+
+    '<div style="width:220px;height:4px;border-radius:2px;background:var(--card2);margin-top:8px;overflow:hidden">'+
+    '<div id="seatbar" style="height:100%;width:'+pct+'%;background:'+(pct>=100?C.red:(pct>=75?"#FF9F0A":a.c))+'"></div></div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--sub);font-size:15px">'+
+    (s.run?'<span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--red)"></span>':"")+status+'</div>'+
+    '<span style="position:relative;display:block;margin-top:22px">'+
+    (s.run?'<span class="ring pulse" style="inset:-8px;border:2.5px solid '+alpha(a.c,0.6)+'"></span>':"")+
+    '<button class="circ press" data-a="tgl" style="width:112px;height:112px;background:'+a.c+'">'+
+    (s.run ? ic("pause",42,"#000",{fill:true}) : ic("play",42,"#000",{fill:true,style:"margin-left:5px"}))+'</button></span>'+
+    stopCore(sec>0.5)+
+    '<div style="height:10px"></div>'+capsule+'</div>'+
+    sensors+
+    '<div style="font-size:11px;color:var(--sub);margin:16px 4px 8px;line-height:1.5">Limits follow the widely used \u201C2-hour rule\u201D (30 min under 4 weeks, 1 h under 3 months). Ride bands adapt ISO 2631 vibration-comfort guidance, tightened for young infants \u2014 helpful guidance, not a medical device. Safari exposes the motion, tilt and GPS stack shown here (13 channels); a native Health build would read the full CoreMotion sensor suite.</div></div>';
+  if(ui.sheet) setSheet(a, [["Duration",fmt(Math.round(s.sec))],["Limit",fmtMin(limS)],["Ended",tClock(Date.now())]], "");
+  return h;
+}
+
 /* ============ daily medicine ============ */
 function vMed(a){
   var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
@@ -2086,7 +2178,7 @@ function vDash(){
             (dd2?((dd2>0?"\u25B2":"\u25BC")+" "+Math.abs(dd2)+" dirty"):"")+' vs '+prevLbl+'</span>'
           : chip(0);
       }
-    } else if(a.kind==="single"){
+    } else if(a.kind==="single"||a.kind==="seat"){
       val=(Math.round(t.sec/360)/10)+" h";
       sub=t.n+" session"+(t.n>1?"s":"")+(t.longest?" \u00B7 longest "+fmtMin(t.longest):"");
       dch=dnum(t.sec, y?y.sec:null, function(v){return fmtMin(v);});
@@ -2278,6 +2370,10 @@ function vEdit(){
       lbl("DURATION")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
       stepRow("Duration","pd",ui.pdur,"min",1,5,true)+'</div>'+
       lbl("TYPE")+'<div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 4px">'+bch+'</div>';
+  } else if(a.kind==="seat"){
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      lbl("DURATION")+'<div class="card" style="padding:0;overflow:hidden">'+
+      stepRow("Duration","pd",ui.pdur,"min",1,5,true)+'</div>';
   } else if(a.kind==="med"){
     body = '<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px">'+
       ic("cross",20,a.c)+'<span style="font-size:15px;font-weight:600">'+esc((e.data&&e.data.name)||e.detail)+'</span></div>'+
@@ -2744,6 +2840,7 @@ function render(){
     else if(a.kind==="supp") h=vSupp(a);
     else if(a.kind==="nappy") h=vNappy(a);
     else if(a.kind==="burp") h=vBurp(a);
+    else if(a.kind==="seat") h=vSeat(a);
     else if(a.kind==="med") h=vMed(a);
     else if(a.kind==="growth") h=vGrowth(a);
     else if(a.kind==="vax") h=vVax(a);
@@ -2797,6 +2894,166 @@ function render(){
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
 var islKey=null;
+function seatLimit(){
+  var d=(S.baby && S.baby.dob) ? (Date.now()-new Date(S.baby.dob).getTime())/864e5 : null;
+  if(d==null) return {min:120, lbl:"2 h limit \u00B7 set date of birth for age-based limits"};
+  if(d<28) return {min:30, lbl:"30 min limit \u00B7 under 4 weeks"};
+  if(d<90) return {min:60, lbl:"1 h limit \u00B7 under 3 months"};
+  return {min:120, lbl:"2 h limit \u00B7 the \u201C2-hour rule\u201D"};
+}
+function jitThresh(){
+  var d=(S.baby && S.baby.dob) ? (Date.now()-new Date(S.baby.dob).getTime())/864e5 : 0;
+  if(d<90) return [0.6, 1.5];
+  if(d<180) return [0.8, 2.0];
+  return [1.0, 2.5];
+}
+function notif(msg){
+  try{
+    if(typeof Notification!=="undefined" && Notification.permission==="granted")
+      new Notification("Baby Care", {body:msg});
+  }catch(e){}
+}
+var SEAT_CH=[["ax","Accel X"],["ay","Accel Y"],["az","Accel Z"],["gx","Grav X"],["gy","Grav Y"],["gz","Grav Z"],
+  ["rx","Rot \u03B1"],["ry","Rot \u03B2"],["rz","Rot \u03B3"],["oa","Tilt \u03B1"],["ob","Tilt \u03B2"],["og","Tilt \u03B3"],["sp","Speed"]];
+var seatSens={on:false, listening:false, geoId:null, sessSt:0, buf:{}, agg:{}, jitWin:[], jitLog:[],
+  ema:null, status:-1, rough:0, maxRms:0, lastSamp:0, lastOri:0, lastJitLog:0};
+function seatPush(ch, v){
+  var b=seatSens.buf[ch] || (seatSens.buf[ch]=[]);
+  b.push(v); if(b.length>240) b.shift();
+  var ag=seatSens.agg[ch] || (seatSens.agg[ch]={min:v, max:v, sum:0, n:0});
+  if(v<ag.min) ag.min=v; if(v>ag.max) ag.max=v; ag.sum+=v; ag.n++;
+}
+function seatReset(){
+  seatSens.buf={}; seatSens.agg={}; seatSens.jitWin=[]; seatSens.jitLog=[];
+  seatSens.ema=null; seatSens.status=-1; seatSens.rough=0; seatSens.maxRms=0; seatSens.lastJitLog=0;
+}
+function seatMotion(ev){
+  var now=Date.now();
+  if(now-seatSens.lastSamp<100) return;
+  seatSens.lastSamp=now;
+  var a=ev.acceleration, g=ev.accelerationIncludingGravity, r=ev.rotationRate, m=null;
+  if(g && g.x!=null){ seatPush("gx",g.x||0); seatPush("gy",g.y||0); seatPush("gz",g.z||0); }
+  if(a && a.x!=null){
+    seatPush("ax",a.x||0); seatPush("ay",a.y||0); seatPush("az",a.z||0);
+    m=Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+  } else if(g && g.x!=null){
+    var gm=Math.sqrt(g.x*g.x + g.y*g.y + g.z*g.z);
+    if(seatSens.ema==null) seatSens.ema=gm;
+    m=gm;
+  }
+  if(r && r.alpha!=null){ seatPush("rx",r.alpha||0); seatPush("ry",r.beta||0); seatPush("rz",r.gamma||0); }
+  if(m!=null){
+    if(seatSens.ema==null) seatSens.ema=m;
+    seatSens.ema = seatSens.ema*0.95 + m*0.05;
+    var dev=Math.abs(m-seatSens.ema);
+    seatSens.jitWin.push(dev); if(seatSens.jitWin.length>20) seatSens.jitWin.shift();
+    var sm=0, i;
+    for(i=0;i<seatSens.jitWin.length;i++) sm+=seatSens.jitWin[i]*seatSens.jitWin[i];
+    var rms=Math.sqrt(sm/seatSens.jitWin.length);
+    if(rms>seatSens.maxRms) seatSens.maxRms=rms;
+    var th=jitThresh(), st=rms>=th[1] ? 2 : (rms>=th[0] ? 1 : 0);
+    if(st===2 && seatSens.status<2 && S.sess.carseat && S.sess.carseat.run){
+      seatSens.rough++;
+      toast("Rough ride \u2014 conditions may be unsafe for baby");
+      notif("Rough ride detected \u2014 slow down or check the car seat");
+    }
+    seatSens.status=st;
+    if(now-seatSens.lastJitLog>=2000){
+      seatSens.lastJitLog=now;
+      if(seatSens.jitLog.length<3600) seatSens.jitLog.push(Math.round(rms*100)/100);
+    }
+  }
+}
+function seatOrient(ev){
+  var now=Date.now();
+  if(now-seatSens.lastOri<250) return;
+  seatSens.lastOri=now;
+  if(ev.alpha!=null) seatPush("oa", ev.alpha||0);
+  if(ev.beta!=null) seatPush("ob", ev.beta||0);
+  if(ev.gamma!=null) seatPush("og", ev.gamma||0);
+}
+function seatAttach(){
+  if(seatSens.listening) return;
+  window.addEventListener("devicemotion", seatMotion);
+  window.addEventListener("deviceorientation", seatOrient);
+  seatSens.listening=true;
+}
+function seatDetach(){
+  if(!seatSens.listening) return;
+  window.removeEventListener("devicemotion", seatMotion);
+  window.removeEventListener("deviceorientation", seatOrient);
+  seatSens.listening=false;
+  if(seatSens.geoId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(seatSens.geoId); seatSens.geoId=null; }
+}
+function decim(arr, n){
+  if(arr.length<=n) return arr.slice();
+  var out=[], step=arr.length/n, i;
+  for(i=0;i<n;i++) out.push(arr[Math.floor(i*step)]);
+  return out;
+}
+function seatEntryData(sec){
+  var lim=seatLimit(), sens={}, i;
+  for(i=0;i<SEAT_CH.length;i++){
+    var ag=seatSens.agg[SEAT_CH[i][0]];
+    if(ag && ag.n) sens[SEAT_CH[i][0]]={min:Math.round(ag.min*100)/100, max:Math.round(ag.max*100)/100, avg:Math.round(ag.sum/ag.n*100)/100};
+  }
+  return {sec:sec, limitMin:lim.min, over:sec>lim.min*60,
+    rough:seatSens.rough, maxRms:Math.round(seatSens.maxRms*100)/100,
+    jit:decim(seatSens.jitLog, 120), sens:sens};
+}
+function seatTick(){
+  var se=S.sess.carseat;
+  if(se && se.run){
+    if(se.st && seatSens.sessSt!==se.st){ seatSens.sessSt=se.st; seatReset(); }
+    if(seatSens.on) seatAttach();
+    var lim=seatLimit().min*60, sec=sE(se);
+    if(!se.alerted && sec>=lim){
+      se.alerted=1; save();
+      toast("Time for a break \u2014 car seat limit reached");
+      notif("Take a break \u2014 over the "+fmtMin(lim)+" car seat limit for baby\u2019s age");
+      render();
+    }
+  } else if(!se){
+    if(seatSens.listening) seatDetach();
+    seatSens.sessSt=0;
+  }
+  if(S.route==="carseat") seatDraw();
+}
+function seatDraw(){
+  var se=S.sess.carseat, bar=document.getElementById("seatbar");
+  if(bar && se){
+    var limS=seatLimit().min*60, p=Math.min(100, sE(se)/limS*100);
+    bar.style.width=p+"%";
+    bar.style.background=(p>=100 ? C.red : (p>=75 ? "#FF9F0A" : C.sky));
+  }
+  var jp=document.getElementById("jpill");
+  if(jp){
+    var st=seatSens.status, L=["SMOOTH","BUMPY","ROUGH"], col=["#34C77B","#FF9F0A","#FF453A"];
+    jp.textContent = st<0 ? "\u2013" : L[st];
+    jp.style.color = st<0 ? "#98989F" : "#000";
+    jp.style.background = st<0 ? "#2C2C2E" : col[st];
+  }
+  var i;
+  for(i=0;i<SEAT_CH.length;i++){
+    var ch=SEAT_CH[i][0], b=seatSens.buf[ch];
+    var sv=document.getElementById("sv_"+ch), cv=document.getElementById("sc_"+ch);
+    if(sv && b && b.length) sv.textContent=String(Math.round(b[b.length-1]*10)/10);
+    if(!cv || !b || b.length<2) continue;
+    var ctx=null;
+    try{ ctx=cv.getContext("2d"); }catch(e2){}
+    if(!ctx) continue;
+    var W=cv.width, H=cv.height, mn=Infinity, mx=-Infinity, j;
+    for(j=0;j<b.length;j++){ if(b[j]<mn) mn=b[j]; if(b[j]>mx) mx=b[j]; }
+    if(mx-mn<1e-6) mx=mn+1;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle=C.sky; ctx.lineWidth=1.5; ctx.beginPath();
+    for(j=0;j<b.length;j++){
+      var X=j/(b.length-1)*W, Y=H-((b[j]-mn)/(mx-mn))*(H-4)-2;
+      if(j) ctx.lineTo(X,Y); else ctx.moveTo(X,Y);
+    }
+    ctx.stroke();
+  }
+}
 var anT=0, anKey="", nsSup="";
 function autoNightTick(){
   if(S.night){ anT=0; return; }
@@ -2871,6 +3128,7 @@ function saveMidBurp(){
 
 setInterval(function(){
   autoNightTick();
+  seatTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
@@ -2934,7 +3192,7 @@ setInterval(function(){
     var L=document.getElementById("tl"), R=document.getElementById("tr");
     if(L) L.textContent=fmt(e.l);
     if(R) R.textContent=fmt(e.r);
-  } else if(a.kind==="single"||a.kind==="burp"){
+  } else if(a.kind==="single"||a.kind==="burp"||a.kind==="seat"){
     var s2=S.sess[a.k]; if(!s2||!s2.run) return;
     tt.textContent=fmt(sE(s2));
   }
