@@ -1275,7 +1275,7 @@ var A = {
   },
   gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||""}; ui.dob=null; render(); },
   cnight: function(){
-    S.cnight=true; render();
+    S.cnight=true; cnFresh=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
   },
   cnightoff: function(){
@@ -1652,7 +1652,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.24</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.25</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3231,25 +3231,70 @@ function cStatText(){
   var st=seatSens.status;
   return st===2 ? "ROUGH \u00B7 unsafe \u2014 slow down" : st===1 ? "BUMPY" : st===0 ? "SMOOTH \u00B7 safe" : "Ride sensing off";
 }
+function bang(c, sz){
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2.6" stroke-linecap="round">'+
+    '<line x1="12" y1="5.5" x2="12" y2="14"/><circle cx="12" cy="18" r="1" fill="'+c+'" stroke="none"/></svg>';
+}
+function cWarnText(){
+  var se=S.sess.carseat; if(!se) return "";
+  var limS=seatLimit().min*60;
+  if(se.alerted || sE(se)>=limS) return "Take a break \u2014 over the "+fmtMin(limS)+" limit";
+  if(seatSens.status===2) return "Unsafe \u2014 rough ride, slow down";
+  if(seatSens.status===1) return "Jitter detected \u2014 bumpy ride";
+  return "";
+}
+var cnFresh=false;
 function cnightHtml(){
   var se=S.sess.carseat;
   if(!se) return "";
-  var nc=cCol(), sec=sE(se);
-  return '<div class="cnight" id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;'+
+  var nc=cCol(), sec=sE(se), wt=cWarnText();
+  var cls = cnFresh ? ' class="cnight"' : '';
+  cnFresh=false;
+  return '<div'+cls+' id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;padding:96px 24px 40px">'+
     '<div id="cclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
-    '<div style="margin-top:52px;display:flex;align-items:center;gap:10px;justify-content:center;color:'+nc+'">'+ic("car",22,nc)+
+    '<div id="cttl" style="margin-top:48px;display:flex;align-items:center;gap:10px;justify-content:center;color:'+nc+'">'+
+    '<span id="cico">'+ic("car",22,nc)+'</span>'+
     '<span style="font-size:20px;font-weight:700">Car Seat</span></div>'+
     '<div id="cst" class="num" style="margin-top:10px;font-size:44px;font-weight:700;color:'+nc+'">'+
     fmt(Math.round(sec))+(se.run?"":" \u00B7 paused")+'</div>'+
-    '<div id="cstat" style="margin-top:10px;font-size:15px;font-weight:600;color:'+alpha(nc,0.8)+'">'+cStatText()+'</div>'+
-    '<div style="margin-top:34px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px">'+
-    '<button class="press" data-a="lapause" data-x="carseat" style="width:100%;height:52px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:17px;font-weight:700">'+(se.run?"Pause":"Resume")+'</button>'+
-    '<button class="press" data-a="nstop" data-x="carseat" style="width:100%;height:52px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:17px;font-weight:700">Stop &amp; save</button>'+
+    '<div id="cstat" style="margin-top:8px;font-size:15px;font-weight:600;color:'+alpha(nc,0.8)+'">'+cStatText()+'</div>'+
+    '<div style="margin-top:30px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px">'+
+    '<button id="cb1" class="press" data-a="lapause" data-x="carseat" style="width:100%;height:52px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:17px;font-weight:700">'+(se.run?"Pause":"Resume")+'</button>'+
+    '<button id="cb2" class="press" data-a="nstop" data-x="carseat" style="width:100%;height:52px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:17px;font-weight:700">Stop &amp; save</button>'+
     '</div>'+
-    '<button class="press" data-a="cnightoff" style="margin-top:auto;font-size:13px;color:'+alpha(nc,0.5)+';padding:10px">Exit \u00B7 screen stays awake</button>'+
+    '<div id="calrt" style="display:'+(wt?'flex':'none')+';flex-direction:column;align-items:center;gap:10px;margin-top:28px;color:'+nc+'">'+
+    '<span id="calrtic" class="circ" style="width:64px;height:64px;background:'+alpha(nc,0.16)+';border:2.5px solid '+nc+'">'+bang(nc,32)+'</span>'+
+    '<span id="calrtt" style="font-size:15px;font-weight:700;max-width:260px;line-height:1.4">'+wt+'</span>'+
+    '</div>'+
+    '<button id="cexit" class="press" data-a="cnightoff" style="margin-top:auto;font-size:13px;color:'+alpha(nc,0.5)+';padding:10px">Exit \u00B7 screen stays awake</button>'+
     '</div>';
+}
+function cTint(){
+  var se=S.sess.carseat;
+  if(!se) return;
+  var nc=cCol(), wt=cWarnText();
+  function col(id, c2){ var el=document.getElementById(id); if(el) el.style.color=c2; }
+  col("cclk", nc); col("cttl", nc); col("cst", nc);
+  col("cstat", alpha(nc,0.8)); col("cexit", alpha(nc,0.5));
+  var ico=document.getElementById("cico");
+  if(ico && ico._c!==nc){ ico._c=nc; ico.innerHTML=ic("car",22,nc); }
+  var b1=document.getElementById("cb1"), b2=document.getElementById("cb2");
+  if(b1){ b1.style.background=alpha(nc,0.16); b1.style.color=nc; }
+  if(b2){ b2.style.background=alpha(nc,0.16); b2.style.color=nc; }
+  var al=document.getElementById("calrt");
+  if(al){
+    al.style.display = wt ? "flex" : "none";
+    al.style.color=nc;
+    var ai=document.getElementById("calrtic");
+    if(ai){
+      ai.style.borderColor=nc; ai.style.background=alpha(nc,0.16);
+      if(ai._c!==nc){ ai._c=nc; ai.innerHTML=bang(nc,32); }
+    }
+    var at=document.getElementById("calrtt");
+    if(at) at.textContent=wt;
+  }
 }
 var gg={s:1, tx:0, ty:0};
 function ggApply(){
@@ -3445,16 +3490,13 @@ setInterval(function(){
     var se4=S.sess.carseat;
     if(!se4){ S.cnight=false; render(); }
     else {
-      var cc=cCol();
-      if(seatSens._lastC!==cc){ seatSens._lastC=cc; render(); }
-      else {
-        var ce1=document.getElementById("cclk");
-        if(ce1) ce1.textContent=new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
-        var ce2=document.getElementById("cst");
-        if(ce2) ce2.textContent=fmt(Math.round(sE(se4)))+(se4.run?"":" \u00B7 paused");
-        var ce3=document.getElementById("cstat");
-        if(ce3) ce3.textContent=cStatText();
-      }
+      var ce1=document.getElementById("cclk");
+      if(ce1) ce1.textContent=new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
+      var ce2=document.getElementById("cst");
+      if(ce2) ce2.textContent=fmt(Math.round(sE(se4)))+(se4.run?"":" \u00B7 paused");
+      var ce3=document.getElementById("cstat");
+      if(ce3) ce3.textContent=cStatText();
+      cTint();
     }
   }
 
