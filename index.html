@@ -822,8 +822,14 @@ function dayLabel(ts){
   if(diff===0) return "Today"; if(diff===1) return "Yesterday";
   return d.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"});
 }
-function toast(msg){ var t=document.getElementById("toast"); t.textContent=msg; t.style.opacity="1";
-  clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity="0"; },1600); }
+function toast(msg, ms, go){
+  var t=document.getElementById("toast");
+  t.textContent=msg; t.style.opacity="1"; t._ms=ms||1600;
+  t.style.pointerEvents = go ? "auto" : "none";
+  t.onclick = go ? function(){ t.style.opacity="0"; t.onclick=null; if(A[go.a]) A[go.a](go.x); } : null;
+  clearTimeout(t._h);
+  t._h=setTimeout(function(){ t.style.opacity="0"; t.onclick=null; }, t._ms);
+}
 
 /* timestamp-based sessions: survive locking the phone / app being killed */
 function ds(k){ if(!S.sess[k]) S.sess[k]={l:0,r:0,side:null,run:false,at:0}; return S.sess[k]; }
@@ -1141,9 +1147,16 @@ var A = {
     render();
   },
   nappyQuick: function(x){
-    addEntryAt("nappy", x+" nappy", {type:x}, new Date().toISOString());
+    var ts=new Date().toISOString();
+    addEntryAt("nappy", x+" nappy", {type:x}, ts);
+    var idx=-1, i;
+    for(i=0;i<S.entries.length;i++)
+      if(S.entries[i].act==="nappy" && S.entries[i].ts===ts){ idx=i; break; }
+    toast("Added "+x+" nappy at "+tClock(new Date(ts).getTime()), 5000,
+      idx>=0 ? {a:"eopen", x:String(idx)} : null);
   },
   openmed: function(){ S.tab="activity"; A.open("medicine"); },
+  hsopen: function(x){ S.tab="activity"; A.open(x); },
   upx: function(){
     ui.upDismissed=true;
     var m=byId("upmodal"); if(m && m.parentNode) m.parentNode.removeChild(m);
@@ -1485,7 +1498,10 @@ var A = {
   },
   saveBaby: function(){ setTimeout(setAppIcons, 0);
     var n=byId("bname"), u=byId("uhid"), d=dobValue();
+    var wv=byId("bwho"), whoV=((wv&&wv.value)||"").replace(/[<>]/g,"").trim().slice(0,16);
+    if(!whoV){ toast("Please add who you are — Mom, Dad, Nanny…"); return; }
     if(d.getTime()>Date.now()){ toast("Birth can\u2019t be in the future"); return; }
+    S.who=whoV;
     var wasNew=!(S.baby && S.baby.dob);
     var b=S.baby||{};
     b.name=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,20);
@@ -1763,7 +1779,7 @@ function vSummary(){
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
         '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">'+
           (un ? 'Start on the '+un.side : '')+ic("chevron-right",16,C.sub)+'</span></div>'+
-      '<div style="height:8px"></div>'+
+      '<div style="height:20px"></div>'+
       '<div class="rowsb" style="align-items:flex-end">'+
         '<span style="min-width:0">'+
           '<div style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+
@@ -1781,18 +1797,16 @@ function vSummary(){
       '<div class="rowsb" style="margin-bottom:4px">'+
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.yellow+';font-size:15px;font-weight:600">'+ic("layers",16,C.yellow)+'Today\u2019s Output tracking</span>'+
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:'+oChip.bg+';color:'+oChip.col+';white-space:nowrap">'+oChip.txt+'</span></div>'+
-      '<div style="height:8px"></div>'+
+      '<div style="height:36px"></div>'+
       '<div style="display:flex;align-items:flex-end">'+
-        '<span style="flex:1;min-width:0">'+
-          '<div style="font-size:13px;color:var(--sub)">Wet</div>'+
-          '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
             '<span style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+os.w+'</span>'+
-            '<button class="circ press" data-a="nappyQuick" data-x="Wet" style="width:30px;height:30px;background:rgba(111,168,255,.18)">'+ic("plus",15,"#6FA8FF")+'</button></div></span>'+
-        '<span style="flex:1;min-width:0">'+
-          '<div style="font-size:13px;color:var(--sub)">Mixed</div>'+
-          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="font-size:16px;font-weight:800;color:#6FA8FF">Wet</span>'+
+            '<button class="circ press" data-a="nappyQuick" data-x="Wet" style="width:30px;height:30px;background:rgba(111,168,255,.18)">'+ic("plus",15,"#6FA8FF")+'</button></span>'+
+        '<span style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
             '<span style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+os.m+'</span>'+
-            '<button class="circ press" data-a="nappyQuick" data-x="Mixed" style="width:30px;height:30px;background:rgba(201,138,75,.2)">'+ic("plus",15,"#C98A4B")+'</button></div></span></div>'+
+            '<span style="font-size:16px;font-weight:800;color:#C98A4B">Mixed</span>'+
+            '<button class="circ press" data-a="nappyQuick" data-x="Mixed" style="width:30px;height:30px;background:rgba(201,138,75,.2)">'+ic("plus",15,"#C98A4B")+'</button></span></div>'+
       '<div style="font-size:15px;color:var(--sub);margin-top:6px">'+napLine+'</div>'+
     '</div>';
   return '<div style="position:relative">'+
@@ -1891,7 +1905,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.41</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.42</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3055,6 +3069,10 @@ function vBabyView(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chips+'</div>'+
     '</div>'+
     (b.uhid ? lbl("HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</span></div>' : "")+
+    lbl(b.sex==="Boy" ? "I AM HIS" : b.sex==="Girl" ? "I AM HER" : "I AM THEIR")+
+    '<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px">'+
+      (S.who ? '<span style="font-size:15px;font-weight:700">'+esc(S.who)+'</span>'
+             : '<span style="font-size:14px;color:var(--sub)">Not set — tap the pencil to add</span>')+'</div>'+
     ((b.hsR||b.hsL) ? hsCompact()
       : '<div style="font-size:12px;color:var(--sub);padding:0 4px">No hearing screening recorded \u00B7 tap '+ic("pencil",11,C.pink)+' to add.</div>')+
     '</div>';
@@ -3075,6 +3093,8 @@ function vBaby(){
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Used for age, growth percentiles and vaccine due dates</div>'+
     lbl("NAME")+
     '<div class="card" style="padding:0;margin-bottom:20px"><input id="bname" class="ninput" maxlength="20" placeholder="Baby\u2019s name" autocomplete="off" autocapitalize="words" value="'+esc(ui.b.name||"")+'"></div>'+
+    lbl(ui.b.sex==="Boy" ? "I AM HIS" : ui.b.sex==="Girl" ? "I AM HER" : "I AM THEIR")+
+    '<div class="card" style="padding:0;margin-bottom:20px"><input id="bwho" class="ninput" maxlength="16" placeholder="Mom / Dad / Nanny / Carer" autocomplete="off" autocapitalize="words" value="'+esc(S.who||"")+'"></div>'+
     lbl("DATE OF BIRTH")+
     '<div class="card" style="padding:6px 0;margin-bottom:16px"><div class="wheelwrap"><div class="dtrow">'+
     '<div class="wcol" id="w_b_D" style="flex:.7"></div>'+
@@ -3268,11 +3288,6 @@ function vSharing(){
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Caregiver handoff</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">AirDrop the full log to your partner\u2019s phone, '+
     'save it to Files, then on their device use <b style="color:#fff">Merge from partner</b>. Merging only adds entries the device doesn\u2019t already have \u2014 nothing is overwritten.</div>'+
-    '<div style="margin-top:16px">'+lbl("LOGGED BY \u00B7 SHOWN ON ENTRIES")+
-    '<div style="display:flex;gap:10px">'+
-    '<div style="flex:1;background:var(--card2);border-radius:16px"><input id="whoin" class="ninput" maxlength="16" autocomplete="off" placeholder="e.g. Mum, Dad" value="'+esc(S.who||"")+'"></div>'+
-    '<button class="press" data-a="saveWho" style="border-radius:16px;padding:0 18px;background:var(--card2);font-size:15px;font-weight:600;color:'+C.pink+'">Save</button>'+
-    '</div></div>'+
     '<button class="press" data-a="shareJson" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;'+
     'border-radius:16px;margin-top:16px;background:'+C.pink+';color:#000;font-size:16px;font-weight:700">'+
     ic("upload",17,"#000")+'Send to partner\u2026</button>'+
@@ -3550,7 +3565,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.41";
+var APPVER="0.42";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -3614,6 +3629,29 @@ function medDueNow(){
   }
   return null;
 }
+var VAXSCHED=[
+  {d:0,   n:"Birth: BCG \u00B7 OPV-0 \u00B7 Hep-B 1"},
+  {d:42,  n:"6 weeks: Penta-1 \u00B7 OPV \u00B7 PCV \u00B7 Rota"},
+  {d:70,  n:"10 weeks: Penta-2 \u00B7 OPV \u00B7 Rota"},
+  {d:98,  n:"14 weeks: Penta-3 \u00B7 OPV \u00B7 PCV \u00B7 IPV"},
+  {d:180, n:"6 months: Hep-B 3 \u00B7 influenza"},
+  {d:270, n:"9 months: MMR-1 \u00B7 PCV booster"}];
+function vaccNext(){
+  if(!S.baby || !S.baby.dob) return null;
+  var dob=new Date(S.baby.dob).getTime(), now=Date.now(), i, j, due, cov, e;
+  for(i=0;i<VAXSCHED.length;i++){
+    due=dob+VAXSCHED[i].d*864e5;
+    if(due>now+7*864e5) break;
+    cov=false;
+    for(j=0;j<S.entries.length;j++){
+      e=S.entries[j];
+      if(e.act==="vaccine" && Math.abs(new Date(e.ts).getTime()-due)<=14*864e5){ cov=true; break; }
+    }
+    if(!cov && now>=due-7*864e5 && now<=due+21*864e5)
+      return {n:VAXSCHED[i].n, due:due, days:Math.round((due-now)/864e5)};
+  }
+  return null;
+}
 function hsCards(){
   var cs=[];
   if(ui.upVer && ui.upDismissed)
@@ -3623,6 +3661,14 @@ function hsCards(){
   if(md)
     cs.push({id:"med", icon:"pill", col:"#5AC8FA", title:"Medicine \u00B7 "+md.name,
       sub:md.ml+" ml \u00B7 "+md.slot+" \u2014 due now", right:"chevron-right", a:"openmed", x:""});
+  var vx=vaccNext();
+  if(vx)
+    cs.push({id:"vacc", icon:"syringe", col:C.coral, title:"Vaccination "+(vx.days>0?"in "+vx.days+"d":(vx.days===0?"due today":"overdue")),
+      sub:vx.n+" · "+dayLabel(vx.due), right:"chevron-right", a:"hsopen", x:"vaccine"});
+  var mc=mstDueCount();
+  if(mc>0)
+    cs.push({id:"mst", icon:"activity", col:"#B78CF2", title:"Developmental checks",
+      sub:mc+" milestone"+(mc>1?"s":"")+" ready to review · TDSC", right:"chevron-right", a:"hsopen", x:"growth"});
   cs.push({id:"hi", icon:"sparkles", col:C.pink, title:"Baby Care is crafted with infinite love",
     sub:"Easily track all your baby care activities in the Activity tab", right:"chevron-right", a:"tab", x:"activity"});
   return cs;
