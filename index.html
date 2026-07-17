@@ -1905,7 +1905,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.42</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.43</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3565,7 +3565,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.42";
+var APPVER="0.43";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -3583,7 +3583,9 @@ function agoHM(ts){
   return h+"h "+m+"m ago";
 }
 function nappyMedians(){
-  var fs=feedTimes(), naps=[], i, j, e;
+  var cut=Date.now()-14*864e5;
+  var fsAll=feedTimes(), fs=[], naps=[], i, j, e;
+  for(i=0;i<fsAll.length;i++) if(fsAll[i]>=cut) fs.push(fsAll[i]);
   for(i=0;i<S.entries.length;i++){ e=S.entries[i]; if(e.act==="nappy") naps.push({t:new Date(e.ts).getTime(), y:(e.data&&e.data.type)||""}); }
   naps.sort(function(a,b){return a.t-b.t;});
   var fw=[], fm=[];
@@ -3600,12 +3602,50 @@ function nappyMedians(){
   function md(a){ if(a.length<4) return null; var b=a.slice().sort(function(x,y){return x-y;}); return b[Math.floor(b.length/2)]; }
   return {w: md(fw)||167, m: md(fm)||190};
 }
+function feedSizeStats(){
+  var durs=[], mls=[], i, e;
+  for(i=0;i<S.entries.length;i++){
+    e=S.entries[i];
+    if(e.act==="nursing" && e.data && e.data.total>0) durs.push(e.data.total);
+    else if((e.act==="bottle"||e.act==="formula"||e.act==="expressed") && e.data && e.data.ml>0) mls.push(e.data.ml);
+  }
+  function md(a){ if(a.length<3) return null; var b=a.slice().sort(function(x,y){return x-y;}); return b[Math.floor(b.length/2)]; }
+  return {dur: md(durs), ml: md(mls)};
+}
+var NAP_EARLY=35; /* constant early warning: expect nappies 30-40 min ahead */
+/* gap = median x ageFactor x feedSizeFactor - NAP_EARLY
+   age: day<=2 x1.6, <=4 x1.3, <=6 x1.1 (low early output),
+        7d-60d x0.9 (peak-output weeks), <=120d x1.0, older x1.15
+   feed size: ratio of last feed to typical (duration for nursing,
+        ml for bottles), clamped 0.5-2x -> factor 1/(0.7+0.3r),
+        clamped 0.75-1.2 (bigger feed -> sooner nappy) */
+function nappyPred(){
+  var lf=lastFeed(); if(!lf) return null;
+  var md=nappyMedians(), fs=feedSizeStats();
+  var fa=1, ff=1, a=null;
+  if(S.baby && S.baby.dob){
+    a=Math.floor((Date.now()-new Date(S.baby.dob).getTime())/864e5);
+    fa = a<=2 ? 1.6 : a<=4 ? 1.3 : a<=6 ? 1.1 : a<=60 ? 0.9 : a<=120 ? 1.0 : 1.15;
+  }
+  var d=lf.data||{}, r=null;
+  if(lf.act==="nursing" && d.total>0 && fs.dur) r=d.total/fs.dur;
+  else if(d.ml>0 && fs.ml) r=d.ml/fs.ml;
+  if(r!=null){
+    r=Math.max(0.5, Math.min(2, r));
+    ff=1/(0.7+0.3*r);
+    ff=Math.max(0.75, Math.min(1.2, ff));
+  }
+  var ft=new Date(lf.ts).getTime();
+  function gap(base){ return Math.max(25, Math.min(360, base*fa*ff-NAP_EARLY)); }
+  var gw=gap(md.w), gm=gap(md.m);
+  return {ft:ft, wet:ft+gw*6e4, mix:ft+gm*6e4, fa:fa, ff:ff, age:a, gw:gw, gm:gm, base:md};
+}
 function nappyChip(){
   var GOOD={txt:"All Good", col:"#34C77B", bg:"rgba(52,199,123,.15)"};
   var lf=lastFeed(); if(!lf) return GOOD;
   var ln=lastNappy(), ft=new Date(lf.ts).getTime();
   if(ln && new Date(ln.ts).getTime()>ft) return GOOD;
-  var md=nappyMedians(), ew=ft+md.w*6e4, em=ft+md.m*6e4;
+  var pp=nappyPred(), ew=pp.wet, em=pp.mix;
   var p = ew<=em ? {y:"Wet", e:ew, col:"#6FA8FF", bg:"rgba(111,168,255,.15)"} : {y:"Mixed", e:em, col:"#C98A4B", bg:"rgba(201,138,75,.18)"};
   return {txt: p.y+(p.e<Date.now() ? " due now" : " ~"+tClock(p.e)), col:p.col, bg:p.bg};
 }
