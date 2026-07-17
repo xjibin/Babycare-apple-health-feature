@@ -1828,7 +1828,7 @@ function vSummary(){
       '<span class="circ" style="width:44px;height:44px;background:linear-gradient(135deg,#7BAE5C,#4E7A3A)">'+
         ic("baby",22,"#fff")+'</span></span></div>'+
 
-    '<div id="hstack" style="height:116px;margin-top:20px;margin-bottom:12px;position:relative">'+hsCardHtml()+'</div>'+
+    '<div id="hstack" style="height:124px;margin-top:20px;margin-bottom:12px;position:relative">'+hsCardHtml()+'</div>'+
 
     '<button class="card press" data-a="sub" data-x="baby" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
       '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(C.pink,0.18)+'">'+ic("cake",20,C.pink)+'</span>'+
@@ -1839,7 +1839,7 @@ function vSummary(){
         ((S.baby&&S.baby.sex)?' \u00B7 <span style="color:'+(S.baby.sex==="Boy"?"#6FA8FF":"#F27C8D")+';font-weight:600">'+S.baby.sex+'</span>':"")
         : "Add date of birth, blood group & more")+
       '</span></span>'+
-      ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;color:var(--sub);letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
+      ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>'+
 
     upHtml+outHtml+
@@ -3259,7 +3259,7 @@ function nightHtml(){
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
     ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
-      ? '<div style="margin-top:14px;font-size:15px;font-weight:700;color:'+alpha(nc,0.9)+'">Paused</div>' : '')+
+      ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
   var mbs=S.sess.burp, cap="";
   if(mbs && mbs.mid){
@@ -3749,8 +3749,8 @@ function hsCardHtml(dir){
     'border-radius:24px;padding:14px 18px 14px 16px;background:'+alpha(c.col,0.14)+';border:1px solid '+alpha(c.col,0.35)+';overflow:hidden">'+
     '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(c.col,0.22)+';flex-shrink:0">'+ic(c.icon,20,c.col)+'</span>'+
     '<span style="flex:1;min-width:0">'+
-      '<span style="font-size:15px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+c.title+'</span>'+
-      '<span style="font-size:13px;color:var(--sub);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+c.sub+'</span></span>'+
+      '<span style="font-size:15px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">'+c.title+'</span>'+
+      '<span style="font-size:13px;color:var(--sub);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">'+c.sub+'</span></span>'+
     '<span class="circ" style="width:34px;height:34px;background:var(--card2);flex-shrink:0;margin-left:6px">'+ic(c.right,16,c.right==="repeat"?"#FF9F0A":C.sub)+'</span>'+
     (cs.length>1?'<span style="position:absolute;bottom:5px;left:0;right:0;display:flex;justify-content:center;gap:4px">'+dots+'</span>':"")+
   '</div>';
@@ -4180,9 +4180,9 @@ function nasWrap(inner, a){
 function capTick(){
   var bs=S.sess.burp;
   /* mid burp: hard cap at 5 min, then arm the 2-min nursing countdown */
-  if(bs && bs.mid && bs.run && sE(bs)>=300){
+  if(bs && bs.mid && bs.run && sE(bs)>=600){
     saveMidBurp();
-    if(S.sess.nursing && !S.sess.nursing.run) nasDL=Date.now()+120000;
+    if(S.sess.nursing && !S.sess.nursing.run) nasDL=Date.now()+300000;
     save(); render();
     toast("Mid burp capped at 5:00 \u00B7 nursing auto-saves in 2:00");
   }
@@ -4268,7 +4268,9 @@ function cnightHtml(){
     '<span id="calrtic" class="circ" style="width:64px;height:64px;background:'+alpha(nc,0.16)+';border:2.5px solid '+nc+'">'+bang(nc,32)+'</span>'+
     '<span id="calrtt" style="font-size:15px;font-weight:700;max-width:260px;line-height:1.4">'+wt+'</span>'+
     '</div>'+
-    '<button id="cexit" class="press" data-a="cnightoff" style="margin-top:auto;font-size:13px;color:'+alpha(nc,0.5)+';padding:10px">Exit \u00B7 screen stays awake</button>'+
+    '<button id="cexit" class="press" data-a="cnightoff" style="margin-top:auto;width:100%;max-width:360px;height:52px;border-radius:16px;'+
+      'background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35)+';color:'+nc+';font-size:16px;font-weight:700">Exit Carstand view</button>'+
+    '<div style="margin-top:12px;font-size:12px;color:'+alpha(nc,0.4)+'">Screen stays awake</div>'+
     '</div>';
 }
 function cTint(){
