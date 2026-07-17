@@ -217,6 +217,7 @@ var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night
   entries:[], sess:{}, order:[], custom:[], baby:{}, feedIv:null, feedIvD:null, feedIvN:null, who:"",
   meds:[{id:1, name:"Vitamin D3 drops", ml:1, times:{m:false, n:true, ni:false}}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
+  hsIdx:0, hsHold:0, hsN:0, upVer:null, upDismissed:false,
   pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, ss:null, syEye:false, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
@@ -1127,6 +1128,31 @@ var A = {
       navigator.clipboard.writeText(v).then(done, legacy);
     } else legacy();
   },
+  heroplay: function(){
+    var s=S.sess.nursing;
+    if(s && s.run){ A.open("nursing"); return; }
+    var u0=upNext(), sd=((u0&&u0.side)||"Left").charAt(0);
+    var pr=S.route;
+    S.route="nursing"; S.tab="activity";
+    A.press(sd);
+    S.route=(pr==="nursing")?"list":pr; S.tab="summary"; S.sub="";
+    render();
+  },
+  nappyQuick: function(x){
+    addEntryAt("nappy", x+" nappy", {type:x}, new Date().toISOString());
+  },
+  openmed: function(){ S.tab="activity"; A.open("medicine"); },
+  upx: function(){
+    ui.upDismissed=true;
+    var m=byId("upmodal"); if(m && m.parentNode) m.parentNode.removeChild(m);
+    ui.hsIdx=0; ui.hsN=0;
+    render();
+  },
+  uprefresh: function(){
+    var u=location.pathname+"?u="+Date.now();
+    if(A._nav){ A._nav(u); return; }
+    try{ location.replace(u); }catch(e){ try{ location.href=u; }catch(e2){} }
+  },
   feedAlarms: function(){
     S.tab="summary";
     A.sub("feed");
@@ -1735,20 +1761,38 @@ function vSummary(){
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
         '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">'+
           (un ? 'Start on the '+un.side : '')+ic("chevron-right",16,C.sub)+'</span></div>'+
+      '<div style="height:8px"></div>'+
       '<div class="rowsb" style="align-items:flex-end">'+
         '<span style="min-width:0">'+
           '<div style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+
             (un ? (due ? 'Due Now' : tClock(un.next)) : 'No feeds yet')+'</div>'+
           '<div style="font-size:15px;color:var(--sub);margin-top:4px">'+lastFeedLine()+'</div></span>'+
-        '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2);flex-shrink:0">'+ic("alarm-clock",20,"#fff")+'</button>'+
+        '<span style="display:flex;gap:8px;flex-shrink:0;align-items:center">'+
+        '<button class="circ press" data-a="heroplay" style="width:46px;height:46px;background:'+C.pink+'">'+ic("play",18,"#fff")+'</button>'+
+        '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2)">'+ic("alarm-clock",20,"#fff")+'</button></span>'+
       '</div></div>';
   var ot=outToday(), dol=dayOfLife(), tgt=wetTarget(dol);
-  var outHtml = '<button class="card press" data-a="sub" data-x="output" style="width:100%;margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
-    ic("layers",22,C.yellow)+
-    '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">Output \u00B7 today</span>'+
-    '<span style="display:block;font-size:13px;color:var(--sub)">'+ot.wet+' wet \u00B7 '+ot.dirty+' dirty'+
-    (tgt ? ' \u00B7 aim \u2265'+tgt+' wet'+(dol<5?' on day '+dol:'/day') : '')+'</span></span>'+
-    ic("chevron-right",18,C.sub)+'</button>';
+  var os=outSplit(), oChip=nappyChip(), lNap=lastNappy();
+  var napLine = lNap ? 'Last Nappy \u00B7 '+agoHM(lNap.ts)+' \u00B7 '+((lNap.data&&lNap.data.type)||'') : 'No nappies logged yet';
+  var outHtml =
+    '<div class="card press" data-a="sub" data-x="output" style="width:100%;margin-bottom:12px;padding:16px;text-align:left">'+
+      '<div class="rowsb" style="margin-bottom:4px">'+
+        '<span style="display:flex;align-items:center;gap:7px;color:'+C.yellow+';font-size:15px;font-weight:600">'+ic("layers",16,C.yellow)+'Today\u2019s Output tracking</span>'+
+        '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:'+oChip.bg+';color:'+oChip.col+';white-space:nowrap">'+oChip.txt+'</span></div>'+
+      '<div style="height:8px"></div>'+
+      '<div style="display:flex;align-items:flex-end">'+
+        '<span style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;color:var(--sub)">Wet</div>'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+os.w+'</span>'+
+            '<button class="circ press" data-a="nappyQuick" data-x="Wet" style="width:30px;height:30px;background:rgba(111,168,255,.18)">'+ic("plus",15,"#6FA8FF")+'</button></div></span>'+
+        '<span style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;color:var(--sub)">Mixed</div>'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+os.m+'</span>'+
+            '<button class="circ press" data-a="nappyQuick" data-x="Mixed" style="width:30px;height:30px;background:rgba(201,138,75,.2)">'+ic("plus",15,"#C98A4B")+'</button></div></span></div>'+
+      '<div style="font-size:15px;color:var(--sub);margin-top:6px">'+napLine+'</div>'+
+    '</div>';
   return '<div style="position:relative">'+
     '<div style="position:absolute;top:-100px;left:-16px;right:-16px;height:376px;pointer-events:none;'+
       'background:linear-gradient(172deg, '+((S.baby&&S.baby.sex==="Boy")?"rgba(66,90,170,.95) 0%, rgba(47,116,186,.8) 42%":"rgba(104,84,158,.95) 0%, rgba(146,77,62,.85) 42%")+', rgba(0,0,0,0) 92%)"></div>'+
@@ -1760,13 +1804,7 @@ function vSummary(){
       '<span class="circ" style="width:44px;height:44px;background:linear-gradient(135deg,#7BAE5C,#4E7A3A)">'+
         ic("baby",22,"#fff")+'</span></span></div>'+
 
-    '<button class="press" data-a="tab" data-x="activity" style="width:100%;display:flex;align-items:center;gap:12px;'+
-      'border-radius:24px;padding:16px;margin-top:20px;margin-bottom:12px;background:'+alpha(C.pink,0.14)+';border:1px solid '+alpha(C.pink,0.35)+'">'+
-      '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(C.pink,0.22)+'">'+
-        ic("sparkles",20,C.pink)+'</span>'+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Baby Care is now available</span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Added when Pregnancy End was logged \u00B7 Find it in the new Activity tab</span></span>'+
-      ic("chevron-right",18,C.sub)+'</button>'+
+    '<div id="hstack" style="height:88px;margin-top:20px;margin-bottom:12px;position:relative">'+hsCardHtml()+'</div>'+
 
     '<button class="card press" data-a="sub" data-x="baby" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
       '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(C.pink,0.18)+'">'+ic("cake",20,C.pink)+'</span>'+
@@ -1786,36 +1824,15 @@ function vSummary(){
     '<div style="height:20px"></div>'+
 
 
-    '<div class="card" style="margin-bottom:12px">'+
-      '<div class="rowsb"><span style="display:flex;align-items:center;gap:8px">'+ic("loader",18,C.lav)+
-        '<span style="color:'+C.lav+';font-size:16px;font-weight:600">Cycle Tracking</span></span>'+
-      '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">8 Jul '+
-        ic("chevron-right",16,C.sub)+'</span></div>'+
-      '<div class="rowsb" style="align-items:flex-end;margin-top:24px"><span>'+
-        '<span style="display:block;font-size:25px;font-weight:700">Pregnancy End</span>'+
-        '<span style="display:block;font-size:16px;color:var(--sub)">3 Days Ago</span></span>'+
-        '<span style="width:40px;height:62px;border-radius:999px;background:#EDE7F8"></span></div></div>'+
-
-    '<div class="card" style="margin-bottom:16px">'+
-      '<div class="rowsb"><span style="display:flex;align-items:center;gap:8px">'+ic("flame",18,C.orange)+
-        '<span style="color:'+C.orange+';font-size:16px;font-weight:600">Steps</span></span>'+
-      '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">1:34 PM '+
-        ic("chevron-right",16,C.sub)+'</span></div>'+
-      '<div class="rowsb" style="align-items:flex-end;margin-top:28px">'+
-        '<span style="display:flex;align-items:baseline;gap:6px"><span style="font-size:34px;font-weight:700">1,257</span>'+
-        '<span style="font-size:16px;color:var(--sub)">steps</span></span>'+
-        '<span style="display:flex;align-items:flex-end">'+bh+'</span></div></div>'+
-
     '<button class="card press" data-a="sub" data-x="hist" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:24px">'+
       '<span class="circ" style="width:32px;height:32px;border-radius:10px;background:#fff">'+
         ic("heart",16,"#FF2D55",{fill:true})+'</span>'+
-      '<span style="flex:1;font-size:17px;font-weight:600;text-align:left">Show All Health Data</span>'+
+      '<span style="flex:1;font-size:17px;font-weight:600;text-align:left">Show '+esc((S.baby&&S.baby.name)||"Baby")+'\u2019s Health Data</span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
 
-    '<div style="font-size:22px;font-weight:700;margin-bottom:12px">Trends</div>'+
     '<button class="card press" data-a="sub" data-x="trends" style="width:100%;display:flex;align-items:center;gap:12px">'+
       ic("trending-up",22,C.blue)+
-      '<span style="flex:1;font-size:17px;font-weight:600;text-align:left">Show All Health Trends</span>'+
+      '<span style="flex:1;font-size:17px;font-weight:600;text-align:left">Show '+esc((S.baby&&S.baby.name)||"Baby")+'\u2019s Health Trends</span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
     '</div></div>';
 }
@@ -1872,7 +1889,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.39</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.40</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3531,6 +3548,135 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
+var APPVER="0.40";
+var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
+function outSplit(){
+  var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
+  for(i=0;i<S.entries.length;i++){
+    e=S.entries[i]; if(e.act!=="nappy" || dayKey(e.ts)!==tk) continue;
+    t=e.data && e.data.type;
+    if(t==="Wet") w++; else if(t==="Mixed") m++;
+  }
+  return {w:w, m:m};
+}
+function lastNappy(){ for(var i=0;i<S.entries.length;i++) if(S.entries[i].act==="nappy") return S.entries[i]; return null; }
+function agoHM(ts){
+  var d=Math.max(0, Date.now()-new Date(ts).getTime());
+  var h=Math.floor(d/36e5), m=Math.floor((d%36e5)/6e4);
+  return h+"h "+m+"m ago";
+}
+function nappyMedians(){
+  var fs=feedTimes(), naps=[], i, j, e;
+  for(i=0;i<S.entries.length;i++){ e=S.entries[i]; if(e.act==="nappy") naps.push({t:new Date(e.ts).getTime(), y:(e.data&&e.data.type)||""}); }
+  naps.sort(function(a,b){return a.t-b.t;});
+  var fw=[], fm=[];
+  for(i=0;i<fs.length;i++){
+    var f=fs[i], w=null, mx=null;
+    for(j=0;j<naps.length;j++){
+      if(naps[j].t<=f) continue;
+      if(w===null && naps[j].y==="Wet" && naps[j].t<f+6*36e5) w=naps[j].t;
+      if(mx===null && (naps[j].y==="Mixed"||naps[j].y==="Soiled") && naps[j].t<f+8*36e5) mx=naps[j].t;
+    }
+    if(w!==null) fw.push((w-f)/6e4);
+    if(mx!==null) fm.push((mx-f)/6e4);
+  }
+  function md(a){ if(a.length<4) return null; var b=a.slice().sort(function(x,y){return x-y;}); return b[Math.floor(b.length/2)]; }
+  return {w: md(fw)||167, m: md(fm)||190};
+}
+function nappyChip(){
+  var GOOD={txt:"All Good", col:"#34C77B", bg:"rgba(52,199,123,.15)"};
+  var lf=lastFeed(); if(!lf) return GOOD;
+  var ln=lastNappy(), ft=new Date(lf.ts).getTime();
+  if(ln && new Date(ln.ts).getTime()>ft) return GOOD;
+  var md=nappyMedians(), ew=ft+md.w*6e4, em=ft+md.m*6e4;
+  var p = ew<=em ? {y:"Wet", e:ew, col:"#6FA8FF", bg:"rgba(111,168,255,.15)"} : {y:"Mixed", e:em, col:"#C98A4B", bg:"rgba(201,138,75,.18)"};
+  return {txt: p.y+(p.e<Date.now() ? " due now" : " ~"+tClock(p.e)), col:p.col, bg:p.bg};
+}
+function medDoneToday(mid, code){
+  var tk=dayKey(Date.now()), i, e, d;
+  for(i=0;i<S.entries.length;i++){
+    e=S.entries[i];
+    if(e.act!=="medicine" || dayKey(e.ts)!==tk) continue;
+    d=e.data||{};
+    if(d.mid===mid && (d.slot===code || d.slot===SLOTL[code])) return true;
+  }
+  return false;
+}
+function medDueNow(){
+  if(!S.meds) return null;
+  var code=slotOfHour(new Date().getHours()), i, m;
+  for(i=0;i<S.meds.length;i++){
+    m=S.meds[i];
+    if(m.times && m.times[code] && !medDoneToday(m.id, code))
+      return {name:m.name, ml:m.ml, slot:SLOTL[code], code:code};
+  }
+  return null;
+}
+function hsCards(){
+  var cs=[];
+  if(ui.upVer && ui.upDismissed)
+    cs.push({id:"up", icon:"repeat", col:"#FF9F0A", title:"Don\u2019t miss out on new features",
+      sub:"We have made the app even better for you", right:"repeat", a:"uprefresh", x:""});
+  var md=medDueNow();
+  if(md)
+    cs.push({id:"med", icon:"pill", col:"#5AC8FA", title:"Medicine \u00B7 "+md.name,
+      sub:md.ml+" ml \u00B7 "+md.slot+" \u2014 due now", right:"chevron-right", a:"openmed", x:""});
+  cs.push({id:"hi", icon:"sparkles", col:C.pink, title:"Baby Care is crafted with infinite love",
+    sub:"Easily track all your baby care activities in the Activity tab", right:"chevron-right", a:"tab", x:"activity"});
+  return cs;
+}
+function hsCardHtml(){
+  var cs=hsCards(); if(!cs.length) return "";
+  if(ui.hsIdx>=cs.length) ui.hsIdx=0;
+  var c=cs[ui.hsIdx], dots="", i;
+  if(cs.length>1) for(i=0;i<cs.length;i++)
+    dots+='<span style="width:5px;height:5px;border-radius:3px;background:'+(i===ui.hsIdx?"#fff":"rgba(255,255,255,.3)")+'"></span>';
+  return '<div class="press" data-a="'+c.a+'" data-x="'+c.x+'" style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;gap:12px;'+
+    'border-radius:24px;padding:14px 16px;background:'+alpha(c.col,0.14)+';border:1px solid '+alpha(c.col,0.35)+';overflow:hidden">'+
+    '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(c.col,0.22)+';flex-shrink:0">'+ic(c.icon,20,c.col)+'</span>'+
+    '<span style="flex:1;min-width:0">'+
+      '<span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.title+'</span>'+
+      '<span style="display:block;font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.sub+'</span></span>'+
+    '<span class="circ" style="width:34px;height:34px;background:var(--card2);flex-shrink:0">'+ic(c.right,16,c.right==="repeat"?"#FF9F0A":C.sub)+'</span>'+
+    (cs.length>1?'<span style="position:absolute;bottom:5px;left:0;right:0;display:flex;justify-content:center;gap:4px">'+dots+'</span>':"")+
+  '</div>';
+}
+function hsTick(){
+  if(S.tab!=="summary" || S.sub || ui.sheet) return;
+  var el=byId("hstack"); if(!el) return;
+  var cs=hsCards();
+  if(cs.length!==ui.hsN){ ui.hsN=cs.length; ui.hsIdx=0; el.innerHTML=hsCardHtml(); return; }
+  if(cs.length<2 || Date.now()<ui.hsHold) return;
+  hsTick._c=(hsTick._c||0)+1;
+  if(hsTick._c%7===0){ ui.hsIdx=(ui.hsIdx+1)%cs.length; el.innerHTML=hsCardHtml(); }
+}
+function upModal(){
+  if(byId("upmodal")) return;
+  var d=document.createElement("div");
+  d.id="upmodal";
+  d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:400;display:flex;align-items:center;justify-content:center;padding:32px">'+
+    '<div class="card" style="position:relative;max-width:320px;width:100%;padding:24px 20px;text-align:center">'+
+    '<button class="press" data-a="upx" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:16px;background:var(--card2);display:flex;align-items:center;justify-content:center">'+ic("x",15,"#fff")+'</button>'+
+    '<span class="circ" style="width:52px;height:52px;margin:0 auto;background:'+alpha(C.pink,0.2)+'">'+ic("sparkles",24,C.pink)+'</span>'+
+    '<div style="font-size:17px;font-weight:700;margin:12px 0 6px;line-height:1.3">We have made the app even better for you</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:18px">A new version is live.</div>'+
+    '<button class="press" data-a="uprefresh" style="width:100%;height:46px;border-radius:14px;background:'+C.pink+';color:#fff;font-size:15px;font-weight:700">Refresh App</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+}
+function upCheck(){
+  try{
+    fetch(location.pathname+"?upc="+Date.now(), {cache:"no-store"})
+      .then(function(r){ return r.ok ? r.text() : null; })
+      .then(function(t){
+        if(!t) return;
+        var m=t.match(/Test build v([0-9.]+)/);
+        if(m && m[1]!==APPVER && ui.upVer!==m[1]){
+          ui.upVer=m[1]; ui.upDismissed=false; upModal();
+        }
+      })["catch"](function(){});
+  }catch(e){}
+}
 function lastFeed(){ for(var i=0;i<S.entries.length;i++) if(isFeed(S.entries[i])) return S.entries[i]; return null; }
 function lastFeedLine(){
   var e=lastFeed(); if(!e) return "Log a feed to start predictions";
@@ -4204,6 +4350,7 @@ setInterval(function(){
   if(Date.now()-mstLast>36e5){ mstLast=Date.now(); mstNudge(); }
   syChipTick();
   sscapTick();
+  hsTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
@@ -4399,6 +4546,24 @@ byId("impf2").addEventListener("change", function(){
 })();
 
 setAppIcons();
+setTimeout(upCheck, 2500);
+setInterval(upCheck, 9e5);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) upCheck(); });
+document.addEventListener("touchstart", function(e){
+  var h=e.target && e.target.closest ? e.target.closest("#hstack") : null;
+  if(h && e.touches && e.touches.length) ui._hsx=e.touches[0].clientX;
+}, {passive:true});
+document.addEventListener("touchend", function(e){
+  if(ui._hsx==null) return;
+  var x0=ui._hsx; ui._hsx=null;
+  if(!e.changedTouches || !e.changedTouches.length) return;
+  var dx=e.changedTouches[0].clientX-x0;
+  if(Math.abs(dx)<40) return;
+  var cs=hsCards(); if(cs.length<2) return;
+  ui.hsIdx=(ui.hsIdx+(dx<0?1:cs.length-1))%cs.length;
+  ui.hsHold=Date.now()+15000;
+  var el=byId("hstack"); if(el) el.innerHTML=hsCardHtml();
+}, {passive:true});
 render();
 </script>
 </body>
