@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.46 -->
+<!-- Baby Care v0.47 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -226,7 +226,7 @@ var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
   if (MEM) return;
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[]})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -242,7 +242,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; } } catch(e){}
   if(!S.chat) S.chat=[];
   chPrune();
 }
@@ -318,15 +318,19 @@ function feedTimes(){
   out.sort(function(a,b){return a-b;});
   return out;
 }
+function entrySide(e){
+  var d=(e&&e.data)||{};
+  if(d.startSide) return d.startSide==="L" ? "Left" : "Right";
+  var l=d.l||0, r=d.r||0;
+  if(!l && !r) return null;
+  return r>=l ? "Right" : "Left";
+}
 function suggSide(){
   for(var i=0;i<S.entries.length;i++){
     var e=S.entries[i];
-    if(e.act==="nursing"){
-      var d=e.data||{};
-      if(d.startSide) return d.startSide==="L"?"Right":"Left";
-      if(d.l!=null && d.r!=null) return d.l<=d.r?"Left":"Right";
-      break;
-    }
+    if(e.act!=="nursing") continue;
+    var es=entrySide(e);
+    if(es) return es==="Left" ? "Right" : "Left";
   }
   return "Left";
 }
@@ -1931,7 +1935,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.46</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.47</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2629,8 +2633,9 @@ function vFeed(){
   }
   for(k2=0;k2<tf.length;k2++){
     var e3=tf[k2], d3=e3.data||{};
+    var es3 = e3.act==="nursing" ? entrySide(e3) : null;
     var lab = e3.act==="nursing"
-      ? ((d3.startSide==="R"?"Right":"Left")+" side")
+      ? (es3 ? es3+" side" : "Nursing")
       : "Bottle"+(d3.ml?" \u00B7 "+d3.ml+" ml":"");
     srows+='<div class="srow"'+(doneN?' style="border-top:1px solid var(--hair)"':'')+'>'+
       '<span class="num" style="font-size:16px;font-weight:600;color:#34C77B">\u2713 '+tClock(new Date(e3.ts).getTime())+'</span>'+
@@ -3298,6 +3303,7 @@ function nightHtml(){
 /* ============ Sharing tab (mirrors JSX) ============ */
 function vChat(){
   chPrune();
+  S.chatSeen=Date.now(); save();
   var bn=esc((S.baby&&S.baby.name)||"the baby");
   var h='<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:4px">Chat</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-top:2px">Everyone on '+bn+'\u2019s sync \u00B7 messages disappear after 24 hours</div>'+
@@ -3314,8 +3320,10 @@ function vChat(){
       (mine?'background:'+C.pink+';color:#fff;border-bottom-right-radius:6px':'background:var(--card);border-bottom-left-radius:6px')+'">'+
       esc(m.txt)+'</div></div>';
   }
-  h+='</div>'+
-    '<div style="position:sticky;bottom:0;display:flex;gap:8px;padding:12px 0 4px;background:linear-gradient(180deg,rgba(0,0,0,0),#000 35%)">'+
+  var lbOn = liveSessions().length>0 && !(ui.lbHide && Date.now()<ui.lbHide);
+  h+='</div><div style="height:104px"></div>'+
+    '<div style="position:fixed;left:16px;right:16px;bottom:'+(lbOn?176:108)+'px;display:flex;gap:8px;z-index:60;'+
+    'padding-top:10px;background:linear-gradient(180deg,rgba(0,0,0,0),#000 40%)">'+
     '<div style="flex:1;background:var(--card);border-radius:22px"><input id="chin" class="ninput" maxlength="500" placeholder="Message\u2026" autocomplete="off"></div>'+
     '<button class="circ press" data-a="chatSend" style="width:44px;height:44px;background:'+C.pink+';flex-shrink:0">'+ic("send",18,"#fff")+'</button></div>';
   return h;
@@ -3381,7 +3389,8 @@ function tabbarHtml(){
   ], h='<div class="tabbar">';
   for(var i=0;i<items.length;i++){
     var it=items[i], on=S.tab===it.k;
-    h+='<button class="tab press'+(on?" on":"")+'" data-a="tab" data-x="'+it.k+'">'+
+    h+='<button class="tab press'+(on?" on":"")+'" data-a="tab" data-x="'+it.k+'" style="position:relative">'+
+      (it.k==="chat" && chatUnread() ? '<span style="position:absolute;top:5px;left:calc(50% + 8px);width:8px;height:8px;border-radius:4px;background:#FF453A;border:1.5px solid #000"></span>' : '')+
       ic(it.icon,22,on?it.tint:"#8E8E93",{sw:2.2, fill:(it.k==="summary"&&on)})+
       '<span class="tl" style="color:'+(on?it.tint:"#8E8E93")+'">'+it.t+'</span></button>';
   }
@@ -3534,6 +3543,12 @@ function syDec(key, blob, cb, fail){
       .catch(function(){ fail(); });
   }catch(e){ fail(); }
 }
+function chatUnread(){
+  var i, c=S.chat||[];
+  for(i=0;i<c.length;i++)
+    if(c[i] && (c[i].by||"")!==(S.who||"") && new Date(c[i].ts).getTime()>(S.chatSeen||0)) return true;
+  return false;
+}
 function chPrune(){
   var cut=Date.now()-864e5, out=[], i;
   var c=S.chat||[];
@@ -3646,7 +3661,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.46";
+var APPVER="0.47";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -4208,7 +4223,7 @@ function seatDraw(){
     }catch(eL){}
   }
 }
-var nasDL=0, NASCIRC=226.19;
+var nasDL=0, NASCIRC=226.19, idleN=0;
 function autoSaveNursing(){
   var se=S.sess.nursing; if(!se) return;
   dsFold(se); se.run=false;
@@ -4409,6 +4424,20 @@ function ggInit(){
   }, {passive:true});
 }
 var anT=0, anKey="", nsSup="";
+function idleNightTick(){
+  idleN++;
+  if(idleN<12) return;
+  idleN=0;
+  if(S.night || S.cnight || ui.sheet || S.eidx!=null || S.pmode) return;
+  if(S.route==="new") return;
+  if(S.sub==="baby" && ui.bedit) return;
+  if(document.getElementById("upmodal")) return;
+  if(document.visibilityState==="hidden") return;
+  var ae=document.activeElement;
+  if(ae && /INPUT|TEXTAREA/.test(ae.tagName)) return;
+  S.night=true;
+  render();
+}
 function autoNightTick(){
   if(S.night || S.cnight){ anT=0; return; }
   var a=act(S.route), s=a?S.sess[a.k]:null;
@@ -4524,6 +4553,7 @@ setInterval(function(){
   sscapTick();
   hsTick();
   lbTick();
+  idleNightTick();
   var clk=document.getElementById("clk");
   if(clk) clk.textContent = new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
 
@@ -4774,8 +4804,11 @@ document.addEventListener("touchend", function(e){
   }
 }, {passive:true});
 document.addEventListener("keydown", function(e){
+  idleN=0;
   if(e.key==="Enter" && e.target && e.target.id==="chin") A.chatSend();
 });
+document.addEventListener("touchstart", function(){ idleN=0; }, {passive:true});
+document.addEventListener("mousedown", function(){ idleN=0; });
 render();
 </script>
 </body>
