@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.50 -->
+<!-- Baby Care v0.51 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -193,18 +193,18 @@ var C = { card:"#1C1C1E", card2:"#2C2C2E", sub:"#98989F", blue:"#3D82F7", pink:"
   red:"#FF453A", brown:"#C08A5E", coral:"#FF6961", rose:"#FF7AB6", sky:"#5AC8FA" };
 var ACTS = [
   {k:"nursing",    t:"Nursing",      icon:"baby",       c:C.pink,   kind:"dual"},
-  {k:"expressed",  t:"Expressed",    icon:"droplets",   c:C.teal,   kind:"amount", hint:"Expressed breast milk given by bottle"},
-  {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"amount", hint:"Formula feed"},
-  {k:"burp",       t:"Burp",         icon:"wind",       c:C.brown,  kind:"burp"},
-  {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
-  {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.rose,   kind:"med"},
   {k:"nappy",      t:"Nappy Status", icon:"layers",     c:C.yellow, kind:"nappy"},
+  {k:"burp",       t:"Burp",         icon:"wind",       c:C.brown,  kind:"burp"},
   {k:"babysleep",  t:"Baby Sleep",   icon:"moon",       c:C.lav,    kind:"single"},
   {k:"mothersleep",t:"Mother Sleep", icon:"bed-double", c:C.indigo, kind:"single"},
-  {k:"carseat",    t:"Car Seat",     icon:"car",        c:C.sky,    kind:"seat"},
-  {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
+  {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.rose,   kind:"med"},
   {k:"growth",     t:"Growth",       icon:"ruler",      c:C.blue,   kind:"growth"},
-  {k:"vaccine",    t:"Vaccines",     icon:"syringe",    c:C.coral,  kind:"vax"}
+  {k:"vaccine",    t:"Vaccines",     icon:"syringe",    c:C.coral,  kind:"vax"},
+  {k:"carseat",    t:"Car Seat",     icon:"car",        c:C.sky,    kind:"seat"},
+  {k:"expressed",  t:"Expressed",    icon:"droplets",   c:C.teal,   kind:"amount", hint:"Expressed breast milk given by bottle"},
+  {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"amount", hint:"Formula feed"},
+  {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
+  {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true}
 ];
 var SUPPS = ["Vitamin D drops","Iron","Probiotic","DHA","Gripe water","Other"];
 var NAPPIES = [
@@ -243,6 +243,7 @@ function load(){
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
       S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; } } catch(e){}
+  fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
   chPrune();
@@ -260,6 +261,34 @@ function ensureOrder(){
   for(i=0;i<ACTS.length;i++){ k=ACTS[i].k; if(!seen[k]){ seen[k]=1; out.push(k); } }
   for(i=0;i<S.custom.length;i++){ k=S.custom[i].k; if(!seen[k]){ seen[k]=1; out.push(k); } }
   S.order = out;
+}
+function qlog(actK, detail, data){
+  S.entries.unshift({id:Date.now()+Math.floor(Math.random()*1e4), act:actK, detail:detail,
+    data:data||{}, ts:new Date().toISOString(), by:S.who||"", up:Date.now()});
+  save();
+}
+function sleepTiers(){
+  var ad=(S.baby && S.baby.dob) ? Math.floor((Date.now()-new Date(S.baby.dob).getTime())/864e5) : 0;
+  if(ad>=180) return [90,150,240,300];
+  if(ad>=90)  return [60,120,180,240];
+  if(ad>=30)  return [45,90,150,210];
+  return [30,60,120,180];
+}
+function tierLbl(m){
+  if(m<60) return "~"+m+"m";
+  return "~"+(m%60===0 ? (m/60) : (m/60).toFixed(1).replace(".0",""))+"h";
+}
+function stopSleeps(){
+  var ks=["babysleep","mothersleep"], i, r0=S.route, t0=S.tab;
+  for(i=0;i<ks.length;i++) if(S.sess[ks[i]]) A.nstop(ks[i]);
+  S.route=r0; S.tab=t0;
+}
+function fixOrder(){
+  if(!S.order || !S.order.length) return;
+  var head=["nursing","nappy","burp","babysleep","mothersleep","medicine","growth","vaccine","carseat"], out=[], i;
+  for(i=0;i<head.length;i++) if(S.order.indexOf(head[i])>=0) out.push(head[i]);
+  for(i=0;i<S.order.length;i++) if(head.indexOf(S.order[i])<0) out.push(S.order[i]);
+  S.order=out;
 }
 function allActs(){
   ensureOrder();
@@ -862,7 +891,7 @@ function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISO
 
 /* ============ actions ============ */
 var A = {
-  tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; render();
+  tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; render();
     if(x==="chat") setTimeout(function(){ var sc=byId("scroll"); if(sc) sc.scrollTop=1e6; }, 40); },
   sub: function(x){
     S.sub=x;
@@ -962,6 +991,10 @@ var A = {
     if(a && ui.qty>0) addEntry(a.k, ui.qty+" "+a.unit, {qty:ui.qty, unit:a.unit});
   },
   press: function(x){
+    if(S.route==="nursing"){
+      var s0=S.sess.nursing;
+      if(!s0 || (!s0.run && ((s0.l||0)+(s0.r||0))<0.5)) stopSleeps();
+    }
     var s=ds(S.route);
     if(!s.startSide) s.startSide=x;
     if(!s.st) s.st=Date.now();
@@ -1194,7 +1227,50 @@ var A = {
       if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
     }, 80);
   },
+  cstart: function(x){
+    var k="nursing", s=S.sess[k];
+    if(s){
+      if(s.side===x){ A.lapause(k); return; }
+      dsFold(s); s.side=x; if(!s.startSide) s.startSide=x;
+      s.run=true; s.at=Date.now(); save(); render(); return;
+    }
+    stopSleeps();
+    var sg=suggSide();
+    var se=ds(k); dsFold(se); se.side=x; se.startSide=x;
+    se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now();
+    save();
+    toast("Started nursing on "+(x==="L"?"Left":"Right")+" side at "+tClock(Date.now()));
+    if((x==="L"?"Left":"Right")!==sg) ui.ss={side:x, until:Date.now()+8000};
+    render();
+  },
+  cnstop: function(x){ A.nstop(x); },
+  qnap: function(x){
+    qlog("nappy", x+" nappy", {type:x});
+    toast("Added "+x+" nappy at "+tClock(Date.now()));
+    render();
+  },
+  qburp: function(x){
+    qlog("burp", x+" burp", {});
+    toast("Logged "+x+" burp");
+    render();
+  },
+  qsleep: function(x){
+    var p=x.split("|"), k=p[0], min=parseInt(p[1],10)||30;
+    qlog(k, tierLbl(min)+" sleep", {sec:min*60});
+    toast("Logged "+tierLbl(min)+" "+act(k).t);
+    render();
+  },
+  qmed: function(x){
+    var i, m=null;
+    for(i=0;i<(S.meds||[]).length;i++) if(String(S.meds[i].id)===x){ m=S.meds[i]; break; }
+    if(!m) return;
+    qlog("medicine", m.name+" \u00B7 "+(m.ml||"")+" ml", {mid:m.id, ml:m.ml});
+    toast("Logged "+m.name);
+    render();
+  },
+  showall: function(){ ui.showAll=true; render(); },
   hssleep: function(){ S.tab="activity"; A.open("babysleep"); },
+  hsnappy: function(){ S.tab="activity"; A.open("nappy"); },
   ntochat: function(){
     ntKill();
     S.night=false;
@@ -1220,7 +1296,12 @@ var A = {
     if(!ui.ss) return;
     var other = ui.ss.side==="L" ? "R" : "L";
     ui.ss=null;
-    A.press(other);
+    var s=S.sess.nursing;
+    if(s){
+      dsFold(s); s.side=other; if(!s.startSide) s.startSide=other;
+      s.run=true; s.at=Date.now(); save();
+    }
+    render();
   },
   syTog: function(){
     var u=byId("syurl"), p=byId("sypass");
@@ -1302,9 +1383,8 @@ var A = {
     var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     if(!timed){ A.open(x); return; }
     var s=S.sess[x];
+    if(s){ A.lapause(x); return; }
     S.night=false; S.tab="activity"; S.route=x; ui.sheet=false;
-    if(s && s.run){ render(); return; }
-    if(s && !s.run){ A.lapause(x); return; }
     if(a.kind==="dual"){
       var sd="L";
       if(x==="nursing"){ var u0=upNext(); sd=((u0&&u0.side)||"Left").charAt(0); }
@@ -1870,20 +1950,21 @@ function vSummary(){
 
     upHtml+outHtml+
 
-    '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:4px">'+
-      ic("moon",22,C.indigo)+
+    '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
+      '<span style="flex-shrink:0;margin-top:1px">'+ic("moon",22,C.indigo)+'</span>'+
       '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.indigo+'">Nightstand mode</span>'+
       '<span style="display:block;height:12px"></span>'+
       '<span style="display:block;font-size:13px;color:var(--sub)">Dim clock for calm night feeds</span></span>'+
-      ic("chevron-right",18,C.sub)+'</button>'+
+      '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
-    '<button class="card press" data-a="sub" data-x="dash" style="width:100%;display:flex;align-items:center;gap:12px;margin-top:8px;margin-bottom:4px">'+
-      ic("activity",22,C.blue)+
-      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">Daily Dashboard</span>'+
+    '<button class="card press" data-a="sub" data-x="dash" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
+      '<span style="flex-shrink:0;margin-top:1px">'+ic("activity",22,C.blue)+'</span>'+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.blue+'">Daily Dashboard</span>'+
+      '<span style="display:block;height:12px"></span>'+
       '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
-      ic("chevron-right",18,C.sub)+'</button>'+
+      '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
-    '<div style="height:20px"></div>'+
+    '<div style="height:8px"></div>'+
 
 
     '<button class="card press" data-a="sub" data-x="hist" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:24px">'+
@@ -1946,7 +2027,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.50</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.51</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -1973,10 +2054,20 @@ function vList(){
   if(edit) h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Drag a card to reorder \u00B7 tap Done when finished</div>';
   else h += bannerHtml();
   h += '<div id="cards"'+(edit?' class="wigmode"':'')+'>';
+  var CORE={nursing:1,nappy:1,burp:1,babysleep:1,mothersleep:1,medicine:1,vaccine:1,carseat:1};
+  function usedIn4d(kk){
+    var cut=Date.now()-4*864e5, i4;
+    for(i4=0;i4<S.entries.length;i4++){
+      var e4=S.entries[i4];
+      if(e4.act===kk && new Date(e4.ts).getTime()>=cut) return true;
+    }
+    return false;
+  }
+  var hiddenN=0;
   for(i=0;i<acts.length;i++){
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
-    var chips = timed ? ["music","mic","timer"] : ["plus","pencil","timer"], ch="";
-    for(var q=0;q<chips.length;q++) ch+='<span class="chip">'+ic(chips[q],17,"rgba(255,255,255,.55)")+'</span>';
+    if(!edit && !ui.showAll && !CORE[a.k] && !S.sess[a.k] && !usedIn4d(a.k)){ hiddenN++; continue; }
+    var ch=cardChips(a);
     var st="", s=S.sess[a.k];
     if(s){
       var secs=(a.kind==="dual")?(dsE(s).l+dsE(s).r):sE(s);
@@ -1991,7 +2082,7 @@ function vList(){
       var mc=mstDueCount();
       if(mc) st='<div style="margin-top:8px;font-size:13px;font-weight:700;color:'+a.c+'">'+mc+' milestone check'+(mc>1?"s":"")+' due</div>';
     }
-    var tag = edit ? "div" : "button";
+    var tag = "div";
     h += '<'+tag+' class="actcard'+(edit?' wig':' press')+'"'+
       (edit ? '' : ' data-a="open" data-x="'+a.k+'"')+' data-k="'+a.k+'"'+
       ' style="background:linear-gradient(140deg,'+alpha(a.c,0.17)+','+alpha(a.c,0.04)+'),#121214'+
@@ -2001,12 +2092,17 @@ function vList(){
         : "")+
       '<div class="rowsb" style="align-items:flex-start">'+ic(a.icon,38,a.c)+
       '<span class="circ press" data-a="cardplay" data-x="'+a.k+'" style="width:56px;height:56px;background:'+a.c+'">'+
-      (timed ? ic("play",24,"#000",{fill:true,style:"margin-left:3px"}) : ic("plus",26,"#000",{sw:2.6}))+
+      (timed ? (s ? (s.run ? ic("pause",24,"#000",{fill:true}) : ic("play",24,"#000",{fill:true,style:"margin-left:3px"}))
+                  : ic("play",24,"#000",{fill:true,style:"margin-left:3px"}))
+             : ic("plus",26,"#000",{sw:2.6}))+
       '</span></div>'+
       '<div style="font-size:25px;font-weight:700;margin-top:20px">'+a.t+'</div>'+st+
       '<div class="chiprow">'+ch+'</div></'+tag+'>';
   }
   h += '</div>';
+  if(hiddenN && !edit)
+    h += '<button class="press" data-a="showall" style="display:block;margin:2px auto 0;padding:10px 20px;border-radius:999px;'+
+      'background:var(--card);font-size:13px;font-weight:600;color:var(--sub)">Show all cards ('+hiddenN+')</button>';
   h += '<div style="font-size:22px;font-weight:700;margin:8px 0 12px">Today</div>';
   var tk=dayKey(new Date().toISOString()), rows="", n=0;
   for(var j=0;j<S.entries.length;j++){
@@ -2017,6 +2113,51 @@ function vList(){
   return h;
 }
 
+function cardChips(a){
+  var k=a.k, s=S.sess[k], i;
+  function tb(label, actn, x, hl, iconHtml){
+    return '<button class="chip press" data-a="'+actn+'" data-x="'+x+'" style="font-size:12px;font-weight:700;color:#fff;padding:0 6px'+
+      (hl ? ';border:1.5px solid '+a.c : ';border:1.5px solid transparent')+'">'+(iconHtml||"")+label+'</button>';
+  }
+  if(k==="nursing"){
+    var sg=suggSide();
+    if(s){
+      var lL=(s.side==="L") ? ((s.run?"Pause":"Resume")+" left") : "Start left";
+      var lR=(s.side==="R") ? ((s.run?"Pause":"Resume")+" right") : "Start right";
+      return tb(lL,"cstart","L",false)+tb(lR,"cstart","R",false)+
+        tb("Stop & Save","cnstop","nursing",false,
+          '<span style="display:inline-flex;margin-right:5px;vertical-align:-1px">'+ic("square",11,a.c,{fill:true})+'</span>');
+    }
+    return tb("Start left","cstart","L", sg==="Left")+tb("Start right","cstart","R", sg==="Right");
+  }
+  if(k==="nappy"){
+    var NN=["Wet","Mixed","Soiled","Dry"], hn="";
+    for(i=0;i<NN.length;i++) hn+=tb(NN[i],"qnap",NN[i],false);
+    return hn;
+  }
+  if(k==="burp"){
+    var BB=["Short","Long","Intermittent"], hb="";
+    for(i=0;i<BB.length;i++) hb+=tb(BB[i],"qburp",BB[i],false);
+    return hb;
+  }
+  if(k==="babysleep" || k==="mothersleep"){
+    var TT=sleepTiers(), hs="";
+    for(i=0;i<TT.length;i++) hs+=tb(tierLbl(TT[i]),"qsleep",k+"|"+TT[i],false);
+    return hs;
+  }
+  if(k==="medicine" && S.meds && S.meds.length){
+    var mm=S.meds.slice(-3).reverse(), hm="";
+    for(i=0;i<mm.length;i++){
+      var nm=(mm[i].name||"Med"); if(nm.length>10) nm=nm.slice(0,10)+"\u2026";
+      hm+=tb(nm+" "+(mm[i].ml||"")+"ml","qmed",String(mm[i].id),false);
+    }
+    return hm;
+  }
+  var chips=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat")
+    ? ["music","mic","timer"] : ["plus","pencil","timer"], hd="";
+  for(i=0;i<chips.length;i++) hd+='<span class="chip">'+ic(chips[i],17,"rgba(255,255,255,.55)")+'</span>';
+  return hd;
+}
 /* ============ timer screens (mirror JSX) ============ */
 function timerHead(a, totalSec, status, running){
   return '<div style="padding:0 4px">'+backBtn(a.c)+'</div>'+
@@ -3165,6 +3306,11 @@ function vBaby(){
 function lbTick(){
   if(ui.lbHide && Date.now()>=ui.lbHide){ ui.lbHide=0; render(); }
 }
+function ssFixedHtml(){
+  if(!ui.ss || Date.now()>=ui.ss.until) return "";
+  if(S.route==="nursing" && S.tab==="activity") return "";
+  return '<div style="position:absolute;left:16px;right:16px;bottom:168px;z-index:19">'+ssCapHtml()+'</div>';
+}
 function liveBarHtml(list){
   if(ui.lbHide && Date.now()<ui.lbHide) return "";
   if(list.length===1){
@@ -3354,10 +3500,12 @@ function vChat(){
       '</div>';
   }
   var lbOn = liveSessions().length>0 && !(ui.lbHide && Date.now()<ui.lbHide);
-  h+='</div><div style="height:88px"></div>'+
-    '<div style="position:fixed;left:16px;right:16px;bottom:'+(lbOn?170:24)+'px;display:flex;gap:8px;z-index:60;'+
+  h+='</div><div style="height:'+(lbOn?152:96)+'px"></div>'+
+    '<div id="chbar" style="position:fixed;left:16px;right:16px;bottom:'+(lbOn?170:24)+'px;display:flex;align-items:center;gap:8px;z-index:60;'+
     'padding-top:10px;background:linear-gradient(180deg,rgba(0,0,0,0),#000 40%)">'+
-    '<div style="flex:1;background:var(--card);border-radius:22px"><input id="chin" class="ninput" maxlength="500" placeholder="Message\u2026" autocomplete="off"></div>'+
+    '<div style="flex:1;height:44px;display:flex;align-items:center;background:var(--card);border-radius:22px;padding:0 4px">'+
+    '<input id="chin" class="ninput" maxlength="500" placeholder="Message\u2026" autocomplete="off" style="flex:1;height:44px;background:transparent;border:none;outline:none">'+
+    '</div>'+
     '<button class="circ press" data-a="chatSend" style="width:44px;height:44px;background:'+C.pink+';flex-shrink:0">'+ic("send",18,"#fff")+'</button></div>';
   return h;
 }
@@ -3512,7 +3660,7 @@ function render(){
   for(li=0;li<lss.length;li++)
     if(!(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
   document.getElementById("la").innerHTML =
-    (vis.length && S.eidx==null && !S.night && !ui.sheet) ? liveBarHtml(vis) : "";
+    (S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
   tb.innerHTML = (inSession || S.tab==="chat") ? "" : tabbarHtml();
@@ -3691,7 +3839,7 @@ function syMerge(doc){
   if(doc.set && (doc.setUp||0)>(S.setUp||0)){
     S.baby=doc.set.baby||S.baby;
     S.meds=doc.set.meds||S.meds;
-    S.order=doc.set.order||S.order;
+    S.order=doc.set.order||S.order; fixOrder();
     S.custom=doc.set.custom||S.custom;
     S.feedIvD=(typeof doc.set.feedIvD==="number")?doc.set.feedIvD:null;
     S.feedIvN=(typeof doc.set.feedIvN==="number")?doc.set.feedIvN:null;
@@ -3744,7 +3892,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.50";
+var APPVER="0.51";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -3878,6 +4026,11 @@ function lastFeedT(){
   }
   return 0;
 }
+function lastNappyT(){
+  for(var i=0;i<S.entries.length;i++)
+    if(S.entries[i].act==="nappy") return new Date(S.entries[i].ts).getTime();
+  return 0;
+}
 function sleepAsk(){
   if(S.sess && S.sess.babysleep) return null;
   var now=Date.now(), i;
@@ -3925,6 +4078,15 @@ function hsCards(){
   if(sa)
     cs.push({id:"sleep", icon:"moon", col:C.lav, title:sa.t,
       sub:sa.s, right:"chevron-right", a:"hssleep", x:""});
+  var lnT=lastNappyT();
+  if(!lnT || Date.now()-lnT>=2*36e5){
+    var nnm=(S.baby&&S.baby.name)||"baby";
+    var nher=((S.baby||{}).sex==="Boy")?"him":"her";
+    cs.push({id:"nap2", icon:"layers", col:C.yellow, title:"\uD83D\uDCA7 Nappy o\u2019clock?",
+      sub:(lnT ? "It\u2019s been "+agoStr(lnT)+" since "+nnm+"\u2019s last change \u2014 a fresh one keeps "+nher+" comfy"
+               : "Log "+nnm+"\u2019s first change of the day \u2014 fresh and comfy \uD83C\uDF3C"),
+      right:"chevron-right", a:"hsnappy", x:""});
+  }
   var mc=mstDueCount();
   if(mc>0)
     cs.push({id:"mst", icon:"activity", col:"#B78CF2", title:"Developmental checks",
@@ -4049,7 +4211,7 @@ function ssCapHtml(){
   if(left<=0) return "";
   var pct=Math.max(0, Math.min(100, left/8000*100));
   var lastS = ui.ss.side==="L" ? "Left" : "Right";
-  return '<div style="position:relative;overflow:hidden;border-radius:999px;background:var(--card);height:52px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;width:100%;max-width:340px">'+
+  return '<div style="position:relative;overflow:hidden;border-radius:999px;background:var(--card);height:52px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;width:100%">'+
     '<div id="ssfill" style="position:absolute;left:0;top:0;bottom:0;width:'+pct.toFixed(1)+'%;background:rgba(255,159,10,.16)"></div>'+
     '<span style="position:relative;flex:1;font-size:13px;font-weight:600;min-width:0">'+lastS+' again \u2014 last feed was '+lastS+'</span>'+
     '<button class="press" data-a="ssgo" style="position:relative;height:36px;padding:0 14px;border-radius:999px;background:#FF9F0A;color:#000;font-size:13px;font-weight:700;flex-shrink:0">Switch sides</button></div>';
@@ -4058,7 +4220,7 @@ function sscapTick(){
   if(!ui.ss) return;
   if(Date.now()>=ui.ss.until){
     ui.ss=null;
-    if(S.route==="nursing" && !ui.sheet) render();
+    if(!ui.sheet && (S.route==="nursing" || S.tab==="activity" || liveSessions().length)) render();
     return;
   }
   var f=byId("ssfill");
@@ -4858,6 +5020,7 @@ byId("impf2").addEventListener("change", function(){
   if(!hsh) return;
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
   function dual(k, side){
+    if(k==="nursing") stopSleeps();
     var se=ds(k); dsFold(se); se.side=side; if(!se.startSide) se.startSide=side;
     se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now();
     S.tab="activity"; S.route=k; save();
@@ -4937,6 +5100,22 @@ document.addEventListener("keydown", function(e){
 });
 document.addEventListener("touchstart", function(){ idleN=0; }, {passive:true});
 document.addEventListener("mousedown", function(){ idleN=0; });
+if(window.visualViewport){
+  var vvFix=function(){
+    var cb=document.getElementById("chbar");
+    if(!cb || S.tab!=="chat") return;
+    var lb2 = liveSessions().length>0 && !(ui.lbHide && Date.now()<ui.lbHide);
+    var kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+    cb.style.bottom = ((lb2?170:24) + kb) + "px";
+    if(kb>0){ var sc9=document.getElementById("scroll"); if(sc9) sc9.scrollTop=1e6; }
+  };
+  window.visualViewport.addEventListener("resize", vvFix);
+  window.visualViewport.addEventListener("scroll", vvFix);
+}
+document.addEventListener("focusin", function(e){
+  if(e.target && e.target.id==="chin")
+    setTimeout(function(){ var sc8=document.getElementById("scroll"); if(sc8) sc8.scrollTop=1e6; }, 250);
+});
 render();
 </script>
 </body>
