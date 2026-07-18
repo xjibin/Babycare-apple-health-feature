@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.48 -->
+<!-- Baby Care v0.49 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -535,6 +535,8 @@ function dtValue(pid){
 }
 
 var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var DAYS3=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function nsDate(){ var d=new Date(); return DAYS3[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()]; }
 function initDOB(){
   var now=new Date(), st=ui.dob;
   if(!st){
@@ -1870,6 +1872,7 @@ function vSummary(){
     '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:4px">'+
       ic("moon",22,C.indigo)+
       '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.indigo+'">Nightstand mode</span>'+
+      '<span style="display:block;height:12px"></span>'+
       '<span style="display:block;font-size:13px;color:var(--sub)">Dim clock for calm night feeds</span></span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
 
@@ -1941,7 +1944,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.48</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.49</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3248,6 +3251,7 @@ function nightHtml(){
   var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#000;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
     'padding:96px 24px 40px;cursor:pointer">'+
+    '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.65)+';margin-bottom:8px">'+nsDate()+'</div>'+
     '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
   var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;'+
@@ -3724,7 +3728,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.48";
+var APPVER="0.49";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -4305,7 +4309,7 @@ function nasWrap(inner, a){
     '<span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px">'+
     '<svg width="80" height="80" viewBox="0 0 80 80" style="position:absolute;left:0;top:0;pointer-events:none">'+
     '<circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="3.5"/>'+
-    '<circle id="nasring" cx="40" cy="40" r="36" fill="none" stroke="'+C.brown+'" stroke-width="3.5" stroke-linecap="round" transform="rotate(-90 40 40)" stroke-dasharray="'+NASCIRC+'" stroke-dashoffset="'+(NASCIRC*(1-left/120)).toFixed(1)+'"/></svg>'+
+    '<circle id="nasring" cx="40" cy="40" r="36" fill="none" stroke="'+C.brown+'" stroke-width="3.5" stroke-linecap="round" transform="rotate(-90 40 40)" stroke-dasharray="'+NASCIRC+'" stroke-dashoffset="'+(NASCIRC*(1-left/180)).toFixed(1)+'"/></svg>'+
     '<span class="circ" style="width:64px;height:64px;background:var(--card2)">'+ic("square",22,C.red,{fill:true})+'</span>'+
     '</span>'+
     '<span id="nast" style="color:'+C.brown+';font-size:12px;font-weight:700">auto-save in '+fmt(left)+'</span>'+
@@ -4314,11 +4318,11 @@ function nasWrap(inner, a){
 function capTick(){
   var bs=S.sess.burp;
   /* mid burp: hard cap at 5 min, then arm the 2-min nursing countdown */
-  if(bs && bs.mid && bs.run && sE(bs)>=600){
+  if(bs && bs.mid && bs.run && sE(bs)>=480){
     saveMidBurp();
-    if(S.sess.nursing && !S.sess.nursing.run) nasDL=Date.now()+300000;
+    if(S.sess.nursing && !S.sess.nursing.run) nasDL=Date.now()+180000;
     save(); render();
-    toast("Mid burp capped at 5:00 \u00B7 nursing auto-saves in 2:00");
+    toast("Mid burp capped at 8:00 \u00B7 nursing auto-saves in 3:00");
   }
   /* direct burp: hard cap at 10 min, saved as Short */
   bs=S.sess.burp;
@@ -4340,7 +4344,7 @@ function capTick(){
     } else {
       var left=Math.max(0, Math.ceil((nasDL-Date.now())/1000));
       var nr=document.getElementById("nasring");
-      if(nr) nr.setAttribute("stroke-dashoffset", (NASCIRC*(1-left/120)).toFixed(1));
+      if(nr) nr.setAttribute("stroke-dashoffset", (NASCIRC*(1-left/180)).toFixed(1));
       var nt=document.getElementById("nast");
       if(nt) nt.textContent="auto-save in "+fmt(left);
     }
@@ -4671,6 +4675,8 @@ setInterval(function(){
   if(S.night){
     var nc3=document.getElementById("nclk");
     if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
+    var nd3=document.getElementById("ndate");
+    if(nd3) nd3.textContent = nsDate();
     var nb=nightBits(), nw=document.getElementById("nacts"), nk=[], ni;
     for(ni=0;ni<nb.lss.length;ni++) nk.push(nb.lss[ni].k);
     if((nw ? nw.getAttribute("data-k") : "") !== nk.join("|")) render();
