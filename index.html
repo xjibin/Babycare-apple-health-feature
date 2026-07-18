@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.51 -->
+<!-- Baby Care v0.52 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -892,7 +892,7 @@ function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISO
 /* ============ actions ============ */
 var A = {
   tab: function(x){ S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; render();
-    if(x==="chat") setTimeout(function(){ var sc=byId("scroll"); if(sc) sc.scrollTop=1e6; }, 40); },
+    if(x==="chat") setTimeout(chFit, 40); },
   sub: function(x){
     S.sub=x;
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
@@ -1283,7 +1283,7 @@ var A = {
     chPrune();
     S.chat.push({id:Date.now()+Math.floor(Math.random()*1e4), txt:t.slice(0,500), by:(S.who||"Someone"), ts:new Date().toISOString()});
     save(); render();
-    setTimeout(function(){ var sc=byId("scroll"); if(sc) sc.scrollTop=1e6; }, 30);
+    setTimeout(function(){ var cl=byId("chlist"); if(cl) cl.scrollTop=1e6; }, 30);
   },
   synow: function(){
     if(!SY.on){ S.tab="sharing"; S.route="list"; S.sub=""; render(); return; }
@@ -2027,7 +2027,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.51</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.52</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3479,11 +3479,12 @@ function vChat(){
   if(S.who){ S.reads=S.reads||{}; S.reads[S.who]=S.chatSeen; }
   save();
   var bn=esc((S.baby&&S.baby.name)||"the baby");
-  var h='<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+
+  var h='<div id="chwrap" style="display:flex;flex-direction:column;height:100vh;overflow:hidden">'+
+    '<div style="flex-shrink:0;display:flex;align-items:center;gap:10px;margin-top:4px">'+
     '<button class="circ press" data-a="tab" data-x="summary" style="width:34px;height:34px;background:var(--card2)">'+ic("chevron-left",18,"#fff")+'</button>'+
     '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Chat</span></div>'+
-    '<div style="font-size:13px;color:var(--sub);margin-top:2px">Everyone on '+bn+'\u2019s sync \u00B7 messages disappear after 24 hours</div>'+
-    '<div id="chlist" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;padding-bottom:6px">';
+    '<div style="flex-shrink:0;font-size:13px;color:var(--sub);margin-top:2px">Everyone on '+bn+'\u2019s sync \u00B7 messages disappear after 24 hours</div>'+
+    '<div id="chlist" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:16px;display:flex;flex-direction:column;gap:10px;padding-bottom:6px">';
   if(!S.chat.length){
     h+='<div class="card" style="color:var(--sub);font-size:14px;line-height:1.6">No messages yet \u2014 say hi! Anything sent here shows on every phone paired to the same sync and vanishes after a day.</div>';
   }
@@ -3499,14 +3500,20 @@ function vChat(){
         (chReadBy(m)?'✓✓ read':(m.d?'✓✓ delivered':'✓ sent'))+'</div>' : '')+
       '</div>';
   }
-  var lbOn = liveSessions().length>0 && !(ui.lbHide && Date.now()<ui.lbHide);
-  h+='</div><div style="height:'+(lbOn?152:96)+'px"></div>'+
-    '<div id="chbar" style="position:fixed;left:16px;right:16px;bottom:'+(lbOn?170:24)+'px;display:flex;align-items:center;gap:8px;z-index:60;'+
-    'padding-top:10px;background:linear-gradient(180deg,rgba(0,0,0,0),#000 40%)">'+
+  var vis=liveSessions();
+  var lb = (vis.length && !(ui.lbHide && Date.now()<ui.lbHide))
+    ? '<div style="flex-shrink:0;margin-top:8px">'+
+      liveBarHtml(vis).replace('class="labar"','class="labar" style="position:static;left:auto;right:auto;bottom:auto;width:100%"')+
+      '</div>'
+    : "";
+  h+='</div>'+lb+
+    '<div id="chbar" style="flex-shrink:0;display:flex;align-items:center;gap:8px;margin-top:8px;'+
+    'padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 10px)">'+
     '<div style="flex:1;height:44px;display:flex;align-items:center;background:var(--card);border-radius:22px;padding:0 4px">'+
     '<input id="chin" class="ninput" maxlength="500" placeholder="Message\u2026" autocomplete="off" style="flex:1;height:44px;background:transparent;border:none;outline:none">'+
     '</div>'+
-    '<button class="circ press" data-a="chatSend" style="width:44px;height:44px;background:'+C.pink+';flex-shrink:0">'+ic("send",18,"#fff")+'</button></div>';
+    '<button class="circ press" data-a="chatSend" style="width:44px;height:44px;background:'+C.pink+';flex-shrink:0">'+ic("send",18,"#fff")+'</button></div>'+
+    '</div>';
   return h;
 }
 function vSharing(){
@@ -3617,6 +3624,7 @@ function render(){
   var sc=document.getElementById("scroll");
   sc.className = "scroll"+(inSession?" pad0":"");
   sc.innerHTML = h;
+  sc.style.overflowY = (S.tab==="chat") ? "hidden" : "";
   if(S.tab==="activity" && S.eidx==null){
     if(S.route==="new") initWheel();
     else {
@@ -3660,7 +3668,7 @@ function render(){
   for(li=0;li<lss.length;li++)
     if(!(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
   document.getElementById("la").innerHTML =
-    (S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
+    (S.tab!=="chat" && S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
   tb.innerHTML = (inSession || S.tab==="chat") ? "" : tabbarHtml();
@@ -3892,7 +3900,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.51";
+var APPVER="0.52";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5100,21 +5108,21 @@ document.addEventListener("keydown", function(e){
 });
 document.addEventListener("touchstart", function(){ idleN=0; }, {passive:true});
 document.addEventListener("mousedown", function(){ idleN=0; });
+function chFit(){
+  var cw=document.getElementById("chwrap");
+  if(!cw || S.tab!=="chat") return;
+  var vh=(window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  cw.style.height = vh+"px";
+  window.scrollTo(0,0);
+  var cl=document.getElementById("chlist");
+  if(cl) cl.scrollTop=1e6;
+}
 if(window.visualViewport){
-  var vvFix=function(){
-    var cb=document.getElementById("chbar");
-    if(!cb || S.tab!=="chat") return;
-    var lb2 = liveSessions().length>0 && !(ui.lbHide && Date.now()<ui.lbHide);
-    var kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
-    cb.style.bottom = ((lb2?170:24) + kb) + "px";
-    if(kb>0){ var sc9=document.getElementById("scroll"); if(sc9) sc9.scrollTop=1e6; }
-  };
-  window.visualViewport.addEventListener("resize", vvFix);
-  window.visualViewport.addEventListener("scroll", vvFix);
+  window.visualViewport.addEventListener("resize", chFit);
+  window.visualViewport.addEventListener("scroll", chFit);
 }
 document.addEventListener("focusin", function(e){
-  if(e.target && e.target.id==="chin")
-    setTimeout(function(){ var sc8=document.getElementById("scroll"); if(sc8) sc8.scrollTop=1e6; }, 250);
+  if(e.target && e.target.id==="chin") setTimeout(chFit, 250);
 });
 render();
 </script>
