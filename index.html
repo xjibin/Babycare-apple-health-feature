@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.55 -->
+<!-- Baby Care v0.56 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1908,6 +1908,19 @@ function saveBar(color, enabled, action, label){
 }
 
 /* ============ Summary tab (mirrors JSX) ============ */
+function sumFooter(){
+  return '<div style="text-align:center;padding:48px 20px 0">'+
+    '<div style="font-size:30px;font-weight:800;letter-spacing:-.5px">Baby Care</div>'+
+    '<div class="num" style="font-size:13px;color:var(--sub);margin-top:4px">App Version v'+APPVER+'</div>'+
+    '<div style="font-size:13.5px;color:var(--sub);line-height:1.65;margin-top:22px;max-width:320px;margin-left:auto;margin-right:auto">'+
+    'Baby Care app is crafted with infinite love and care to all the babies around the world.'+
+    '<br><br>Helps you take care and track your baby chores easily.'+
+    '<br><br>Made meticulously for all moms and dads.</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#fff;line-height:1.6;margin-top:26px">'+
+    'Developed by a Loving and Caring<br>New Dad and Mom\u2764\uFE0F</div>'+
+    '</div>'+
+    '<div style="height:45vh"></div>';
+}
 function vSummary(){
   var bars=[16,30,40,24,28,13,9], bh="", i;
   for(i=0;i<bars.length;i++)
@@ -2006,7 +2019,8 @@ function vSummary(){
       ic("trending-up",22,C.blue)+
       '<span style="flex:1;font-size:17px;font-weight:600;text-align:left">Show '+esc((S.baby&&S.baby.name)||"Baby")+'\u2019s Health Trends</span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
-    '</div></div>';
+    '</div></div>'+
+    sumFooter();
 }
 
 /* ============ All Health Data (history + export, reached from Summary) ============ */
@@ -2056,7 +2070,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.55</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.56</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2304,16 +2318,6 @@ function vSingle(a){
     stopCore(sec>0.5)+
     pastLink(a)+
     '</div>'+
-    '<div style="display:flex;align-items:center;gap:12px;margin:32px 0 20px">'+
-    '<span style="flex:1;height:1px;background:var(--hair)"></span>'+
-    '<span style="color:var(--sub);font-size:13px;font-weight:600">or</span>'+
-    '<span style="flex:1;height:1px;background:var(--hair)"></span></div>'+
-    '<div style="font-size:20px;font-weight:700;margin-bottom:14px">Add a past '+a.t+'</div>'+
-    lbl("FELL ASLEEP")+dtPicker("sf")+
-    '<div style="height:16px"></div>'+
-    lbl("WOKE UP")+dtPicker("sw")+
-    '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>'+
-    saveBar(a.c, true, "saveSleepPast", "Save Sleep")+
     '</div>';
   if(ui.sheet) setSheet(a, [["Duration",fmt(Math.round(s.sec))],["Ended",tClock(Date.now())]], "");
   return h;
@@ -3963,7 +3967,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.55";
+var APPVER="0.56";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
