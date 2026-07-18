@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.58 -->
+<!-- Baby Care v0.59 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -227,7 +227,7 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -243,7 +243,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; } } catch(e){}
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -491,6 +491,28 @@ function liveSessions(){
   out.sort(function(x,y){ return x.st-y.st; });
   return out;
 }
+function fmtM(secs){
+  var m=Math.floor(secs/60);
+  if(m<60) return m+"m";
+  var h=Math.floor(m/60), mm=m%60;
+  return h+"h "+(mm<10?"0":"")+mm+"m";
+}
+function remoteSessions(){
+  var out=[], rs=S.rsess||{}, k;
+  for(k in rs){
+    if(!rs.hasOwnProperty(k)) continue;
+    var it=rs[k], a=act(k);
+    if(!it || !it.s || !a) continue;
+    if(Date.now()-(it.up||0) > 6*36e5) continue;
+    var se=it.s;
+    var secs=(a.kind==="dual") ? (dsE(se).l+dsE(se).r) : sE(se);
+    if(secs<0.5 && !se.run) continue;
+    out.push({k:k, a:a, s:se, secs:secs, run:!!se.run, st:se.st||0, r:true, by:it.by||"", rid:"r-"+k});
+  }
+  out.sort(function(x,y){ return x.st-y.st; });
+  return out;
+}
+function allLive(){ return liveSessions().concat(remoteSessions()); }
 function liveSession(){
   var l=liveSessions();
   if(!l.length) return null;
@@ -1914,7 +1936,7 @@ function sumFooter(){
     '<div style="font-size:30px;font-weight:800;letter-spacing:-.5px">Baby Care</div>'+
     '<div class="num" style="font-size:13px;color:var(--sub);margin-top:4px">App Version v'+APPVER+'</div>'+
     '<div style="font-size:13.5px;color:var(--sub);line-height:1.65;margin-top:22px;max-width:340px">'+
-    'Started as a personal Nappy and Baby Feed Tracker GitHub project on day one of our baby\u2019s life.'+
+    'Started as a personal Nappy and Baby Feed Tracker on day one of our baby\u2019s life.'+
     '<br><br>The Baby Care app is crafted with infinite love and care for all the babies around the world.'+
     '<br><br>Helps you take care of your baby and track daily chores easily.'+
     '<br><br>Made meticulously for all moms and dads.</div>'+
@@ -2072,7 +2094,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.58</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.59</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3373,30 +3395,34 @@ function liveBarHtml(list){
   if(list.length===1){
     var ls=list[0], dual = ls.a.kind==="dual";
     return '<div class="labar">'+
-      '<button class="press" data-a="laopen" data-x="'+ls.k+'" style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;text-align:left">'+
+      '<button class="press" data-a="'+(ls.r?"":"laopen")+'" data-x="'+ls.k+'" style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;text-align:left">'+
       '<span class="circ" style="width:34px;height:34px;background:'+ls.a.c+'">'+ic(ls.a.icon,17,"#000")+'</span>'+
       '<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700">'+ls.a.t+
-      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+'</span>'+
-      '<span id="lat-'+ls.k+'" class="num" style="display:block;font-size:12px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
-      fmt(ls.secs)+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
-      (dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+ic("repeat",15,"#fff")+'</button>':"")+
-      '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
-      (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'+
+      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+(ls.r ? ' \u00B7 '+esc(ls.by||"") : "")+'</span>'+
+      '<span id="lat-'+(ls.rid||ls.k)+'" class="num" style="display:block;font-size:12px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
+      (ls.r?fmtM(ls.secs):fmt(ls.secs))+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
+      (ls.r
+        ? '<span class="circ" style="width:34px;height:34px;background:var(--card2);font-size:13px;font-weight:800;color:'+ls.a.c+'">'+esc((ls.by||"?").charAt(0))+'</span>'
+        : ((dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+ic("repeat",15,"#fff")+'</button>':"")+
+          '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
+          (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'))+
       '</div>';
   }
   function half(ls, right){
     var dual = ls.a.kind==="dual";
     return '<div style="flex:1;min-width:0;min-height:34px;display:flex;align-items:center;gap:6px'+
       (right?';justify-content:flex-end':'')+'">'+
-      '<button class="press" data-a="laopen" data-x="'+ls.k+'" style="display:flex;align-items:center;gap:7px;min-width:0;text-align:left">'+
+      '<button class="press" data-a="'+(ls.r?"":"laopen")+'" data-x="'+ls.k+'" style="display:flex;align-items:center;gap:7px;min-width:0;text-align:left">'+
       '<span class="circ" style="width:28px;height:28px;flex:none;background:'+ls.a.c+'">'+ic(ls.a.icon,14,"#000")+'</span>'+
       '<span style="min-width:0"><span style="display:block;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ls.a.t+
-      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+'</span>'+
-      '<span id="lat-'+ls.k+'" class="num" style="display:block;font-size:11px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
-      fmt(ls.secs)+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
-      (dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>':"")+
-      '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
-      (ls.run?ic("pause",13,"#fff",{fill:true}):ic("play",13,"#fff",{fill:true,style:"margin-left:1px"}))+'</button>'+
+      (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+(ls.r ? ' \u00B7 '+esc(ls.by||"") : "")+'</span>'+
+      '<span id="lat-'+(ls.rid||ls.k)+'" class="num" style="display:block;font-size:11px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
+      (ls.r?fmtM(ls.secs):fmt(ls.secs))+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
+      (ls.r
+        ? '<span class="circ" style="width:30px;height:30px;flex:none;background:var(--card2);font-size:12px;font-weight:800;color:'+ls.a.c+'">'+esc((ls.by||"?").charAt(0))+'</span>'
+        : ((dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>':"")+
+          '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
+          (ls.run?ic("pause",13,"#fff",{fill:true}):ic("play",13,"#fff",{fill:true,style:"margin-left:1px"}))+'</button>'))+
       '</div>';
   }
   return '<div class="labar">'+half(list[0],false)+
@@ -3424,8 +3450,17 @@ function nightBits(){
   var np = lastNap ? "Last nappy \u00B7 "+agoStr(new Date(lastNap.ts).getTime()) : "";
   return {lss:liveSessions(), lf:lf, lfd:lfd, np:np};
 }
+function nightRemote(nc){
+  var rms=remoteSessions(), h="", i;
+  for(i=0;i<rms.length;i++){
+    var it=rms[i];
+    h+='<div id="nrm-'+it.k+'" class="num" style="margin-top:14px;font-size:15px;font-weight:700;color:'+alpha(nc,0.85)+'">'+
+      esc(it.by)+' \u00B7 '+it.a.t+' \u00B7 '+fmtM(it.secs)+(it.run?'':' \u00B7 paused')+'</div>';
+  }
+  return h;
+}
 function nightNF(nc){
-  var ss=liveSessions(), hasSleep=false, hasNursing=false, i;
+  var ss=allLive(), hasSleep=false, hasNursing=false, i;
   for(i=0;i<ss.length;i++){
     if(ss[i].k==="babysleep" || ss[i].k==="mothersleep") hasSleep=true;
     if(ss[i].k==="nursing") hasNursing=true;
@@ -3505,6 +3540,7 @@ function nightHtml(){
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
     nightNF(nc)+
+    nightRemote(nc)+
     ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
@@ -3558,7 +3594,7 @@ function vChat(){
   }
   var i;
   for(i=0;i<S.chat.length;i++) h+=chMsgHtml(S.chat[i]);
-  var vis=liveSessions();
+  var vis=allLive();
   var lb = (vis.length && !(ui.lbHide && Date.now()<ui.lbHide))
     ? '<div style="flex-shrink:0;margin-top:8px">'+
       liveBarHtml(vis).replace('class="labar"','class="labar" style="position:static;left:auto;right:auto;bottom:auto;width:100%"')+
@@ -3777,9 +3813,9 @@ function render(){
       initDT("e1", new Date(ee.ts));
     }
   }
-  var lss=liveSessions(), vis=[], li;
+  var lss=allLive(), vis=[], li;
   for(li=0;li<lss.length;li++)
-    if(!(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
+    if(lss[li].r || !(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
   document.getElementById("la").innerHTML =
     (S.tab!=="chat" && S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
   var tb=document.getElementById("tb");
@@ -3893,9 +3929,22 @@ function chPrune(){
   out.sort(function(a,b){ return a.ts<b.ts?-1:(a.ts>b.ts?1:0); });
   S.chat=out;
 }
+function liveSig(){
+  var ks=Object.keys(S.sess).sort(), o="", i;
+  for(i=0;i<ks.length;i++){
+    var k=ks[i], t=S.sess[k];
+    o+=k+":"+(t.at||0)+":"+(t.run?1:0)+":"+(t.side||"")+":"+Math.round(t.l||0)+":"+Math.round(t.r||0)+":"+(t.st||0)+";";
+  }
+  return o;
+}
+function liveOut(){
+  var o={}, ks=Object.keys(S.sess), i;
+  for(i=0;i<ks.length;i++) o[ks[i]]={s:S.sess[ks[i]], by:(S.who||""), up:Date.now()};
+  return o;
+}
 function syDoc(){
   chPrune();
-  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{},
+  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(),
     set:{baby:S.baby, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[]}};
 }
 function sySig(){
@@ -3903,7 +3952,7 @@ function sySig(){
   for(i=0;i<d.entries.length;i++) sum+=(d.entries[i].up||0)+d.entries[i].id;
   var cs=0; for(i=0;i<(d.chat||[]).length;i++) cs+=d.chat[i].id;
   var rs=0, rk; for(rk in d.reads){ if(d.reads.hasOwnProperty(rk)) rs+=(d.reads[rk]||0); }
-  return d.entries.length+"|"+sum+"|"+(S.del||[]).length+"|"+d.setUp+"|"+(d.chat||[]).length+"|"+cs+"|"+rs;
+  return d.entries.length+"|"+sum+"|"+(S.del||[]).length+"|"+d.setUp+"|"+(d.chat||[]).length+"|"+cs+"|"+rs+"|"+liveSig();
 }
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
@@ -3964,6 +4013,14 @@ function syMerge(doc){
       }
     }
   }
+  var nrs={}, lk9;
+  if(doc.live){
+    for(lk9 in doc.live){
+      if(doc.live.hasOwnProperty(lk9) && doc.live[lk9] && doc.live[lk9].by!==(S.who||""))
+        nrs[lk9]=doc.live[lk9];
+    }
+  }
+  if(JSON.stringify(nrs)!==JSON.stringify(S.rsess||{})){ S.rsess=nrs; changed=true; }
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
   if(doc.set && (doc.setUp||0)>(S.setUp||0)){
     S.baby=doc.set.baby||S.baby;
@@ -4021,7 +4078,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.58";
+var APPVER="0.59";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -4987,10 +5044,15 @@ setInterval(function(){
 
   /* live session bar + Dynamic Island */
   var ls=liveSession();
-  var lss2=liveSessions(), li2;
+  var lss2=allLive(), li2;
   for(li2=0;li2<lss2.length;li2++){
-    var lel=document.getElementById("lat-"+lss2[li2].k);
-    if(lel) lel.textContent = fmt(lss2[li2].secs)+(lss2[li2].run?"":" \u00B7 paused");
+    var lel=document.getElementById("lat-"+(lss2[li2].rid||lss2[li2].k));
+    if(lel) lel.textContent = (lss2[li2].r?fmtM(lss2[li2].secs):fmt(lss2[li2].secs))+(lss2[li2].run?"":" \u00B7 paused");
+  }
+  var rms=remoteSessions(), ri9;
+  for(ri9=0;ri9<rms.length;ri9++){
+    var rel9=document.getElementById("nrm-"+rms[ri9].k);
+    if(rel9) rel9.textContent = rms[ri9].by+" \u00B7 "+rms[ri9].a.t+" \u00B7 "+fmtM(rms[ri9].secs)+(rms[ri9].run?"":" \u00B7 paused");
   }
   var mbtEl=document.getElementById("mbt");
   if(mbtEl && S.sess.burp && S.sess.burp.run) mbtEl.textContent=fmt(sE(S.sess.burp));
