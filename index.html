@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.60 -->
+<!-- Baby Care v0.61 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -279,9 +279,15 @@ function tierLbl(m){
   if(m<60) return "~"+m+"m";
   return "~"+(m%60===0 ? (m/60) : (m/60).toFixed(1).replace(".0",""))+"h";
 }
-function stopSleeps(){
+function stopSleeps(byN){
   var ks=["babysleep","mothersleep"], i, r0=S.route, t0=S.tab;
-  for(i=0;i<ks.length;i++) if(S.sess[ks[i]]) A.nstop(ks[i]);
+  for(i=0;i<ks.length;i++){
+    if(!sessActive(ks[i])){ if(S.sess[ks[i]] && !S.sess[ks[i]].run) delete S.sess[ks[i]]; continue; }
+    A.nstop(ks[i]);
+    if(byN && S.entries.length && S.entries[0].act===ks[i]){
+      S.entries[0].by=byN; S.entries[0].up=Date.now();
+    }
+  }
   S.route=r0; S.tab=t0;
 }
 function fixOrder(){
@@ -737,6 +743,48 @@ function burpDue(){
   if(lb && new Date(lb.ts).getTime()>ft) return null;
   return ft;
 }
+function medStreak(mid){
+  function has(k){
+    for(var i=0;i<S.entries.length;i++){
+      var e=S.entries[i];
+      if(e.act==="medicine" && e.data && String(e.data.mid)===String(mid) && dayKey(e.ts)===k) return true;
+    }
+    return false;
+  }
+  var d=new Date();
+  if(!has(dayKey(d.toISOString()))) d=new Date(d.getTime()-864e5);
+  var days=0;
+  while(has(dayKey(d.toISOString())) && days<=400){ days++; d=new Date(d.getTime()-864e5); }
+  return days;
+}
+function medTodayDone(mid){
+  var tk=dayKey(Date.now()), i;
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.act==="medicine" && e.data && String(e.data.mid)===String(mid) && dayKey(e.ts)===tk) return true;
+  }
+  return false;
+}
+function medColHtml(m){
+  if(!m) return '<div style="flex:1;min-width:0"></div>';
+  var st=medStreak(m.id), done=medTodayDone(m.id);
+  return '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
+    '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
+    '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+'</span></span>'+
+    '<button class="circ press" data-a="medMi" data-x="'+m.id+'" style="width:26px;height:26px;flex:none;background:'+(done?C.green:'var(--card2)')+'">'+
+    (done?ic("check",14,"#000"):'')+'</button></div>';
+}
+function medMilestoneHtml(){
+  var inner;
+  if(!S.meds || !S.meds.length){
+    inner='<div style="font-size:13px;color:var(--sub)">No medicines added.</div>';
+  } else {
+    inner='<div style="display:flex;gap:16px">'+medColHtml(S.meds[0])+medColHtml(S.meds.length>1?S.meds[1]:null)+'</div>';
+  }
+  return '<div class="card" style="margin-bottom:12px">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,C.green)+
+    '<span style="font-size:15px;font-weight:700">Medicine Milestone</span></div>'+inner+'</div>';
+}
 function vitDStreak(){
   function has(k){
     for(var i=0;i<S.entries.length;i++){
@@ -1112,9 +1160,9 @@ var A = {
       var s=ds(a.k), l=Math.round(s.l), r=Math.round(s.r), tot=l+r;
       delete S.sess[a.k];
       var ss2=s.startSide||null;
-      if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2});
-      else if(a.k==="nursing" && s.st) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2}, new Date(s.st).toISOString());
-      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2});
+      if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2,side:s.side||ss2});
+      else if(a.k==="nursing" && s.st) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2}, new Date(s.st).toISOString());
+      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2});
     } else {
       var s2=ssn(a.k), sec=Math.round(s2.sec);
       delete S.sess[a.k];
@@ -1301,6 +1349,26 @@ var A = {
       if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
     }, 80);
   },
+  medMi: function(x){
+    var m=null, i;
+    for(i=0;i<S.meds.length;i++) if(String(S.meds[i].id)===String(x)) m=S.meds[i];
+    if(!m) return;
+    var tk=dayKey(Date.now());
+    for(i=0;i<S.entries.length;i++){
+      var e=S.entries[i];
+      if(e.act==="medicine" && e.data && String(e.data.mid)===String(x) && dayKey(e.ts)===tk){
+        syTomb(e.id); S.entries.splice(i,1); save(); render(); toast("Unchecked"); return;
+      }
+    }
+    var slot=(m.times&&m.times.m)?"m":(m.times&&m.times.n)?"n":(m.times&&m.times.ni)?"ni":"m";
+    var sn=slot==="m"?"Morning":slot==="n"?"Noon":"Night";
+    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
+      detail:m.name+" \u00B7 "+m.ml+" ml \u00B7 "+sn,
+      data:{mid:m.id, name:m.name, ml:m.ml, slot:slot},
+      ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
+    S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
+    save(); render(); toast("Logged");
+  },
   resume: function(x){
     var i, e=null;
     for(i=0;i<S.entries.length;i++) if(String(S.entries[i].id)===String(x)){ e=S.entries[i]; break; }
@@ -1319,6 +1387,7 @@ var A = {
       var sec0=(e.data&&e.data.sec)||0;
       S.sess[e.act]={sec:sec0, run:true, at:Date.now(), st:end-sec0*1000};
     }
+    if(e.act==="nursing") stopSleeps();
     syTomb(e.id);
     S.entries.splice(i,1);
     S.eidx=null; S.pmode=false;
@@ -1615,12 +1684,12 @@ var A = {
           var tot=ui.pdur*60;
           if(tot<=0){ toast("Set a duration"); return; }
           e.detail=fmt(tot)+" \u00B7 "+ui.pml+" ml collected";
-          e.data={total:tot, ml:ui.pml, startSide:d.startSide||null};
+          e.data={total:tot, ml:ui.pml, startSide:d.startSide||null, side:d.side||null};
         } else {
           var l=ui.pl*60, r=ui.pr*60, t2=l+r;
           if(t2<=0){ toast("Set a duration"); return; }
           e.detail="L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(t2)+" total";
-          e.data={l:l, r:r, total:t2, startSide:d.startSide||null};
+          e.data={l:l, r:r, total:t2, startSide:d.startSide||null, side:d.side||null};
         }
         e.ts=ts;
       }
@@ -1811,9 +1880,9 @@ var A = {
       var ss2=se.startSide||null, st0=se.st;
       delete S.sess[x];
       if(tot<1){ save(); render(); return; }
-      if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2});
-      else if(a.k==="nursing" && st0) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2}, new Date(st0).toISOString());
-      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2});
+      if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2,side:se.side||ss2});
+      else if(a.k==="nursing" && st0) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2}, new Date(st0).toISOString());
+      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2});
     } else {
       sFold(se); se.run=false;
       var sec=Math.round(se.sec), wasMid=!!se.mid;
@@ -2113,11 +2182,7 @@ function vSummary(){
       '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
-    '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
-      ic("pill",22,C.green)+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Vitamin D</span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">'+
-      (vitDStreak() ? vitDStreak()+'-day streak' : 'No doses logged yet')+'</span></span></div>'+
+    medMilestoneHtml()+
 
     '<div style="height:8px"></div>'+
 
@@ -2183,7 +2248,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.60</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.61</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2386,8 +2451,10 @@ function vDual(a){
     : "";
   var h = '<div class="full">'+timerHead(a, tot, status, s.run)+hint+
     '<div style="display:flex;align-items:flex-start;gap:56px;margin-top:48px">'+sideBtn("L",e.l)+sideBtn("R",e.r)+'</div>'+
-    nasWrap(stopBtn(tot>0.5), a)+mbSlot+resumeCapHtml(a)+
-    pastLink(a)+'</div>';
+    nasWrap(stopBtn(tot>0.5), a)+mbSlot+
+    pastLink(a)+
+    resumeCapHtml(a)+
+    '<div style="height:96px"></div>'+'</div>';
   if(ui.sheet){
     var l=Math.round(s.l), r=Math.round(s.r);
     var extra = a.pump ?
@@ -2430,8 +2497,9 @@ function vSingle(a){
     (s.run ? ic("pause",42,"#000",{fill:true}) : ic("play",42,"#000",{fill:true,style:"margin-left:5px"}))+
     '</button></span>'+
     stopCore(sec>0.5)+
-    resumeCapHtml(a)+
     pastLink(a)+
+    resumeCapHtml(a)+
+    '<div style="height:96px"></div>'+
     '</div>'+
     '</div>';
   if(ui.sheet) setSheet(a, [["Duration",fmt(Math.round(s.sec))],["Ended",tClock(Date.now())]], "");
@@ -4167,6 +4235,11 @@ function syMerge(doc){
     }
   }
   if(JSON.stringify(nrs)!==JSON.stringify(S.rsess||{})){ S.rsess=nrs; changed=true; }
+  var rn9=nrs.nursing;
+  if(rn9 && rn9.s && rn9.s.run && (sessActive("babysleep")||sessActive("mothersleep"))){
+    stopSleeps(rn9.by||"");
+    changed=true;
+  }
   if(doc.cmd){
     S.cmdAp=S.cmdAp||{};
     for(var ck in doc.cmd){
@@ -4253,7 +4326,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.60";
+var APPVER="0.61";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -4892,8 +4965,8 @@ function autoSaveNursing(){
   delete S.sess.nursing;
   ui.sheet=false; disarmAutosave(); disarmMB();
   if(tot<1){ save(); render(); return; }
-  if(st0) addEntryAt("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2}, new Date(st0).toISOString());
-  else addEntry("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2});
+  if(st0) addEntryAt("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2}, new Date(st0).toISOString());
+  else addEntry("nursing", "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2});
 }
 function nasWrap(inner, a){
   if(a.k!=="nursing" || !nasDL || !S.sess.nursing || S.sess.nursing.run) return inner;
