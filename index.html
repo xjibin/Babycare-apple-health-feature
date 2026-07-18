@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.56 -->
+<!-- Baby Care v0.57 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -226,7 +226,8 @@ var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
 function save(){
   if (MEM) return;
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[]})); }
+  if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -242,7 +243,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; } } catch(e){}
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -2070,7 +2071,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.56</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.57</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3573,11 +3574,53 @@ function vChat(){
     '</div>';
   return h;
 }
+function usersList(){
+  var map={}, i, n;
+  function bump(name, ts){
+    if(!name) return;
+    if(!map[name] || ts>map[name]) map[name]=ts||0;
+  }
+  var sm=S.seen||{};   for(n in sm) if(sm.hasOwnProperty(n)) bump(n, sm[n]);
+  var rm=S.reads||{};  for(n in rm) if(rm.hasOwnProperty(n)) bump(n, rm[n]);
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.by) bump(e.by, new Date(e.ts).getTime());
+  }
+  for(i=0;i<(S.chat||[]).length;i++){
+    var m=S.chat[i];
+    if(m.by) bump(m.by, new Date(m.ts).getTime());
+  }
+  if(S.who) bump(S.who, Date.now());
+  var out=[];
+  for(n in map) if(map.hasOwnProperty(n)) out.push({n:n, ts:map[n]});
+  out.sort(function(a,b){ return b.ts-a.ts; });
+  return out;
+}
+function usersCardHtml(){
+  var L=usersList();
+  if(!L.length) return "";
+  var rows="", i;
+  for(i=0;i<L.length;i++){
+    var u=L[i], act=(u.n===(S.who||"")) || (Date.now()-u.ts < 5*6e4);
+    rows+='<div class="srow"'+(i?' style="border-top:1px solid var(--hair)"':'')+'>'+
+      '<span style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:600">'+
+      '<span style="width:8px;height:8px;border-radius:4px;background:'+(act?'#34C77B':'rgba(255,255,255,.22)')+'"></span>'+
+      esc(u.n)+'</span>'+
+      '<span class="num" style="font-size:13px;color:'+(act?'#34C77B':'var(--sub)')+'">'+
+      (act ? 'Active now' : (u.ts ? 'Last seen '+agoStr(u.ts) : 'No activity yet'))+'</span></div>';
+  }
+  return '<div class="card" style="padding:20px;margin-bottom:12px">'+ic("users",28,"#34C77B")+
+    '<div style="font-size:20px;font-weight:700;margin-top:12px">Users</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin:4px 0 12px;line-height:1.5">Everyone on '+esc((S.baby&&S.baby.name)||"the baby")+'\u2019s sync stream and when they were last active.</div>'+
+    '<div style="background:var(--card2);border-radius:16px;overflow:hidden;padding:0 14px">'+rows+'</div></div>';
+}
 function vSharing(){
   var tags=["Nursing","Bottle feeds","Pumping","Sleep","Nappy changes","Growth","Vaccines"], th="", i;
   for(i=0;i<tags.length;i++)
     th+='<span style="border-radius:999px;padding:6px 14px;background:var(--card2);font-size:13px;font-weight:500">'+tags[i]+'</span>';
   return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:20px">Sharing</div>'+
+
+    usersCardHtml()+
 
     '<div class="card" style="padding:20px">'+ic("users",30,C.pink)+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Live sync <span style="font-size:11px;font-weight:700;color:#FF9F0A;vertical-align:middle">TESTING</span></div>'+
@@ -3599,7 +3642,9 @@ function vSharing(){
       '<div style="font-size:13px;font-weight:700;color:'+C.red+'">Passphrases don\u2019t match</div>'+
       '<div style="font-size:12px;color:var(--sub);line-height:1.55;margin-top:6px">The synced copy was encrypted with a different passphrase (watch for auto-added spaces or capitals). Fix the passphrase and turn sync off/on \u2014 or, on the phone whose log is correct, replace the synced copy:</div>'+
       '<button class="press" data-a="syForce" style="margin-top:12px;width:100%;height:44px;border-radius:14px;background:rgba(255,69,58,.2);color:'+C.red+';font-size:14px;font-weight:700">Use this phone\u2019s data</button></div>' : "")+
-    '<div style="font-size:11px;color:var(--sub);line-height:1.55;margin-bottom:18px">Free endpoint in ~2 min: console.firebase.google.com \u2192 create project \u2192 Realtime Database \u2192 start in test mode \u2192 use <span class="num">https://YOUR-DB.firebaseio.com/iza.json</span>. Last-writer-wins per entry; deletions carry over; \u201CLogged by\u201D stays per phone so Mum and Dad entries stay attributed.</div>'+
+    '<div style="font-size:11px;color:var(--sub);line-height:1.55">Free endpoint in ~2 min: console.firebase.google.com \u2192 create project \u2192 Realtime Database \u2192 start in test mode \u2192 use <span class="num">https://YOUR-DB.firebaseio.com/iza.json</span>. Last-writer-wins per entry; deletions carry over; \u201CLogged by\u201D stays per phone so Mum and Dad entries stay attributed.</div></div>'+
+
+    '<div class="card" style="padding:20px;margin-top:12px">'+ic("repeat",28,C.teal)+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Caregiver handoff</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">AirDrop the full log to your partner\u2019s phone, '+
     'save it to Files, then on their device use <b style="color:#fff">Merge from partner</b>. Merging only adds entries the device doesn\u2019t already have \u2014 nothing is overwritten.</div>'+
@@ -3849,7 +3894,7 @@ function chPrune(){
 }
 function syDoc(){
   chPrune();
-  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{},
+  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{},
     set:{baby:S.baby, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[]}};
 }
 function sySig(){
@@ -3910,6 +3955,14 @@ function syMerge(doc){
       }
     }
   }
+  if(doc.seen){
+    S.seen=S.seen||{};
+    for(var sk3 in doc.seen){
+      if(doc.seen.hasOwnProperty(sk3) && (doc.seen[sk3]||0)>(S.seen[sk3]||0)){
+        S.seen[sk3]=doc.seen[sk3]; changed=true;
+      }
+    }
+  }
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
   if(doc.set && (doc.setUp||0)>(S.setUp||0)){
     S.baby=doc.set.baby||S.baby;
@@ -3967,7 +4020,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.56";
+var APPVER="0.57";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
