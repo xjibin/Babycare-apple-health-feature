@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.59 -->
+<!-- Baby Care v0.60 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -227,7 +227,7 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -243,7 +243,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; } } catch(e){}
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -491,11 +491,54 @@ function liveSessions(){
   out.sort(function(x,y){ return x.st-y.st; });
   return out;
 }
+function sessActive(k){
+  var t=S.sess[k]; if(!t) return false;
+  if(t.run) return true;
+  var a=act(k);
+  var sc=(a && a.kind==="dual") ? ((t.l||0)+(t.r||0)) : (t.sec||0);
+  return sc>0.5;
+}
+var OKR={nursing:1, pumping:1, babysleep:1, mothersleep:1};
+function resumeVerb(k){
+  return k==="nursing" ? "Fed" : (k==="babysleep"||k==="mothersleep") ? "Slept" : k==="pumping" ? "Pumped" : "Timed";
+}
+function resumeCand(k){
+  if(!OKR[k] || sessActive(k)) return null;
+  var i, now=Date.now();
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.act!==k) continue;
+    var ts=new Date(e.ts).getTime();
+    if(now-ts>30*6e4) return null;
+    var dur=(e.data && (e.data.total||e.data.sec))||0;
+    if(dur<1) return null;
+    return {e:e, dur:dur, start:ts-dur*1000};
+  }
+  return null;
+}
+function resumeCapHtml(a){
+  var c=resumeCand(a.k);
+  if(!c) return "";
+  return '<button class="card press" data-a="resume" data-x="'+c.e.id+'" style="width:100%;display:flex;align-items:center;gap:12px;margin-top:16px;text-align:left">'+
+    '<span class="circ" style="width:38px;height:38px;flex:none;background:'+alpha(a.c,0.25)+'">'+ic("play",17,a.c,{fill:true,style:"margin-left:2px"})+'</span>'+
+    '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">Resume '+tClock(c.start)+' session</span>'+
+    '<span style="display:block;font-size:13px;color:var(--sub)">'+resumeVerb(a.k)+' for '+fmtM(c.dur)+'</span></span>'+
+    ic("chevron-right",18,C.sub)+'</button>';
+}
 function fmtM(secs){
   var m=Math.floor(secs/60);
   if(m<60) return m+"m";
   var h=Math.floor(m/60), mm=m%60;
   return h+"h "+(mm<10?"0":"")+mm+"m";
+}
+function rRun(k){
+  var c=S.cmd && S.cmd[k];
+  if(c){
+    if(c.op==="pause") return false;
+    if(c.op==="resume") return true;
+  }
+  var it=S.rsess && S.rsess[k];
+  return !!(it && it.s && it.s.run);
 }
 function remoteSessions(){
   var out=[], rs=S.rsess||{}, k;
@@ -504,10 +547,11 @@ function remoteSessions(){
     var it=rs[k], a=act(k);
     if(!it || !it.s || !a) continue;
     if(Date.now()-(it.up||0) > 6*36e5) continue;
+    if(S.cmd && S.cmd[k] && S.cmd[k].op==="stop") continue;
     var se=it.s;
     var secs=(a.kind==="dual") ? (dsE(se).l+dsE(se).r) : sE(se);
     if(secs<0.5 && !se.run) continue;
-    out.push({k:k, a:a, s:se, secs:secs, run:!!se.run, st:se.st||0, r:true, by:it.by||"", rid:"r-"+k});
+    out.push({k:k, a:a, s:se, secs:secs, run:rRun(k), st:se.st||0, r:true, by:it.by||"", rid:"r-"+k});
   }
   out.sort(function(x,y){ return x.st-y.st; });
   return out;
@@ -1256,6 +1300,45 @@ var A = {
       var el=byId("alarmsec");
       if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
     }, 80);
+  },
+  resume: function(x){
+    var i, e=null;
+    for(i=0;i<S.entries.length;i++) if(String(S.entries[i].id)===String(x)){ e=S.entries[i]; break; }
+    if(!e || !OKR[e.act]) return;
+    var a=act(e.act); if(!a) return;
+    if(sessActive(e.act)){ toast(a.t+" is already running"); return; }
+    var end=new Date(e.ts).getTime();
+    if(a.kind==="dual"){
+      var l0=(e.data&&e.data.l)||0, r0=(e.data&&e.data.r)||0;
+      var tt=(e.data&&e.data.total)||(l0+r0);
+      if(!l0 && !r0) l0=tt;
+      var sd=(e.data&&(e.data.side||e.data.startSide))||"L";
+      S.sess[e.act]={l:l0, r:r0, side:sd, startSide:(e.data&&e.data.startSide)||sd,
+        run:true, at:Date.now(), st:end-tt*1000};
+    } else {
+      var sec0=(e.data&&e.data.sec)||0;
+      S.sess[e.act]={sec:sec0, run:true, at:Date.now(), st:end-sec0*1000};
+    }
+    syTomb(e.id);
+    S.entries.splice(i,1);
+    S.eidx=null; S.pmode=false;
+    S.tab="activity"; S.route=e.act;
+    save(); render();
+    toast("Resumed \u00B7 timer continues");
+  },
+  rpause: function(x){
+    var it=(S.rsess||{})[x]; if(!it || !it.s) return;
+    var op = rRun(x) ? "pause" : "resume";
+    S.cmd=S.cmd||{};
+    S.cmd[x]={op:op, ts:Date.now(), by:(S.who||"")};
+    save(); render();
+  },
+  rstop: function(x){
+    var it=(S.rsess||{})[x]; if(!it) return;
+    S.cmd=S.cmd||{};
+    S.cmd[x]={op:"stop", ts:Date.now(), by:(S.who||"")};
+    save(); render();
+    toast("Saving on "+(it.by||"their")+"\u2019s phone\u2026");
   },
   ggo: function(x){
     S.tab="activity"; A.open("growth"); A.gt(x);
@@ -2030,6 +2113,12 @@ function vSummary(){
       '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
+    '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
+      ic("pill",22,C.green)+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Vitamin D</span>'+
+      '<span style="display:block;font-size:13px;color:var(--sub)">'+
+      (vitDStreak() ? vitDStreak()+'-day streak' : 'No doses logged yet')+'</span></span></div>'+
+
     '<div style="height:8px"></div>'+
 
 
@@ -2094,7 +2183,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.59</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.60</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2297,7 +2386,8 @@ function vDual(a){
     : "";
   var h = '<div class="full">'+timerHead(a, tot, status, s.run)+hint+
     '<div style="display:flex;align-items:flex-start;gap:56px;margin-top:48px">'+sideBtn("L",e.l)+sideBtn("R",e.r)+'</div>'+
-    nasWrap(stopBtn(tot>0.5), a)+mbSlot+pastLink(a)+'</div>';
+    nasWrap(stopBtn(tot>0.5), a)+mbSlot+resumeCapHtml(a)+
+    pastLink(a)+'</div>';
   if(ui.sheet){
     var l=Math.round(s.l), r=Math.round(s.r);
     var extra = a.pump ?
@@ -2340,6 +2430,7 @@ function vSingle(a){
     (s.run ? ic("pause",42,"#000",{fill:true}) : ic("play",42,"#000",{fill:true,style:"margin-left:5px"}))+
     '</button></span>'+
     stopCore(sec>0.5)+
+    resumeCapHtml(a)+
     pastLink(a)+
     '</div>'+
     '</div>';
@@ -2482,7 +2573,8 @@ function vPast(a){
       '</div>';
   } else if(a.kind==="single"){
     body = lbl("FELL ASLEEP")+dtPicker("sf")+'<div style="height:16px"></div>'+
-      lbl("WOKE UP")+dtPicker("sw");
+      lbl("WOKE UP")+dtPicker("sw")+
+      '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>';
   } else if(a.kind==="amount"){
     body = lbl("TIME")+dtPicker("p1")+'<div style="height:16px"></div>'+
       '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",10,30,true)+'</div>';
@@ -2645,15 +2737,20 @@ function vMed(a){
     '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">'+ic(a.icon,30,a.c)+
     '<span style="font-size:28px;font-weight:700">Medicine</span></div>'+
     '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Daily doses \u00B7 tap to log, tap again to undo</div>'+
-    lbl("TODAY")+
-    (n ? '<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">'+todayH+'</div>'
-       : '<div class="card" style="color:var(--sub);font-size:14px;margin-bottom:20px">No scheduled doses \u2014 add a medication below.</div>')+
-    (S.meds.length ? lbl("MY MEDICATIONS")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">'+list+'</div>' : "")+
-    lbl("ADD MEDICATION")+
-    '<div class="card" style="padding:0;margin-bottom:12px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'"></div>'+
-    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">'+stepRow("Dosage","mml",ui.mml.toFixed(1),"ml",0.1,0.5,true)+'</div>'+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:0 4px;margin-bottom:8px">'+mtc+'</div>'+
-    '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:8px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
+    '<div class="card" style="padding:16px;margin-bottom:12px">'+
+      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">TODAY</div>'+
+      (n ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+todayH+'</div>'
+         : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication below.</div>')+'</div>'+
+    (S.meds.length ? '<div class="card" style="padding:16px;margin-bottom:12px">'+
+      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">MY MEDICATIONS</div>'+
+      '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
+    '<div class="card" style="padding:16px;margin-bottom:8px">'+
+      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">ADD MEDICATION</div>'+
+      '<div style="background:var(--card2);border-radius:14px;margin-bottom:12px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'" style="background:transparent"></div>'+
+      '<div style="background:var(--card2);border-radius:14px;overflow:hidden;margin-bottom:12px">'+stepRow("Dosage","mml",ui.mml.toFixed(1),"ml",0.1,0.5,true)+'</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">'+mtc+'</div>'+
+      '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:8px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
+    '</div>'+
     '<div style="height:8px"></div></div>';
 }
 
@@ -2748,7 +2845,7 @@ function vDash(){
       '<div class="num" style="font-size:26px;font-weight:700;margin-top:10px">'+val+'</div>'+
       (sub?'<div style="font-size:13px;color:var(--sub);margin-top:2px">'+sub+'</div>':"")+'</div>';
   }
-  return backBtn(C.blue, "All Health Data", "dashback")+
+  return backBtn(C.blue, "Summary", "subback")+
     '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:4px">Daily Dashboard</div>'+
     '<div style="display:flex;align-items:center;gap:10px;margin:14px 0 16px">'+
     '<button class="circ press" data-a="dnav" data-x="-1" '+(canPrev?'':'disabled')+
@@ -2780,12 +2877,32 @@ function vOutput(){
     barsHtml(wets, labels, C.teal)+'</div>';
   h+='<div class="card" style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:var(--sub)">DIRTY \u00B7 LAST 7 DAYS</div>'+
     barsHtml(dirts, labels, C.brown)+'</div>';
-  h+='<div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:12px">'+
-    ic("pill",22,C.green)+
-    '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Vitamin D</span>'+
-    '<span style="display:block;font-size:13px;color:var(--sub)">'+
-    (vd ? vd+'-day streak' : 'No doses logged yet')+'</span></span></div>';
-  h+='<div class="card" style="font-size:13px;color:var(--sub);line-height:1.6">Rough newborn guide: about one wet nappy per day of life until day 5, then 6+ wet per day once feeding is established, with regular dirty nappies (often 3\u20134+ daily early on if breastfed). A full day with fewer wets than expected is worth mentioning to your midwife or pediatrician.</div>';
+
+  h+='<div class="card" style="font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:12px">Rough newborn guide: about one wet nappy per day of life until day 5, then 6+ wet per day once feeding is established, with regular dirty nappies (often 3\u20134+ daily early on if breastfed). A full day with fewer wets than expected is worth mentioning to your midwife or pediatrician.</div>';
+  var tk=dayKey(Date.now()), yk=dayKey(Date.now()-864e5), tn=0, yn=0, rows="", j;
+  for(j=0;j<S.entries.length;j++){
+    var ne=S.entries[j];
+    if(ne.act!=="nappy") continue;
+    var nk=dayKey(ne.ts);
+    if(nk===tk){
+      tn++;
+      rows+='<div style="display:flex;align-items:center;gap:10px;padding:11px 16px'+(rows?';border-top:1px solid var(--hair)':'')+'">'+
+        '<span class="num" style="font-size:13px;color:var(--sub);width:66px">'+tClock(new Date(ne.ts).getTime())+'</span>'+
+        '<span style="flex:1;font-size:14px;font-weight:600">'+esc((ne.data&&ne.data.type)||ne.detail||"Nappy")+'</span>'+
+        (ne.by ? '<span style="font-size:12px;color:var(--sub)">'+esc(ne.by)+'</span>' : '')+'</div>';
+    }
+    else if(nk===yk) yn++;
+  }
+  var nd=tn-yn;
+  h+='<div class="card" style="margin-top:12px;margin-bottom:12px"><div class="rowsb">'+
+    '<span style="font-size:13px;font-weight:600;color:var(--sub)">TODAY\u2019S NAPPIES</span>'+
+    '<span style="font-size:12px;font-weight:600;color:var(--sub)">'+
+    (yn===0 && tn===0 ? 'no data yesterday' : (nd===0 ? 'same as yesterday' : (nd>0?'\u25B2 ':'\u25BC ')+Math.abs(nd)+' vs yesterday'))+'</span></div>'+
+    '<div style="font-size:34px;font-weight:800;margin-top:6px">'+tn+'</div></div>';
+  h+='<div class="card" style="padding:16px;margin-bottom:12px">'+
+    '<div style="font-size:13px;font-weight:600;color:var(--sub);margin-bottom:10px">TODAY\u2019S NAPPY LOG</div>'+
+    (rows ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+rows+'</div>'
+          : '<div style="color:var(--sub);font-size:14px">No nappies logged yet today.</div>')+'</div>';
   return h;
 }
 
@@ -3018,6 +3135,12 @@ function vEdit(){
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Logged '+dayLabel(e.ts)+' \u00B7 '+tClock(e.ts)+(e.by?' \u00B7 by '+esc(e.by):'')+'</div>'+
     body+'<div style="flex:1;min-height:20px"></div>'+
     saveBar(a.c, true, "eSave", "Save Changes")+
+    ((function(){
+      var ee9=S.entries[S.eidx];
+      return (ee9 && OKR[ee9.act] && dayKey(ee9.ts)===dayKey(Date.now()) && !sessActive(ee9.act))
+        ? '<button class="press" data-a="resume" data-x="'+ee9.id+'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:16px;margin-top:14px;background:var(--card);font-size:15px;font-weight:700;color:#fff">'+ic("play",15,"#fff",{fill:true})+'Resume this session</button>'
+        : "";
+    })())+
     '<button class="press" data-a="eDel" style="display:block;width:100%;text-align:center;margin-top:14px;padding:8px;color:var(--red);font-size:16px;font-weight:600">Delete Entry</button></div>';
 }
 
@@ -3397,12 +3520,16 @@ function liveBarHtml(list){
     return '<div class="labar">'+
       '<button class="press" data-a="'+(ls.r?"":"laopen")+'" data-x="'+ls.k+'" style="flex:1;display:flex;align-items:center;gap:10px;min-width:0;text-align:left">'+
       '<span class="circ" style="width:34px;height:34px;background:'+ls.a.c+'">'+ic(ls.a.icon,17,"#000")+'</span>'+
-      '<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700">'+ls.a.t+
+      '<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:700">'+
+      (ls.r?'<span class="pulse" style="display:inline-block;width:7px;height:7px;border-radius:4px;background:'+ls.a.c+';margin-right:6px"></span>':'')+ls.a.t+
       (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+(ls.r ? ' \u00B7 '+esc(ls.by||"") : "")+'</span>'+
       '<span id="lat-'+(ls.rid||ls.k)+'" class="num" style="display:block;font-size:12px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
       (ls.r?fmtM(ls.secs):fmt(ls.secs))+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
       (ls.r
-        ? '<span class="circ" style="width:34px;height:34px;background:var(--card2);font-size:13px;font-weight:800;color:'+ls.a.c+'">'+esc((ls.by||"?").charAt(0))+'</span>'
+        ? ('<button class="circ press" data-a="rpause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
+            (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'+
+           '<button class="circ press" data-a="rstop" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
+            ic("square",12,"#fff",{fill:true})+'</button>')
         : ((dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+ic("repeat",15,"#fff")+'</button>':"")+
           '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:34px;height:34px;background:var(--card2)">'+
           (ls.run?ic("pause",15,"#fff",{fill:true}):ic("play",15,"#fff",{fill:true,style:"margin-left:2px"}))+'</button>'))+
@@ -3414,12 +3541,16 @@ function liveBarHtml(list){
       (right?';justify-content:flex-end':'')+'">'+
       '<button class="press" data-a="'+(ls.r?"":"laopen")+'" data-x="'+ls.k+'" style="display:flex;align-items:center;gap:7px;min-width:0;text-align:left">'+
       '<span class="circ" style="width:28px;height:28px;flex:none;background:'+ls.a.c+'">'+ic(ls.a.icon,14,"#000")+'</span>'+
-      '<span style="min-width:0"><span style="display:block;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ls.a.t+
+      '<span style="min-width:0"><span style="display:block;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+      (ls.r?'<span class="pulse" style="display:inline-block;width:6px;height:6px;border-radius:3px;background:'+ls.a.c+';margin-right:5px"></span>':'')+ls.a.t+
       (dual && ls.s.side ? ' \u00B7 '+ls.s.side : "")+(ls.r ? ' \u00B7 '+esc(ls.by||"") : "")+'</span>'+
       '<span id="lat-'+(ls.rid||ls.k)+'" class="num" style="display:block;font-size:11px;font-weight:600;color:'+(ls.run?ls.a.c:"var(--sub)")+'">'+
       (ls.r?fmtM(ls.secs):fmt(ls.secs))+(ls.run?"":" \u00B7 paused")+'</span></span></button>'+
       (ls.r
-        ? '<span class="circ" style="width:30px;height:30px;flex:none;background:var(--card2);font-size:12px;font-weight:800;color:'+ls.a.c+'">'+esc((ls.by||"?").charAt(0))+'</span>'
+        ? ('<button class="circ press" data-a="rpause" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
+            (ls.run?ic("pause",13,"#fff",{fill:true}):ic("play",13,"#fff",{fill:true,style:"margin-left:1px"}))+'</button>'+
+           '<button class="circ press" data-a="rstop" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
+            ic("square",11,"#fff",{fill:true})+'</button>')
         : ((dual?'<button class="circ press" data-a="laswitch" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+ic("repeat",13,"#fff")+'</button>':"")+
           '<button class="circ press" data-a="lapause" data-x="'+ls.k+'" style="width:30px;height:30px;flex:none;background:var(--card2)">'+
           (ls.run?ic("pause",13,"#fff",{fill:true}):ic("play",13,"#fff",{fill:true,style:"margin-left:1px"}))+'</button>'))+
@@ -3778,7 +3909,12 @@ function render(){
     if(S.route==="new") initWheel();
     else {
       var ia=act(S.route);
-      if(ia && S.pmode) initDT("p1", new Date());
+      if(ia && S.pmode && ia.kind==="single"){
+        initDT("sf", new Date(Date.now()-36e5), refreshSleepLen);
+        initDT("sw", new Date(), refreshSleepLen);
+        refreshSleepLen();
+      }
+      else if(ia && S.pmode) initDT("p1", new Date());
       else if(ia && ia.kind==="single"){
         initDT("sf", new Date(Date.now()-36e5), refreshSleepLen);
         initDT("sw", new Date(), refreshSleepLen);
@@ -3938,13 +4074,19 @@ function liveSig(){
   return o;
 }
 function liveOut(){
-  var o={}, ks=Object.keys(S.sess), i;
+  var o={}, k, rs=S.rsess||{};
+  for(k in rs){
+    if(!rs.hasOwnProperty(k)) continue;
+    if(Date.now()-(rs[k].up||0) > 6*36e5) continue;
+    o[k]=rs[k];
+  }
+  var ks=Object.keys(S.sess), i;
   for(i=0;i<ks.length;i++) o[ks[i]]={s:S.sess[ks[i]], by:(S.who||""), up:Date.now()};
   return o;
 }
 function syDoc(){
   chPrune();
-  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(),
+  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
     set:{baby:S.baby, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[]}};
 }
 function sySig(){
@@ -3952,7 +4094,11 @@ function sySig(){
   for(i=0;i<d.entries.length;i++) sum+=(d.entries[i].up||0)+d.entries[i].id;
   var cs=0; for(i=0;i<(d.chat||[]).length;i++) cs+=d.chat[i].id;
   var rs=0, rk; for(rk in d.reads){ if(d.reads.hasOwnProperty(rk)) rs+=(d.reads[rk]||0); }
-  return d.entries.length+"|"+sum+"|"+(S.del||[]).length+"|"+d.setUp+"|"+(d.chat||[]).length+"|"+cs+"|"+rs+"|"+liveSig();
+  return d.entries.length+"|"+sum+"|"+(S.del||[]).length+"|"+d.setUp+"|"+(d.chat||[]).length+"|"+cs+"|"+rs+"|"+liveSig()+"|"+(function(){
+    var o="", k, c=S.cmd||{};
+    for(k in c) if(c.hasOwnProperty(k)) o+=k+c[k].op+(c[k].ts||0)+";";
+    return o;
+  })();
 }
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
@@ -4021,6 +4167,35 @@ function syMerge(doc){
     }
   }
   if(JSON.stringify(nrs)!==JSON.stringify(S.rsess||{})){ S.rsess=nrs; changed=true; }
+  if(doc.cmd){
+    S.cmdAp=S.cmdAp||{};
+    for(var ck in doc.cmd){
+      if(!doc.cmd.hasOwnProperty(ck)) continue;
+      var cc=doc.cmd[ck];
+      if(!cc || cc.by===(S.who||"")) continue;
+      if((cc.ts||0)<=(S.cmdAp[ck]||0)) continue;
+      S.cmdAp[ck]=cc.ts;
+      if(!S.sess[ck] || (!S.sess[ck].run && !sessActive(ck))) continue;
+      if(cc.op==="pause"){ if(S.sess[ck].run) A.lapause(ck); }
+      else if(cc.op==="resume"){ if(!S.sess[ck].run) A.lapause(ck); }
+      else if(cc.op==="stop"){
+        var r8=S.route, t8=S.tab;
+        A.nstop(ck);
+        S.route=r8; S.tab=t8;
+      }
+      changed=true;
+    }
+  }
+  if(S.cmd){
+    for(var mk9 in S.cmd){
+      if(!S.cmd.hasOwnProperty(mk9)) continue;
+      var mc=S.cmd[mk9], sat=false, rr=nrs[mk9];
+      if(mc.op==="stop") sat=!rr;
+      else if(mc.op==="pause") sat=!!(rr && !rr.s.run);
+      else if(mc.op==="resume") sat=!!(rr && rr.s.run);
+      if(sat || Date.now()-(mc.ts||0)>10*6e4) delete S.cmd[mk9];
+    }
+  }
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
   if(doc.set && (doc.setUp||0)>(S.setUp||0)){
     S.baby=doc.set.baby||S.baby;
@@ -4078,7 +4253,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.59";
+var APPVER="0.60";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
