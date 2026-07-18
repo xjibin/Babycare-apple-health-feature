@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.49 -->
+<!-- Baby Care v0.50 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1194,6 +1194,7 @@ var A = {
       if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
     }, 80);
   },
+  hssleep: function(){ S.tab="activity"; A.open("babysleep"); },
   ntochat: function(){
     ntKill();
     S.night=false;
@@ -1876,6 +1877,12 @@ function vSummary(){
       '<span style="display:block;font-size:13px;color:var(--sub)">Dim clock for calm night feeds</span></span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
 
+    '<button class="card press" data-a="sub" data-x="dash" style="width:100%;display:flex;align-items:center;gap:12px;margin-top:8px;margin-bottom:4px">'+
+      ic("activity",22,C.blue)+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">Daily Dashboard</span>'+
+      '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
+      ic("chevron-right",18,C.sub)+'</button>'+
+
     '<div style="height:20px"></div>'+
 
 
@@ -1897,12 +1904,7 @@ function vHistory(){
   var h = backBtn(C.blue, "Summary", "subback") +
     '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:4px">All Health Data</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">'+S.entries.length+
-      ' entries \u00B7 stored locally on this device</div>' + bannerHtml() +
-    '<button class="card press" data-a="sub" data-x="dash" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:4px">'+
-    ic("activity",22,C.blue)+
-    '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">Daily Dashboard</span>'+
-    '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
-    ic("chevron-right",18,C.sub)+'</button>';
+      ' entries \u00B7 stored locally on this device</div>' + bannerHtml();
   if(!S.entries.length){
     h += '<div class="card" style="color:var(--sub);font-size:15px">No entries yet \u2014 your week of data will build up here, grouped by day.</div>';
   } else {
@@ -1944,7 +1946,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.49</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.50</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3219,6 +3221,19 @@ function nightBits(){
   var np = lastNap ? "Last nappy \u00B7 "+agoStr(new Date(lastNap.ts).getTime()) : "";
   return {lss:liveSessions(), lf:lf, lfd:lfd, np:np};
 }
+function nightNF(nc){
+  var ss=liveSessions(), hasSleep=false, hasNursing=false, i;
+  for(i=0;i<ss.length;i++){
+    if(ss[i].k==="babysleep" || ss[i].k==="mothersleep") hasSleep=true;
+    if(ss[i].k==="nursing") hasNursing=true;
+  }
+  if(!hasSleep || hasNursing) return "";
+  var un=upNext(); if(!un || !un.next) return "";
+  var due = un.next<=Date.now();
+  return '<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
+    'background:'+alpha(nc,0.16)+';font-size:20px;font-weight:800;letter-spacing:.2px;color:'+nc+'">'+
+    'Next feed \u00B7 '+(due?"Due Now":tClock(un.next))+'</div>';
+}
 function nTimeBare(ls){ return fmt(ls.secs); }
 function nTime(ls){
   return fmt(ls.secs)+
@@ -3286,6 +3301,7 @@ function nightHtml(){
     '<div id="nlf">'+b.lf+'</div>'+
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
+    nightNF(nc)+
     ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
@@ -3318,7 +3334,7 @@ function vChat(){
   save();
   var bn=esc((S.baby&&S.baby.name)||"the baby");
   var h='<div style="display:flex;align-items:center;gap:10px;margin-top:4px">'+
-    '<button class="circ press" data-a="tab" data-x="sharing" style="width:34px;height:34px;background:var(--card2)">'+ic("chevron-left",18,"#fff")+'</button>'+
+    '<button class="circ press" data-a="tab" data-x="summary" style="width:34px;height:34px;background:var(--card2)">'+ic("chevron-left",18,"#fff")+'</button>'+
     '<span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Chat</span></div>'+
     '<div style="font-size:13px;color:var(--sub);margin-top:2px">Everyone on '+bn+'\u2019s sync \u00B7 messages disappear after 24 hours</div>'+
     '<div id="chlist" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;padding-bottom:6px">';
@@ -3728,7 +3744,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.49";
+var APPVER="0.50";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -3855,6 +3871,43 @@ function vaccNext(){
   }
   return null;
 }
+function lastFeedT(){
+  for(var i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.act==="nursing" || e.act==="bottle") return new Date(e.ts).getTime();
+  }
+  return 0;
+}
+function sleepAsk(){
+  if(S.sess && S.sess.babysleep) return null;
+  var now=Date.now(), i;
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.act==="babysleep" && now-new Date(e.ts).getTime()<3*36e5) return null;
+  }
+  var un=upNext(); if(!un || !un.next) return null;
+  var pre=un.next-now, lf=lastFeedT();
+  if(!((pre>0 && pre<=45*6e4) || un.next<=now || (lf && now-lf<=30*6e4))) return null;
+  var name=(S.baby&&S.baby.name)||"your little one";
+  var g=(S.baby&&S.baby.sex)||"";
+  var her=(g==="Boy")?"his":"her", she=(g==="Boy")?"he":"she";
+  var ad=(S.baby&&S.baby.dob)?Math.floor((now-new Date(S.baby.dob).getTime())/864e5):0;
+  var h=new Date().getHours(), t, s2;
+  if(h>=5 && h<=10){
+    t="\u2600\uFE0F Good morning \u2014 did "+name+" sleep well?";
+    s2=(ad<28?"Newborn naps come in tiny bursts \u2014 every wink counts. ":"")+"Log "+her+" night sleep before the morning feed.";
+  } else if(h>=11 && h<=16){
+    t="\uD83D\uDE34 Nap check before the next feed";
+    s2="How was "+name+"\u2019s nap? A quick log keeps "+her+" rhythm on track.";
+  } else if(h>=17 && h<=21){
+    t="\uD83C\uDF19 Winding down \u2014 how did "+she+" nap this evening?";
+    s2="Log "+her+" snooze before the next feed.";
+  } else {
+    t="\uD83C\uDF19 Night watch \u2014 how\u2019s "+name+" sleeping?";
+    s2="Log "+her+" last stretch before the feed \u2014 future you says thanks.";
+  }
+  return {t:t, s:s2};
+}
 function hsCards(){
   var cs=[];
   if(ui.upVer && ui.upDismissed)
@@ -3868,6 +3921,10 @@ function hsCards(){
   if(vx)
     cs.push({id:"vacc", icon:"syringe", col:C.coral, title:"Vaccination "+(vx.days>0?"in "+vx.days+"d":(vx.days===0?"due today":"overdue")),
       sub:vx.n+" · "+dayLabel(vx.due), right:"chevron-right", a:"hsopen", x:"vaccine"});
+  var sa=sleepAsk();
+  if(sa)
+    cs.push({id:"sleep", icon:"moon", col:C.lav, title:sa.t,
+      sub:sa.s, right:"chevron-right", a:"hssleep", x:""});
   var mc=mstDueCount();
   if(mc>0)
     cs.push({id:"mst", icon:"activity", col:"#B78CF2", title:"Developmental checks",
@@ -4688,6 +4745,8 @@ setInterval(function(){
       var xlf=document.getElementById("nlf"); if(xlf) xlf.textContent=nb.lf;
       var xld=document.getElementById("nlfd"); if(xld) xld.textContent=nb.lfd;
       var xnp=document.getElementById("nnp"); if(xnp) xnp.textContent=nb.np;
+      var xnf=document.getElementById("nnf");
+      if(xnf){ var un9=upNext(); xnf.textContent="Next feed \u00B7 "+((un9 && un9.next<=Date.now())?"Due Now":(un9?tClock(un9.next):"")); }
     }
   }
 
