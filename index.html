@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.61 -->
+<!-- Baby Care v0.62 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -167,6 +167,7 @@
     <div class="scroll" id="scroll"></div>
     <div class="tabwrap" id="tb"></div>
     <div id="la"></div>
+    <div id="bgrad" style="display:none;position:fixed;left:0;right:0;bottom:0;height:150px;z-index:12;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.9) 60%,#000 100%)"></div>
     <div id="ov"></div>
     <div class="homebar"></div>
   </div>
@@ -743,6 +744,30 @@ function burpDue(){
   if(lb && new Date(lb.ts).getTime()>ft) return null;
   return ft;
 }
+function curSlot(h){
+  if(h==null) h=new Date().getHours();
+  if(h>=7 && h<11) return "m";
+  if(h>=12 && h<14) return "n";
+  if(h>=19 && h<=23) return "ni";
+  return null;
+}
+function medSlotDone(mid, slot){
+  var tk=dayKey(Date.now()), i;
+  for(i=0;i<S.entries.length;i++){
+    var e=S.entries[i];
+    if(e.act==="medicine" && e.data && String(e.data.mid)===String(mid) && e.data.slot===slot && dayKey(e.ts)===tk) return true;
+  }
+  return false;
+}
+function medDue(){
+  var cs=curSlot();
+  if(!cs || !S.meds) return false;
+  for(var i=0;i<S.meds.length;i++){
+    var m=S.meds[i];
+    if(m && m.times && m.times[cs] && !medSlotDone(m.id, cs)) return true;
+  }
+  return false;
+}
 function medStreak(mid){
   function has(k){
     for(var i=0;i<S.entries.length;i++){
@@ -767,7 +792,9 @@ function medTodayDone(mid){
 }
 function medColHtml(m){
   if(!m) return '<div style="flex:1;min-width:0"></div>';
-  var st=medStreak(m.id), done=medTodayDone(m.id);
+  var cs9=curSlot();
+  var st=medStreak(m.id);
+  var done=(cs9 && m.times && m.times[cs9]) ? medSlotDone(m.id, cs9) : medTodayDone(m.id);
   return '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
     '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+'</span></span>'+
@@ -1353,14 +1380,25 @@ var A = {
     var m=null, i;
     for(i=0;i<S.meds.length;i++) if(String(S.meds[i].id)===String(x)) m=S.meds[i];
     if(!m) return;
-    var tk=dayKey(Date.now());
-    for(i=0;i<S.entries.length;i++){
-      var e=S.entries[i];
-      if(e.act==="medicine" && e.data && String(e.data.mid)===String(x) && dayKey(e.ts)===tk){
-        syTomb(e.id); S.entries.splice(i,1); save(); render(); toast("Unchecked"); return;
+    var tk=dayKey(Date.now()), cs=curSlot();
+    var winSlot=(cs && m.times && m.times[cs]) ? cs : null;
+    if(winSlot && medSlotDone(m.id, winSlot)){
+      for(i=0;i<S.entries.length;i++){
+        var e0=S.entries[i];
+        if(e0.act==="medicine" && e0.data && String(e0.data.mid)===String(x) && e0.data.slot===winSlot && dayKey(e0.ts)===tk){
+          syTomb(e0.id); S.entries.splice(i,1); save(); render(); toast("Unchecked"); return;
+        }
       }
     }
-    var slot=(m.times&&m.times.m)?"m":(m.times&&m.times.n)?"n":(m.times&&m.times.ni)?"ni":"m";
+    if(!winSlot){
+      for(i=0;i<S.entries.length;i++){
+        var e=S.entries[i];
+        if(e.act==="medicine" && e.data && String(e.data.mid)===String(x) && dayKey(e.ts)===tk){
+          syTomb(e.id); S.entries.splice(i,1); save(); render(); toast("Unchecked"); return;
+        }
+      }
+    }
+    var slot=winSlot || ((m.times&&m.times.m)?"m":(m.times&&m.times.n)?"n":(m.times&&m.times.ni)?"ni":"m");
     var sn=slot==="m"?"Morning":slot==="n"?"Noon":"Night";
     S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
       detail:m.name+" \u00B7 "+m.ml+" ml \u00B7 "+sn,
@@ -2166,7 +2204,7 @@ function vSummary(){
       ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>'+
 
-    upHtml+outHtml+
+    (medDue()?medMilestoneHtml():"")+upHtml+outHtml+
 
     '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("moon",22,C.indigo)+'</span>'+
@@ -2182,7 +2220,7 @@ function vSummary(){
       '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
-    medMilestoneHtml()+
+    (medDue()?"":medMilestoneHtml())+
 
     '<div style="height:8px"></div>'+
 
@@ -2248,7 +2286,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.61</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.62</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4022,6 +4060,8 @@ function render(){
     if(lss[li].r || !(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
   document.getElementById("la").innerHTML =
     (S.tab!=="chat" && S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
+  var bg9=document.getElementById("bgrad");
+  if(bg9) bg9.style.display=(S.tab==="summary" && S.sub==="" && S.eidx==null && !S.night && !ui.sheet) ? "block" : "none";
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
   tb.innerHTML = (inSession || S.tab==="chat") ? "" : tabbarHtml();
@@ -4326,7 +4366,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.61";
+var APPVER="0.62";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
