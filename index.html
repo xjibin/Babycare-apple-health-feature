@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.69 -->
+<!-- Baby Care v0.70 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -172,6 +172,10 @@
     <div id="csbar" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:20;gap:12px">
       <button class="press" data-a="csExit" style="flex:1;height:56px;border-radius:999px;background:rgba(24,24,26,.94);border:1px solid rgba(255,255,255,.08);font-size:16px;font-weight:700;color:#fff;text-align:center">Exit</button>
       <button class="press" data-a="csSave" style="flex:2;height:56px;border-radius:999px;background:#30D158;font-size:16px;font-weight:800;color:#000;text-align:center">Save and Exit</button>
+    </div>
+    <div id="medbar" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:20;gap:12px">
+      <button class="press" data-a="medEditExit" style="flex:1;height:56px;border-radius:999px;background:rgba(24,24,26,.94);border:1px solid rgba(255,255,255,.08);font-size:16px;font-weight:700;color:#fff;text-align:center">Exit</button>
+      <button class="press" data-a="medEditSave" style="flex:2;height:56px;border-radius:999px;background:#30D158;font-size:16px;font-weight:800;color:#000;text-align:center">Save &amp; Exit</button>
     </div>
     <div id="svbar" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:20"></div>
     <div id="bgrad" style="display:none;position:fixed;left:0;right:0;bottom:0;height:150px;z-index:12;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.9) 60%,#000 100%)"></div>
@@ -1311,6 +1315,40 @@ var A = {
     ui.mt[x]=!ui.mt[x];
     render();
   },
+  medEditGo: function(){
+    medMigrate();
+    ui.medDraft=JSON.parse(JSON.stringify(S.meds||[]));
+    ui.medEdit=true;
+    render();
+  },
+  medEditExit: function(){
+    ui.medEdit=false; ui.medDraft=null;
+    render();
+    toast("No changes were saved", 2500);
+  },
+  medEditSave: function(){
+    medEditSync();
+    bumpSet();
+    S.meds=(ui.medDraft||[]).map(function(m){
+      return {id:m.id||(Date.now()+Math.floor(Math.random()*1e4)), name:((m.name||"").trim().slice(0,24))||"Medicine",
+        ml:(+m.ml||0), unit:(m.unit||"ml"),
+        times:{m:!!(m.times&&m.times.m), n:!!(m.times&&m.times.n), ni:!!(m.times&&m.times.ni)},
+        food:(m.food||"After Food"), tillN:(m.tillU==="sos"?0:(m.tillN||2)), tillU:(m.tillU||"w"),
+        whom:(m.whom||"Baby"), ts0:(m.ts0||Date.now())};
+    });
+    save();
+    if(typeof syReArm==="function") syReArm();
+    ui.medEdit=false; ui.medDraft=null;
+    render();
+    toast("Medicines updated", 3000);
+  },
+  emml: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m){ m.ml=Math.max(0, Math.round(((+m.ml||0)+(+p[1]))*10)/10); } render(); },
+  emT: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m){ m.times=m.times||{}; m.times[p[1]]=!m.times[p[1]]; } render(); },
+  emF: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m) m.food=p[1]; render(); },
+  emW: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m) m.whom=p[1]; render(); },
+  emU: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m){ m.tillU=p[1]; if(p[1]!=="sos" && !(m.tillN>0)) m.tillN=2; } render(); },
+  emTd: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m) m.tillN=Math.max(1, Math.min(52, (m.tillN||2)+(+p[1]))); render(); },
+  emDel: function(x){ medEditSync(); if(ui.medDraft) ui.medDraft.splice(+x,1); render(); },
   medF: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mfood=x; render(); },
   medW: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mwho=x; render(); },
   medU: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtU=x; if(x!=="sos" && !(ui.mtN>0)) ui.mtN=2; render(); },
@@ -2536,7 +2574,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.69</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.70</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -2563,7 +2601,7 @@ function vList(){
   if(edit) h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Drag a card to reorder \u00B7 tap Done when finished</div>';
   else h += bannerHtml();
   h += '<div id="cards"'+(edit?' class="wigmode"':'')+'>';
-  var CORE={nursing:1,nappy:1,burp:1,babysleep:1,mothersleep:1,medicine:1,vaccine:1,carseat:1};
+  var CORE={nursing:1,nappy:1,burp:1,babysleep:1,mothersleep:1,medicine:1,growth:1,vaccine:1,carseat:1};
   function usedIn4d(kk){
     var hd9=cfgGet("hideDays");
     if(!hd9) return true;
@@ -2578,7 +2616,7 @@ function vList(){
   for(i=0;i<acts.length;i++){
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     var manHid=(S.hiddenCards||[]).indexOf(a.k)>=0;
-    if(!edit && !ui.showAll && !S.sess[a.k] && (manHid || (!CORE[a.k] && !usedIn4d(a.k)))){ hiddenN++; continue; }
+    if(!edit && !ui.showAll && !S.sess[a.k] && !CORE[a.k] && (manHid || !usedIn4d(a.k))){ hiddenN++; continue; }
     var ch=cardChips(a);
     var st="", s=S.sess[a.k];
     if(s){
@@ -2633,7 +2671,7 @@ function cardChips(a){
   }
   if(k==="nursing"){
     var sg=suggSide();
-    if(s){
+    if(sessActive(k)){
       var lL=(s.side==="L") ? ((s.run?"Pause":"Resume")+" left") : "Start left";
       var lR=(s.side==="R") ? ((s.run?"Pause":"Resume")+" right") : "Start right";
       return tb(lL,"cstart","L",false)+tb(lR,"cstart","R",false)+
@@ -3049,62 +3087,9 @@ function vSeat(a){
 }
 
 /* ============ daily medicine ============ */
-function vMed(a){
-  var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
-  var tk=dayKey(new Date().toISOString());
-  function done(id, slot){
-    for(var i2=0;i2<S.entries.length;i2++){
-      var e2=S.entries[i2];
-      if(e2.act==="medicine" && e2.data && e2.data.mid===id && e2.data.slot===slot && dayKey(e2.ts)===tk) return true;
-    }
-    return false;
-  }
-  var todayH="", n=0, i, j;
-  medMigrate();
-  for(i=0;i<S.meds.length;i++){
-    var m=S.meds[i];
-    if(!medSched(m)) continue;
-    for(j=0;j<SLOTS.length;j++){
-      if(!m.times[SLOTS[j][0]]) continue;
-      var dn=done(m.id, SLOTS[j][0]);
-      todayH+='<button class="press" data-a="medDone" data-x="'+m.id+'|'+SLOTS[j][0]+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left'+(n?';border-top:1px solid var(--hair)':'')+'">'+
-        '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600'+(dn?';opacity:.55':'')+'">'+esc(m.name)+'</span>'+
-        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' '+(m.unit||'ml')+' \u00B7 '+SLOTS[j][1]+'</span></span>'+
-        '<span class="circ" style="width:28px;height:28px;background:'+(dn?C.green:'transparent')+';border:1.5px solid '+(dn?C.green:'rgba(255,255,255,.25)')+'">'+
-        (dn?ic("check",15,"#000",{sw:3}):"")+'</span></button>';
-      n++;
-    }
-  }
-  var list="";
-  for(i=0;i<S.meds.length;i++){
-    var m2=S.meds[i], mch="";
-    for(j=0;j<SLOTS.length;j++){
-      var on2=m2.times[SLOTS[j][0]];
-      mch+='<button class="press" data-a="medTi" data-x="'+m2.id+'|'+SLOTS[j][0]+'" style="border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;background:'+(on2?alpha(a.c,0.25):'var(--card2)')+';color:'+(on2?a.c:'var(--sub)')+'">'+SLOTS[j][1].charAt(0)+'</button>';
-    }
-    list+='<div style="display:flex;align-items:center;gap:10px;padding:13px 16px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m2.name)+'</span>'+
-      '<span style="display:block;font-size:12px;color:var(--sub)">'+m2.ml+' '+(m2.unit||'ml')+' \u00B7 '+esc(m2.whom||"Baby")+(m2.food?' \u00B7 '+esc(m2.food):'')+' \u00B7 '+tillLbl(m2)+(medExpired(m2)?' \u00B7 ended':'')+'</span></span>'+
-      '<span style="display:flex;gap:6px">'+mch+'</span>'+
-      '<button class="circ press" data-a="medDel" data-x="'+m2.id+'" style="width:26px;height:26px;background:var(--card2)">'+ic("x",13,C.red)+'</button></div>';
-  }
-  var mtc="";
-  for(i=0;i<SLOTS.length;i++){
-    var on3=ui.mt[SLOTS[i][0]];
-    mtc+='<button class="pchip press" data-a="medT" data-x="'+SLOTS[i][0]+'" style="'+(on3?'background:'+a.c+';color:#000':'')+'">'+SLOTS[i][1]+'</button>';
-  }
-  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
-    '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">'+ic(a.icon,30,a.c)+
-    '<span style="font-size:28px;font-weight:700">Medicine</span></div>'+
-    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Daily doses \u00B7 tap to log, tap again to undo</div>'+
-    '<div class="card" style="padding:16px;margin-bottom:18px">'+
-      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">TODAY</div>'+
-      (n ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+todayH+'</div>'
-         : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication below.</div>')+'</div>'+
-    (S.meds.length ? '<div class="card" style="padding:16px;margin-bottom:18px">'+
-      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">MY MEDICATIONS</div>'+
-      '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
-    '<div class="card" style="padding:16px;margin-bottom:8px">'+
+var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
+function medAddCardHtml(a, mtc){
+  return '<div class="card" style="padding:16px;margin-bottom:8px">'+
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">ADD MEDICATION</div>'+
       '<div style="background:var(--card2);border-radius:14px;margin-bottom:4px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'" style="background:transparent"></div>'+
       '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">DOSAGE</div>'+
@@ -3140,7 +3125,125 @@ function vMed(a){
           return '<button class="pchip press" data-a="medW" data-x="'+w9+'" style="'+((ui.mwho||"Baby")===w9?'background:'+a.c+';color:#000':'')+'">'+w9+'</button>';
         }).join("")+'</div>'+
       '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
+    '</div>';
+}
+function emBtn(idx, delta){
+  return '<button class="circ press" data-a="emml" data-x="'+idx+'|'+delta+'" style="width:30px;height:30px;background:var(--card2)">'+ic(delta<0?"minus":"plus",14,"#fff")+'</button>';
+}
+function medFormHtml(m, idx, a){
+  var slots="", i;
+  for(i=0;i<SLOTS.length;i++){
+    var on=m.times && m.times[SLOTS[i][0]];
+    slots+='<button class="pchip press" data-a="emT" data-x="'+idx+'|'+SLOTS[i][0]+'" style="'+(on?'background:'+a.c+';color:#000':'')+'">'+SLOTS[i][1]+'</button>';
+  }
+  return '<div class="card" style="padding:16px;margin-bottom:14px">'+
+    '<div style="display:flex;align-items:center;margin-bottom:10px"><span style="flex:1;font-size:13px;font-weight:800;letter-spacing:.4px;color:'+a.c+'">MEDICINE '+(idx+1)+'</span>'+
+      '<button class="press" data-a="emDel" data-x="'+idx+'" style="font-size:13px;font-weight:700;color:'+C.red+'">Remove</button></div>'+
+    '<div style="background:var(--card2);border-radius:14px;margin-bottom:4px"><input id="emname_'+idx+'" class="ninput" maxlength="24" autocomplete="off" placeholder="Name" value="'+esc(m.name||"")+'" style="background:transparent"></div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">DOSAGE</div>'+
+    '<div style="background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:18px">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+        emBtn(idx,-0.5)+emBtn(idx,-0.1)+
+        '<span class="num" style="font-size:15px;font-weight:600;min-width:42px;text-align:center">'+(+m.ml||0).toFixed(1)+'</span>'+
+        emBtn(idx,0.1)+emBtn(idx,0.5)+
+        '<select id="emunit_'+idx+'" style="margin-left:auto;background:#3A3A3C;color:#fff;border:0;border-radius:10px;padding:7px 10px;font-size:14px;font-weight:600">'+
+          ["ml","mg","g","cap","tab"].map(function(u9){ return '<option value="'+u9+'"'+((m.unit||"ml")===u9?" selected":"")+'>'+u9+'</option>'; }).join("")+
+        '</select>'+
+      '</div></div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">TIME OF DAY</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">'+slots+'</div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">WITH FOOD</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">'+
+      ["Before Food","After Food","With Food"].map(function(f9){
+        return '<button class="pchip press" data-a="emF" data-x="'+idx+'|'+f9+'" style="'+((m.food||"After Food")===f9?'background:'+a.c+';color:#000':'')+'">'+f9+'</button>';
+      }).join("")+'</div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">TILL WHEN</div>'+
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+      ((m.tillU||"w")==="sos" ? '<span style="font-size:14px;font-weight:600;color:var(--sub)">As needed \u00B7 no end date</span>'
+        : '<button class="circ press" data-a="emTd" data-x="'+idx+'|-1" style="width:30px;height:30px;background:var(--card2)">'+ic("minus",14,"#fff")+'</button>'+
+          '<span class="num" style="min-width:86px;text-align:center;font-size:15px;font-weight:700">'+(m.tillN||2)+' '+({d:"Day",w:"Week",mo:"Month",y:"Year"}[m.tillU||"w"])+((m.tillN||2)===1?"":"s")+'</span>'+
+          '<button class="circ press" data-a="emTd" data-x="'+idx+'|1" style="width:30px;height:30px;background:var(--card2)">'+ic("plus",14,"#fff")+'</button>')+
     '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'+
+      [["d","Days"],["w","Weeks"],["mo","Months"],["y","Year"],["sos","SOS"]].map(function(u9){
+        return '<button class="pchip press" data-a="emU" data-x="'+idx+'|'+u9[0]+'" style="'+((m.tillU||"w")===u9[0]?'background:'+(u9[0]==="sos"?C.red:a.c)+';color:#000':'')+'">'+u9[1]+'</button>';
+      }).join("")+'</div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">FOR WHOM</div>'+
+    '<div style="display:flex;gap:10px;margin-bottom:2px">'+
+      ["Baby","Mother"].map(function(w9){
+        return '<button class="pchip press" data-a="emW" data-x="'+idx+'|'+w9+'" style="'+((m.whom||"Baby")===w9?'background:'+a.c+';color:#000':'')+'">'+w9+'</button>';
+      }).join("")+'</div>'+
+    '</div>';
+}
+function medEditFormsHtml(a){
+  var d=ui.medDraft||[], h='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:'+a.c+';margin:2px 4px 10px">EDIT MEDICATIONS \u00B7 '+d.length+'</div>';
+  if(!d.length) h+='<div class="card" style="padding:16px;color:var(--sub);font-size:14px">No medicines to edit.</div>';
+  for(var i=0;i<d.length;i++) h+=medFormHtml(d[i], i, a);
+  return h;
+}
+function medEditSync(){
+  if(!ui.medDraft) return;
+  for(var i=0;i<ui.medDraft.length;i++){
+    var nEl=byId("emname_"+i); if(nEl) ui.medDraft[i].name=nEl.value;
+    var uEl=byId("emunit_"+i); if(uEl) ui.medDraft[i].unit=uEl.value;
+  }
+}
+function vMed(a){
+  var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
+  var tk=dayKey(new Date().toISOString());
+  function done(id, slot){
+    for(var i2=0;i2<S.entries.length;i2++){
+      var e2=S.entries[i2];
+      if(e2.act==="medicine" && e2.data && e2.data.mid===id && e2.data.slot===slot && dayKey(e2.ts)===tk) return true;
+    }
+    return false;
+  }
+  var todayH="", n=0, i, j;
+  medMigrate();
+  for(i=0;i<S.meds.length;i++){
+    var m=S.meds[i];
+    if(!medSched(m)) continue;
+    for(j=0;j<SLOTS.length;j++){
+      if(!m.times[SLOTS[j][0]]) continue;
+      var dn=done(m.id, SLOTS[j][0]);
+      todayH+='<button class="press" data-a="medDone" data-x="'+m.id+'|'+SLOTS[j][0]+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left'+(n?';border-top:1px solid var(--hair)':'')+'">'+
+        '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600'+(dn?';opacity:.55':'')+'">'+esc(m.name)+'</span>'+
+        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' '+(m.unit||'ml')+' \u00B7 '+SLOTS[j][1]+'</span></span>'+
+        '<span class="circ" style="width:28px;height:28px;background:'+(dn?C.green:'transparent')+';border:1.5px solid '+(dn?C.green:'rgba(255,255,255,.25)')+'">'+
+        (dn?ic("check",15,"#000",{sw:3}):"")+'</span></button>';
+      n++;
+    }
+  }
+  var list="", mSrc=(ui.medEdit?(ui.medDraft||[]):S.meds);
+  for(i=0;i<mSrc.length;i++){
+    var m2=mSrc[i], mch="";
+    if(!ui.medEdit) for(j=0;j<SLOTS.length;j++){
+      var on2=m2.times[SLOTS[j][0]];
+      mch+='<button class="press" data-a="medTi" data-x="'+m2.id+'|'+SLOTS[j][0]+'" style="border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;background:'+(on2?alpha(a.c,0.25):'var(--card2)')+';color:'+(on2?a.c:'var(--sub)')+'">'+SLOTS[j][1].charAt(0)+'</button>';
+    }
+    list+='<div style="display:flex;align-items:center;gap:10px;padding:13px 16px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m2.name)+'</span>'+
+      '<span style="display:block;font-size:12px;color:var(--sub)">'+m2.ml+' '+(m2.unit||'ml')+' \u00B7 '+esc(m2.whom||"Baby")+(m2.food?' \u00B7 '+esc(m2.food):'')+' \u00B7 '+tillLbl(m2)+(medExpired(m2)?' \u00B7 ended':'')+'</span></span>'+
+      (ui.medEdit ? '' : ('<span style="display:flex;gap:6px">'+mch+'</span>'+
+      '<button class="circ press" data-a="medDel" data-x="'+m2.id+'" style="width:26px;height:26px;background:var(--card2)">'+ic("x",13,C.red)+'</button>'))+'</div>';
+  }
+  var mtc="";
+  for(i=0;i<SLOTS.length;i++){
+    var on3=ui.mt[SLOTS[i][0]];
+    mtc+='<button class="pchip press" data-a="medT" data-x="'+SLOTS[i][0]+'" style="'+(on3?'background:'+a.c+';color:#000':'')+'">'+SLOTS[i][1]+'</button>';
+  }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">'+ic(a.icon,30,a.c)+
+    '<span style="font-size:28px;font-weight:700">Medicine</span></div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Daily doses \u00B7 tap to log, tap again to undo</div>'+
+    '<div class="card" style="padding:16px;margin-bottom:18px">'+
+      '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">TODAY</div>'+
+      (n ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+todayH+'</div>'
+         : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication below.</div>')+'</div>'+
+    (S.meds.length ? '<div class="card" style="padding:16px;margin-bottom:18px">'+
+      '<div style="display:flex;align-items:center;margin-bottom:10px"><span style="flex:1;font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub)">MY MEDICATIONS</span>'+(ui.medEdit?'':'<button class="press" data-a="medEditGo" style="font-size:13px;font-weight:800;color:'+a.c+'">Edit</button>')+'</div>'+
+      '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
+    (ui.medEdit ? medEditFormsHtml(a) : medAddCardHtml(a, mtc))+
     '<div style="height:280px"></div></div>';
 }
 
@@ -4371,6 +4474,9 @@ function render(){
   tb.innerHTML = (inSession || S.tab==="chat" || S.sub==="cset" || pendingSaveBar) ? "" : tabbarHtml();
   var cb9=byId("csbar");
   if(cb9) cb9.style.display = (S.sub==="cset") ? "flex" : "none";
+  if(ui.medEdit && !(S.tab==="activity" && S.route==="medicine")){ ui.medEdit=false; ui.medDraft=null; }
+  var mdb9=byId("medbar");
+  if(mdb9) mdb9.style.display = ui.medEdit ? "flex" : "none";
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
@@ -4682,7 +4788,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.69";
+var APPVER="0.70";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
