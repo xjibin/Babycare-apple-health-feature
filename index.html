@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.65 -->
+<!-- Baby Care v0.66 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -67,7 +67,7 @@
   .chiprow{display:flex; gap:10px; margin-top:16px;}
   .chip{flex:1; height:44px; border-radius:12px; background:rgba(255,255,255,.06);
     display:flex; align-items:center; justify-content:center;}
-  .tabbar{flex:1; display:flex; border-radius:999px; padding:6px; background:rgba(24,24,26,.94);
+  .tabbar{flex:1; display:flex; align-items:center; border-radius:999px; padding:6px; background:rgba(24,24,26,.94);
     border:1px solid rgba(255,255,255,.06); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
   .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; border-radius:999px; padding:6px 0;}
   .tab.on{background:#3A3A3C;}
@@ -225,7 +225,7 @@ var NAPPIES = [
 var KEY = "babycare.v1";
 var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, cnight:false, eidx:null,
   entries:[], sess:{}, order:[], custom:[], baby:{}, cfg:{}, feedIv:null, feedIvD:null, feedIvN:null, who:"",
-  meds:[{id:1, name:"Vitamin D3 drops", ml:1, times:{m:false, n:true, ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}] };
+  meds:[{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false, n:true, ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
   hsIdx:0, hsHold:0, hsN:0, upVer:null, upDismissed:false, lbHide:0,
   pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, ss:null, syEye:false, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null };
@@ -819,6 +819,7 @@ function medMigrate(){
     if(m.food==null) m.food="";
     if(m.tillU==null){ m.tillU="sos"; m.tillN=0; }
     if(m.ts0==null) m.ts0=Date.now();
+    if(m.unit==null) m.unit="ml";
   }
 }
 function medEnd(m){
@@ -862,9 +863,14 @@ function medColHtml(m){
   var done=(cs9 && m.times && m.times[cs9]) ? medSlotDone(m.id, cs9) : medTodayDone(m.id);
   return '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
-    '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+'</span></span>'+
+    '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+' \u00B7 '+esc(m.whom||'Baby')+'</span></span>'+
     '<button class="circ press" data-a="medMi" data-x="'+m.id+'" style="width:26px;height:26px;flex:none;background:'+(done?C.green:'var(--card2)')+'">'+
     (done?ic("check",14,"#000"):'')+'</button></div>';
+}
+function medPin(){
+  if(medDue()) return true;
+  var am=(S.meds||[]).filter(function(m9){ return m9 && !medExpired(m9); });
+  return am.length===0;
 }
 function medMilestoneHtml(){
   var inner;
@@ -875,9 +881,10 @@ function medMilestoneHtml(){
   } else {
     inner='<div style="display:flex;gap:16px">'+medColHtml(am[0])+medColHtml(am.length>1?am[1]:null)+'</div>';
   }
-  return '<div class="card" style="margin-bottom:12px">'+
+  return '<div class="card press" data-a="openmed" style="margin-bottom:12px">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,C.green)+
-    '<span style="font-size:15px;font-weight:700">Medicine Milestone</span></div>'+inner+'</div>';
+    '<span style="font-size:15px;font-weight:700">Medicine Milestone</span>'+
+    '<span style="margin-left:auto">'+ic("chevron-right",18,C.sub)+'</span></div>'+inner+'</div>';
 }
 function vitDStreak(){
   function has(k){
@@ -1110,7 +1117,7 @@ var A = {
     if(x==="chat") setTimeout(chFit, 40); },
   sub: function(x){
     S.sub=x;
-    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
+    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
       ui.fmD=(S.feedIvD!=null); ui.fmN=(S.feedIvN!=null);
@@ -1294,29 +1301,30 @@ var A = {
   },
   bt: function(x){ ui.bt=x; render(); },
   mml: function(x){
-    var n=byId("medname"); if(n) ui.mname=n.value;
+    var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value;
     ui.mml=Math.max(0.1, Math.round((ui.mml+parseFloat(x))*10)/10);
     render();
   },
   medT: function(x){
-    var n=byId("medname"); if(n) ui.mname=n.value;
+    var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value;
     ui.mt[x]=!ui.mt[x];
     render();
   },
-  medF: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; ui.mfood=x; render(); },
-  medW: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; ui.mwho=x; render(); },
-  medU: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; ui.mtU=x; if(x!=="sos" && !(ui.mtN>0)) ui.mtN=2; render(); },
-  medTd: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; ui.mtN=Math.max(1, Math.min(52, (ui.mtN||2)+(+x))); render(); },
+  medF: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mfood=x; render(); },
+  medW: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mwho=x; render(); },
+  medU: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtU=x; if(x!=="sos" && !(ui.mtN>0)) ui.mtN=2; render(); },
+  medTd: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtN=Math.max(1, Math.min(52, (ui.mtN||2)+(+x))); render(); },
   medAdd: function(){
     var n=byId("medname"), nm=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,24);
     if(!nm){ toast("Name the medication"); return; }
     if(!ui.mt.m && !ui.mt.n && !ui.mt.ni){ toast("Pick at least one time of day"); return; }
     bumpSet();
-    S.meds.push({id:Date.now(), name:nm, ml:ui.mml, times:{m:ui.mt.m, n:ui.mt.n, ni:ui.mt.ni},
+    var mu=byId("munit"); var unit=((mu&&mu.value)||ui.munit||"ml");
+    S.meds.push({id:Date.now(), name:nm, ml:ui.mml, unit:unit, times:{m:ui.mt.m, n:ui.mt.n, ni:ui.mt.ni},
       food:(ui.mfood||"After Food"), tillN:(ui.mtU==="sos"?0:(ui.mtN||2)), tillU:(ui.mtU||"w"),
       whom:(ui.mwho||"Baby"), ts0:Date.now()});
     ui.mname=""; ui.mml=1; ui.mt={m:false,n:true,ni:false};
-    ui.mfood="After Food"; ui.mtN=2; ui.mtU="w"; ui.mwho="Baby";
+    ui.mfood="After Food"; ui.mtN=2; ui.mtU="w"; ui.mwho="Baby"; ui.munit="ml";
     save(); render(); toast("Added "+nm);
   },
   medDel: function(x){
@@ -1349,7 +1357,7 @@ var A = {
     }
     var sn = slot==="m" ? "Morning" : slot==="n" ? "Noon" : "Night";
     S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
-      detail:m.name+" \u00B7 "+m.ml+" ml \u00B7 "+sn,
+      detail:m.name+" \u00B7 "+m.ml+" "+(m.unit||"ml")+" \u00B7 "+sn,
       data:{mid:id, name:m.name, ml:m.ml, slot:slot},
       ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
@@ -1461,8 +1469,8 @@ var A = {
     csModal('<div style="font-size:17px;font-weight:700;line-height:1.4">We have already added the best settings for you</div>'+
       '<div style="font-size:14px;color:var(--sub);margin-top:8px;line-height:1.5">Do you wish to customise it?</div>'+
       '<div style="display:flex;gap:10px;margin-top:18px">'+
-      '<button class="press" data-a="csM1No" id="csno" style="flex:1;height:46px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700;color:#fff">No (3)</button>'+
-      '<button class="press" data-a="csM1Yes" style="flex:1;height:46px;border-radius:14px;background:'+C.blue+';font-size:15px;font-weight:700;color:#000">Yes</button></div>');
+      '<button class="press" data-a="csM1No" id="csno" style="flex:1;height:46px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700;color:#fff;text-align:center">No (3)</button>'+
+      '<button class="press" data-a="csM1Yes" style="flex:1;height:46px;border-radius:14px;background:'+C.blue+';font-size:15px;font-weight:700;color:#000;text-align:center">Yes</button></div>');
     ui.csTI=setInterval(function(){
       ui.csT--;
       var b=byId("csno");
@@ -1510,8 +1518,8 @@ var A = {
     csModal('<div style="font-size:17px;font-weight:700;line-height:1.4">We have already added the best settings for you</div>'+
       '<div style="font-size:14px;color:var(--sub);margin-top:8px;line-height:1.5">Do you wish to save your custom settings? You can always come back here to change the settings again or Reset to Default.</div>'+
       '<div style="display:flex;gap:10px;margin-top:18px">'+
-      '<button class="press" data-a="csM2No" style="flex:1;height:46px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700;color:#fff">No</button>'+
-      '<button class="press" data-a="csM2Yes" style="flex:1;height:46px;border-radius:14px;background:'+C.green+';font-size:15px;font-weight:800;color:#000">Yes</button></div>');
+      '<button class="press" data-a="csM2No" style="flex:1;height:46px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700;color:#fff;text-align:center">No</button>'+
+      '<button class="press" data-a="csM2Yes" style="flex:1;height:46px;border-radius:14px;background:'+C.green+';font-size:15px;font-weight:800;color:#000;text-align:center">Yes</button></div>');
   },
   csM2No: function(){ csModalHide(); },
   csM2Yes: function(){
@@ -1555,7 +1563,7 @@ var A = {
     var slot=winSlot || ((m.times&&m.times.m)?"m":(m.times&&m.times.n)?"n":(m.times&&m.times.ni)?"ni":"m");
     var sn=slot==="m"?"Morning":slot==="n"?"Noon":"Night";
     S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
-      detail:m.name+" \u00B7 "+m.ml+" ml \u00B7 "+sn,
+      detail:m.name+" \u00B7 "+m.ml+" "+(m.unit||"ml")+" \u00B7 "+sn,
       data:{mid:m.id, name:m.name, ml:m.ml, slot:slot},
       ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
@@ -1652,7 +1660,7 @@ var A = {
     var i, m=null;
     for(i=0;i<(S.meds||[]).length;i++) if(String(S.meds[i].id)===x){ m=S.meds[i]; break; }
     if(!m) return;
-    qlog("medicine", m.name+" \u00B7 "+(m.ml||"")+" ml", {mid:m.id, ml:m.ml});
+    qlog("medicine", m.name+" \u00B7 "+(m.ml||"")+" "+(m.unit||"ml"), {mid:m.id, ml:m.ml});
     toast("Logged "+m.name);
     render();
   },
@@ -1937,8 +1945,8 @@ var A = {
     if(d.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
     addEntryAt("vaccine", ui.vax[0]+" \u00B7 "+ui.vax[1], {vaccine:ui.vax[0], age:ui.vax[1]}, d.toISOString());
   },
-  bsex: function(x){ var n=byId("bname"); if(n) ui.b.name=n.value; var u=byId("uhid"); if(u) ui.b.uhid=u.value; ui.b.sex=x; render(); },
-  bblood: function(x){ var n=byId("bname"); if(n) ui.b.name=n.value; var u=byId("uhid"); if(u) ui.b.uhid=u.value; ui.b.blood=x; render(); },
+  bsex: function(x){ var n=byId("bname"); if(n) ui.b.name=n.value; var u=byId("uhid"); if(u) ui.b.uhid=u.value; var mu2=byId("muhid"); if(mu2) ui.b.muhid=mu2.value; ui.b.sex=x; render(); },
+  bblood: function(x){ var n=byId("bname"); if(n) ui.b.name=n.value; var u=byId("uhid"); if(u) ui.b.uhid=u.value; var mu2=byId("muhid"); if(mu2) ui.b.muhid=mu2.value; ui.b.blood=x; render(); },
   mstT: function(x){
     if(!S.baby || !S.baby.dob){ toast("Set the date of birth first"); return; }
     S.baby.mst=S.baby.mst||{};
@@ -1952,7 +1960,7 @@ var A = {
   },
   hs: function(x){
     var n=byId("bname"); if(n) ui.b.name=n.value;
-    var u=byId("uhid"); if(u) ui.b.uhid=u.value;
+    var u=byId("uhid"); if(u) ui.b.uhid=u.value; var mu2=byId("muhid"); if(mu2) ui.b.muhid=mu2.value;
     var p=x.split("|");
     if(p[0]==="R") ui.b.hsR=(ui.b.hsR===p[1]?"":p[1]);
     else ui.b.hsL=(ui.b.hsL===p[1]?"":p[1]);
@@ -1960,7 +1968,7 @@ var A = {
   },
   hsr2c: function(x){
     var n=byId("bname"); if(n) ui.b.name=n.value;
-    var u=byId("uhid"); if(u) ui.b.uhid=u.value;
+    var u=byId("uhid"); if(u) ui.b.uhid=u.value; var mu2=byId("muhid"); if(mu2) ui.b.muhid=mu2.value;
     var p=x.split("|");
     if(p[0]==="R") ui.b.hsRe2R=(ui.b.hsRe2R===p[1]?"":p[1]);
     else ui.b.hsRe2L=(ui.b.hsRe2L===p[1]?"":p[1]);
@@ -1968,7 +1976,7 @@ var A = {
   },
   bedit: function(){
     ui.bedit=true; ui.hsDel=false;
-    ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon};
+    ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon};
     ui.dob=null;
     render();
   },
@@ -2001,12 +2009,12 @@ var A = {
   },
   hscon: function(){
     var n=byId("bname"); if(n) ui.b.name=n.value;
-    var u=byId("uhid"); if(u) ui.b.uhid=u.value;
+    var u=byId("uhid"); if(u) ui.b.uhid=u.value; var mu2=byId("muhid"); if(mu2) ui.b.muhid=mu2.value;
     ui.b.hsCon=!ui.b.hsCon;
     render();
   },
   saveBaby: function(){ setTimeout(setAppIcons, 0);
-    var n=byId("bname"), u=byId("uhid"), d=dobValue();
+    var n=byId("bname"), u=byId("uhid"), mu=byId("muhid"), d=dobValue();
     var wv=byId("bwho"), whoV=((wv&&wv.value)||"").replace(/[<>]/g,"").trim().slice(0,16);
     if(!whoV){ toast("Please add who you are — Mom, Dad, Nanny…"); return; }
     if(d.getTime()>Date.now()){ toast("Birth can\u2019t be in the future"); return; }
@@ -2016,6 +2024,7 @@ var A = {
     b.name=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,20);
     b.dob=d.toISOString(); b.sex=ui.b.sex||""; b.blood=ui.b.blood||"";
     b.uhid=((u&&u.value)||ui.b.uhid||"").replace(/[<>]/g,"").trim().slice(0,24);
+    b.muhid=((mu&&mu.value)||ui.b.muhid||"").replace(/[<>]/g,"").trim().slice(0,24);
     if(!(b.hsR||b.hsL) || byId("w_hsd_D")){ b.hsR=ui.b.hsR||""; b.hsL=ui.b.hsL||""; }
     if((b.hsR||b.hsL) && byId("w_hsd_D")) b.hsDate=dISO(dValue("hsd"));
     if(!b.hsR && !b.hsL) delete b.hsDate;
@@ -2041,7 +2050,7 @@ var A = {
     if(wasNew) S.sub="";
     render(); toast("Profile saved");
   },
-  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); render(); },
+  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); render(); },
   cnight: function(){
     S.cnight=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
@@ -2112,7 +2121,6 @@ var A = {
   impJson: function(){ var f=byId("impf"); f.value=""; f.click(); },
   invite: function(){ toast("Invites aren\u2019t in this test build"); },
   trends: function(){ toast("Trends aren\u2019t in this test build"); },
-  srch: function(){ toast("Search isn\u2019t in this test build"); },
   edit: function(){ toast("Editing isn\u2019t in this test build"); },
   expCsv: function(){ exportFile("baby-care-"+today()+".csv", buildCsv(), "text/csv"); },
   expJson: function(){ exportFile("baby-care-"+today()+".json",
@@ -2286,7 +2294,7 @@ function sumFooter(){
     '<br><br>Made meticulously for all moms and dads.</div>'+
     '<div style="font-size:14px;font-weight:700;color:#fff;line-height:1.6;margin-top:26px">'+
     'Developed by a Loving and Caring<br>New Dad and Mom\u2764\uFE0F</div>'+
-    '<button class="press" data-a="csAsk" style="display:block;margin-top:50px;font-size:14px;font-weight:700;color:'+C.blue+'">Customise Settings</button>'+
+    '<button class="press" data-a="csAsk" style="display:inline-flex;align-items:center;gap:5px;margin-top:50px;font-size:14px;font-weight:700;color:'+C.blue+'">Customise Settings'+ic("chevron-right",16,C.blue,{sw:2.6})+'</button>'+
     '</div>'+
     '<div style="height:45vh"></div>';
 }
@@ -2359,7 +2367,7 @@ function vSummary(){
       ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>'+
 
-    (medDue()?medMilestoneHtml():"")+upHtml+outHtml+
+    (medPin()?medMilestoneHtml():"")+upHtml+outHtml+
 
     '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("moon",22,C.indigo)+'</span>'+
@@ -2375,7 +2383,7 @@ function vSummary(){
       '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
       '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
 
-    (medDue()?"":medMilestoneHtml())+
+    (medPin()?"":medMilestoneHtml())+
 
     '<div style="height:8px"></div>'+
 
@@ -2510,7 +2518,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.65</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.66</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3043,7 +3051,7 @@ function vMed(a){
       var dn=done(m.id, SLOTS[j][0]);
       todayH+='<button class="press" data-a="medDone" data-x="'+m.id+'|'+SLOTS[j][0]+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left'+(n?';border-top:1px solid var(--hair)':'')+'">'+
         '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600'+(dn?';opacity:.55':'')+'">'+esc(m.name)+'</span>'+
-        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' ml \u00B7 '+SLOTS[j][1]+'</span></span>'+
+        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' '+(m.unit||'ml')+' \u00B7 '+SLOTS[j][1]+'</span></span>'+
         '<span class="circ" style="width:28px;height:28px;background:'+(dn?C.green:'transparent')+';border:1.5px solid '+(dn?C.green:'rgba(255,255,255,.25)')+'">'+
         (dn?ic("check",15,"#000",{sw:3}):"")+'</span></button>';
       n++;
@@ -3058,7 +3066,7 @@ function vMed(a){
     }
     list+='<div style="display:flex;align-items:center;gap:10px;padding:13px 16px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
       '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m2.name)+'</span>'+
-      '<span style="display:block;font-size:12px;color:var(--sub)">'+m2.ml+' ml \u00B7 '+esc(m2.whom||"Baby")+(m2.food?' \u00B7 '+esc(m2.food):'')+' \u00B7 '+tillLbl(m2)+(medExpired(m2)?' \u00B7 ended':'')+'</span></span>'+
+      '<span style="display:block;font-size:12px;color:var(--sub)">'+m2.ml+' '+(m2.unit||'ml')+' \u00B7 '+esc(m2.whom||"Baby")+(m2.food?' \u00B7 '+esc(m2.food):'')+' \u00B7 '+tillLbl(m2)+(medExpired(m2)?' \u00B7 ended':'')+'</span></span>'+
       '<span style="display:flex;gap:6px">'+mch+'</span>'+
       '<button class="circ press" data-a="medDel" data-x="'+m2.id+'" style="width:26px;height:26px;background:var(--card2)">'+ic("x",13,C.red)+'</button></div>';
   }
@@ -3081,7 +3089,16 @@ function vMed(a){
     '<div class="card" style="padding:16px;margin-bottom:8px">'+
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">ADD MEDICATION</div>'+
       '<div style="background:var(--card2);border-radius:14px;margin-bottom:12px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'" style="background:transparent"></div>'+
-      '<div style="background:var(--card2);border-radius:14px;overflow:hidden;margin-bottom:12px">'+stepRow("Dosage","mml",ui.mml.toFixed(1),"ml",0.1,0.5,true)+'</div>'+
+      '<div style="background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:12px">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span style="color:var(--sub);font-size:15px;flex:1;min-width:64px">Dosage</span>'+
+          sBtn("mml",-0.5)+sBtn("mml",-0.1)+
+          '<span class="num" style="font-size:15px;font-weight:600;min-width:42px;text-align:center">'+ui.mml.toFixed(1)+'</span>'+
+          sBtn("mml",0.1)+sBtn("mml",0.5)+
+          '<select id="munit" style="margin-left:6px;background:#3A3A3C;color:#fff;border:0;border-radius:10px;padding:7px 10px;font-size:14px;font-weight:600">'+
+            ["ml","mg","g","cap","tab"].map(function(u9){ return '<option value="'+u9+'"'+((ui.munit||"ml")===u9?" selected":"")+'>'+u9+'</option>'; }).join("")+
+          '</select>'+
+        '</div></div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+mtc+'</div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
         ["Before Food","After Food","With Food"].map(function(f9){
@@ -3105,7 +3122,7 @@ function vMed(a){
         }).join("")+'</div>'+
       '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:8px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
     '</div>'+
-    '<div style="height:80px"></div></div>';
+    '<div style="height:280px"></div></div>';
 }
 
 /* ============ daily dashboard ============ */
@@ -3743,8 +3760,8 @@ function hsCompact(){
 }
 function hsBlock(){
   if(S.baby && (S.baby.hsR || S.baby.hsL)){
-    return '<div style="height:20px"></div>'+lbl("HOSPITAL ID")+
-      '<div class="card" style="padding:0;margin-bottom:20px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+
+    return '<div style="height:20px"></div>'+lbl("BABY HOSPITAL ID")+
+      '<div class="card" style="padding:0;margin-bottom:12px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="Baby UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+lbl("MOTHER HOSPITAL ID")+'<div class="card" style="padding:0;margin-bottom:20px"><input id="muhid" class="ninput" maxlength="24" autocomplete="off" placeholder="Mother UHID / hospital number" value="'+esc(ui.b.muhid||"")+'"></div>'+
       hsCompact();
   }
   function chip2(act, x, val, cur){
@@ -3754,8 +3771,8 @@ function hsBlock(){
   var refAny=(ui.b.hsR==="REFER"||ui.b.hsL==="REFER");
   var bothPass=(ui.b.hsR==="PASS"&&ui.b.hsL==="PASS");
   var reRef=refAny&&(ui.b.hsRe2R==="REFER"||ui.b.hsRe2L==="REFER");
-  var h='<div style="height:20px"></div>'+lbl("HOSPITAL ID")+
-    '<div class="card" style="padding:0;margin-bottom:20px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+
+  var h='<div style="height:20px"></div>'+lbl("BABY HOSPITAL ID")+
+    '<div class="card" style="padding:0;margin-bottom:12px"><input id="uhid" class="ninput" maxlength="24" autocomplete="off" placeholder="Baby UHID / hospital number" value="'+esc(ui.b.uhid||"")+'"></div>'+lbl("MOTHER HOSPITAL ID")+'<div class="card" style="padding:0;margin-bottom:20px"><input id="muhid" class="ninput" maxlength="24" autocomplete="off" placeholder="Mother UHID / hospital number" value="'+esc(ui.b.muhid||"")+'"></div>'+
     lbl("NEONATAL HEARING SCREENING (OAE)")+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.5px;margin-bottom:6px">SCREENING DATE</div>'+
@@ -3807,7 +3824,7 @@ function vBabyView(){
     '<div style="font-size:22px;font-weight:700">'+esc(b.name||"\u2014")+'</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chips+'</div>'+
     '</div>'+
-    (b.uhid ? lbl("HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</span></div>' : "")+
+    (b.uhid ? lbl("BABY HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</span></div>' : "")+(b.muhid ? lbl("MOTHER HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.muhid)+'</span></div>' : "")+
     lbl(b.sex==="Boy" ? "I AM HIS" : b.sex==="Girl" ? "I AM HER" : "I AM THEIR")+
     '<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px">'+
       (S.who ? '<span style="font-size:15px;font-weight:700">'+esc(S.who)+'</span>'
@@ -4199,18 +4216,18 @@ function tabbarHtml(){
     {k:"activity",t:"Activity", icon:"baby",  tint:C.pink},
     {k:"sharing", t:"Sharing",  icon:"users", tint:"#FFFFFF"},
     {k:"chat",    t:"Chat",     icon:"message-circle", tint:"#5AC8FA"}
-  ], h='<div class="tabbar">';
-  for(var i=0;i<items.length;i++){
-    var it=items[i], on=S.tab===it.k;
-    h+='<button class="tab press'+(on?" on":"")+'" data-a="tab" data-x="'+it.k+'" style="position:relative">'+
+  ];
+  function tabBtn(it){
+    var on=S.tab===it.k;
+    return '<button class="tab press'+(on?" on":"")+'" data-a="tab" data-x="'+it.k+'" style="position:relative">'+
       (it.k==="chat" && chatUnread() ? '<span style="position:absolute;top:5px;left:calc(50% + 8px);width:8px;height:8px;border-radius:4px;background:#FF453A;border:1.5px solid #000"></span>' : '')+
       ic(it.icon,22,on?it.tint:"#8E8E93",{sw:2.2, fill:(it.k==="summary"&&on)})+
       '<span class="tl" style="color:'+(on?it.tint:"#8E8E93")+'">'+it.t+'</span></button>';
   }
-  h+='</div><button class="press" data-a="loggo" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:52px;height:62px;border-radius:26px;background:'+
-    ((S.baby&&S.baby.sex)==="Boy"?C.blue:C.pink)+'">'+
+  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:0 6px 16px rgba(0,0,0,.45);background:'+
+    ((S.baby&&S.baby.sex)==="Boy"?"#6FA8FF":C.pink)+'">'+
     ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">Log</span></button>';
-  return h;
+  return '<div class="tabbar">'+tabBtn(items[0])+tabBtn(items[1])+logBtn+tabBtn(items[2])+tabBtn(items[3])+'</div>';
 }
 
 /* ============ render ============ */
@@ -4624,7 +4641,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.65";
+var APPVER="0.66";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5067,7 +5084,7 @@ function mstSection(){
     var m=MST[i];
     if(mm[m.k]) list.push([m,"ach"]);
     else if(age>=m.a) list.push([m, age>m.b?"late":"now"]);
-    else if(up<3){ list.push([m,"up"]); up++; }
+    else list.push([m,"up"]);
   }
   list.sort(function(x,y){
     var o={now:0, late:0, up:1, ach:2};
@@ -5079,8 +5096,9 @@ function mstSection(){
     var col = st2==="ach"?"#34C77B" : st2==="late"?C.red : st2==="now"?"#FF9F0A" : "var(--sub)";
     var sub = st2==="ach" ? ("\u2713 "+dShort(mm[m2.k])) :
       st2==="late" ? "overdue \u00B7 mention to your pediatrician" :
-      st2==="now" ? "check now" : "coming up";
-    rows+='<button class="press" data-a="mstT" data-x="'+m2.k+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left'+(n?';border-top:1px solid var(--hair)':'')+'">'+
+      st2==="now" ? "check now" : "opens at "+m2.a+" mo";
+    var upF=(st2==="up");
+    rows+='<button class="press" data-a="mstT" data-x="'+m2.k+'" '+(upF?'disabled ':'')+'style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;opacity:'+(upF?'.45':'1')+(n?';border-top:1px solid var(--hair)':'')+'">'+
       '<span class="circ" style="width:26px;height:26px;background:'+(st2==="ach"?"#34C77B":"transparent")+';border:1.5px solid '+(st2==="ach"?"#34C77B":"rgba(255,255,255,.25)")+'">'+
       (st2==="ach"?ic("check",14,"#000",{sw:3}):"")+'</span>'+
       '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600">'+m2.t+'</span>'+
