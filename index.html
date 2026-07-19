@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.68 -->
+<!-- Baby Care v0.69 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -74,8 +74,8 @@
   .tab .tl{font-size:11px; font-weight:600;}
   .backbtn{display:flex; align-items:center; gap:2px; font-size:17px; font-weight:500; margin:0 0 8px -4px;}
   .bigtimer{font-size:68px; font-weight:700; letter-spacing:-1px;}
-  .savebar{width:100%; height:52px; border-radius:16px; font-size:17px; font-weight:700;
-    display:flex; align-items:center; justify-content:center; margin-top:32px;}
+  .savebar{width:100%; height:56px; border-radius:16px; font-size:17px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;}
   .listopt{width:100%; display:flex; align-items:center; justify-content:space-between; padding:16px;}
   .sheetwrap{position:absolute; inset:0; z-index:40; background:rgba(0,0,0,.6);
     display:flex; flex-direction:column; justify-content:flex-end;}
@@ -173,6 +173,7 @@
       <button class="press" data-a="csExit" style="flex:1;height:56px;border-radius:999px;background:rgba(24,24,26,.94);border:1px solid rgba(255,255,255,.08);font-size:16px;font-weight:700;color:#fff;text-align:center">Exit</button>
       <button class="press" data-a="csSave" style="flex:2;height:56px;border-radius:999px;background:#30D158;font-size:16px;font-weight:800;color:#000;text-align:center">Save and Exit</button>
     </div>
+    <div id="svbar" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:20"></div>
     <div id="bgrad" style="display:none;position:fixed;left:0;right:0;bottom:0;height:150px;z-index:12;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.9) 60%,#000 100%)"></div>
     <div id="ov"></div>
     <div class="homebar"></div>
@@ -2287,9 +2288,10 @@ function entryRow(e, first, idx){
     ? '<div style="'+sty+'">'+inner+'</div>'
     : '<button class="press" data-a="eopen" data-x="'+idx+'" style="'+sty+'">'+inner+'</button>';
 }
+var pendingSaveBar=null;
 function saveBar(color, enabled, action, label){
-  return '<button class="savebar press" data-a="'+action+'" '+(enabled?"":"disabled")+
-    ' style="background:'+(enabled?color:C.card2)+';color:'+(enabled?"#000":"#6b6b70")+'">'+(label||"Save")+'</button>';
+  pendingSaveBar={color:color, enabled:enabled, action:action, label:label};
+  return "";
 }
 
 /* ============ Summary tab (mirrors JSX) ============ */
@@ -2534,7 +2536,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.68</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.69</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4255,6 +4257,7 @@ function tabbarHtml(){
 
 /* ============ render ============ */
 function render(){
+  pendingSaveBar=null;
   sheetHtml="";
   var inSession = (S.tab==="activity" && S.route!=="list") || S.eidx!=null;
   var h;
@@ -4353,11 +4356,19 @@ function render(){
     (S.tab!=="chat" && S.sub!=="cset" && S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
   var bg9=document.getElementById("bgrad");
   if(bg9) bg9.style.display=(S.tab!=="chat" && !S.night) ? "block" : "none";
+  var svb9=document.getElementById("svbar");
+  if(svb9){
+    if(pendingSaveBar && !S.night && !ui.sheet){
+      var ps9=pendingSaveBar;
+      svb9.innerHTML='<button class="savebar press" data-a="'+ps9.action+'" '+(ps9.enabled?"":"disabled")+' style="background:'+(ps9.enabled?ps9.color:C.card2)+';color:'+(ps9.enabled?"#000":"#6b6b70")+'">'+(ps9.label||"Save")+'</button>';
+      svb9.style.display="block";
+    } else { svb9.style.display="none"; svb9.innerHTML=""; }
+  }
   var navK9=S.tab+"|"+S.route+"|"+S.sub+"|"+(S.eidx==null?"":"e")+"|"+(S.pmode?1:0)+"|"+(ui.gtype||"");
   if(navK9!==ui.lastNav){ ui.lastNav=navK9; sc.scrollTop=0; }
   var tb=document.getElementById("tb");
   tb.style.display = inSession ? "none" : "flex";
-  tb.innerHTML = (inSession || S.tab==="chat" || S.sub==="cset") ? "" : tabbarHtml();
+  tb.innerHTML = (inSession || S.tab==="chat" || S.sub==="cset" || pendingSaveBar) ? "" : tabbarHtml();
   var cb9=byId("csbar");
   if(cb9) cb9.style.display = (S.sub==="cset") ? "flex" : "none";
   var q9=byId("csq");
@@ -4671,7 +4682,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.68";
+var APPVER="0.69";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
