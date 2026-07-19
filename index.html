@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.66 -->
+<!-- Baby Care v0.67 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -170,8 +170,8 @@
     <div id="la"></div>
     <div id="csmodal" style="display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.65);align-items:center;justify-content:center"></div>
     <div id="csbar" style="display:none;position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);z-index:20;gap:12px">
-      <button class="press" data-a="csExit" style="flex:1;height:56px;border-radius:999px;background:rgba(24,24,26,.94);border:1px solid rgba(255,255,255,.08);font-size:16px;font-weight:700;color:#fff">Exit</button>
-      <button class="press" data-a="csSave" style="flex:2;height:56px;border-radius:999px;background:#30D158;font-size:16px;font-weight:800;color:#000">Save</button>
+      <button class="press" data-a="csExit" style="flex:1;height:56px;border-radius:999px;background:rgba(24,24,26,.94);border:1px solid rgba(255,255,255,.08);font-size:16px;font-weight:700;color:#fff;text-align:center">Exit</button>
+      <button class="press" data-a="csSave" style="flex:2;height:56px;border-radius:999px;background:#30D158;font-size:16px;font-weight:800;color:#000;text-align:center">Save and Exit</button>
     </div>
     <div id="bgrad" style="display:none;position:fixed;left:0;right:0;bottom:0;height:150px;z-index:12;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.9) 60%,#000 100%)"></div>
     <div id="ov"></div>
@@ -1504,6 +1504,7 @@ var A = {
     var el=byId("cslist"); if(el) el.innerHTML=csListHtml();
   },
   csReset: function(){
+    if(csIsDefault()){ toast("No changes were made \u00B7 already in default settings", 3000); return; }
     ui.csDraft={cfg:{}, fD:null, fN:null};
     var el=byId("cslist"); if(el) el.innerHTML=csListHtml();
     toast("Defaults restored \u2014 Save to apply", 2500);
@@ -2065,6 +2066,14 @@ var A = {
     S.night=true; render();
     if("wakeLock" in navigator){ navigator.wakeLock.request("screen").then(function(w){ nsWake=w; }).catch(function(){}); }
   },
+  nnav: function(x){
+    ntKill();
+    S.night=false; S.cnight=false;
+    if(x==="log"){ S.tab="summary"; S.sub="hist"; }
+    else { S.tab=x; S.sub=""; }
+    S.route="list"; S.eidx=null; S.pmode=false; ui.sheet=false;
+    render();
+  },
   nightoff: function(){ ntKill();
     S.night=false;
     var a0=act(S.route);
@@ -2432,6 +2441,14 @@ function csRow(d){
     '<div style="font-size:14px;font-weight:700">'+d.l+'</div>'+
     '<div style="font-size:12px;color:var(--sub);margin-top:3px;line-height:1.45">'+d.s+'</div>'+ctl+'</div>';
 }
+var CSCOL={"Feeding":C.orange,"Nursing":C.pink,"Sleep":C.lav,"Medicine windows":C.rose,"Sessions":C.blue,"Cards":C.sky,"Nightstand":C.indigo,"Car seat":C.sky,"Sync":C.teal,"Vaccines":C.coral};
+function csIsDefault(){
+  var dr=csD();
+  if(dr.fD!=null && dr.fD!==cfgDef("feedD").def) return false;
+  if(dr.fN!=null && dr.fN!==cfgDef("feedN").def) return false;
+  for(var k in dr.cfg){ if(dr.cfg[k]!==undefined){ var d=cfgDef(k); if(d && dr.cfg[k]!==d.def) return false; } }
+  return true;
+}
 function csListHtml(){
   var q=(ui.csQ||"").toLowerCase(), on=q.length>=3;
   var groups=[], seen={}, i;
@@ -2446,7 +2463,8 @@ function csListHtml(){
   for(i=0;i<groups.length;i++){
     var g=groups[i], rows=seen[g], j, body="";
     for(j=0;j<rows.length;j++) body+=csRow(rows[j]);
-    h+='<div class="card" style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub)">'+g.toUpperCase()+'</div>'+body+'</div>';
+    var col=CSCOL[g]||C.sub;
+    h+='<div class="card" style="margin-bottom:14px;border:1px solid '+alpha(col,0.35)+';background:'+alpha(col,0.08)+'"><div style="font-size:13px;font-weight:800;letter-spacing:.4px;color:'+col+'">'+g.toUpperCase()+'</div>'+body+'</div>';
   }
   return h;
 }
@@ -2518,7 +2536,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.66</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.67</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3088,39 +3106,40 @@ function vMed(a){
       '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
     '<div class="card" style="padding:16px;margin-bottom:8px">'+
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">ADD MEDICATION</div>'+
-      '<div style="background:var(--card2);border-radius:14px;margin-bottom:12px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'" style="background:transparent"></div>'+
-      '<div style="background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:12px">'+
+      '<div style="background:var(--card2);border-radius:14px;margin-bottom:4px"><input id="medname" class="ninput" maxlength="24" autocomplete="off" placeholder="Name \u00B7 e.g. Iron drops" value="'+esc(ui.mname||"")+'" style="background:transparent"></div>'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">DOSAGE</div>'+
+      '<div style="background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:18px">'+
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-          '<span style="color:var(--sub);font-size:15px;flex:1;min-width:64px">Dosage</span>'+
           sBtn("mml",-0.5)+sBtn("mml",-0.1)+
           '<span class="num" style="font-size:15px;font-weight:600;min-width:42px;text-align:center">'+ui.mml.toFixed(1)+'</span>'+
           sBtn("mml",0.1)+sBtn("mml",0.5)+
-          '<select id="munit" style="margin-left:6px;background:#3A3A3C;color:#fff;border:0;border-radius:10px;padding:7px 10px;font-size:14px;font-weight:600">'+
+          '<select id="munit" style="margin-left:auto;background:#3A3A3C;color:#fff;border:0;border-radius:10px;padding:7px 10px;font-size:14px;font-weight:600">'+
             ["ml","mg","g","cap","tab"].map(function(u9){ return '<option value="'+u9+'"'+((ui.munit||"ml")===u9?" selected":"")+'>'+u9+'</option>'; }).join("")+
           '</select>'+
         '</div></div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+mtc+'</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">TIME OF DAY</div>'+'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">'+mtc+'</div>'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">WITH FOOD</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">'+
         ["Before Food","After Food","With Food"].map(function(f9){
           return '<button class="pchip press" data-a="medF" data-x="'+f9+'" style="'+((ui.mfood||"After Food")===f9?'background:'+a.c+';color:#000':'')+'">'+f9+'</button>';
         }).join("")+'</div>'+
-      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:2px 4px 8px">TILL WHEN</div>'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">TILL WHEN</div>'+
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'+
         ((ui.mtU||"w")==="sos" ? '<span style="font-size:14px;font-weight:600;color:var(--sub)">As needed \u00B7 no end date</span>'
           : '<button class="circ press" data-a="medTd" data-x="-1" style="width:30px;height:30px;background:var(--card2)">'+ic("minus",14,"#fff")+'</button>'+
             '<span class="num" style="min-width:86px;text-align:center;font-size:15px;font-weight:700">'+(ui.mtN||2)+' '+({d:"Day",w:"Week",mo:"Month",y:"Year"}[ui.mtU||"w"])+((ui.mtN||2)===1?"":"s")+'</span>'+
             '<button class="circ press" data-a="medTd" data-x="1" style="width:30px;height:30px;background:var(--card2)">'+ic("plus",14,"#fff")+'</button>')+
       '</div>'+
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'+
         [["d","Days"],["w","Weeks"],["mo","Months"],["y","Year"],["sos","SOS"]].map(function(u9){
           return '<button class="pchip press" data-a="medU" data-x="'+u9[0]+'" style="'+((ui.mtU||"w")===u9[0]?'background:'+(u9[0]==="sos"?C.red:a.c)+';color:#000':'')+'">'+u9[1]+'</button>';
         }).join("")+'</div>'+
-      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:2px 4px 8px">FOR WHOM</div>'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">FOR WHOM</div>'+
       '<div style="display:flex;gap:10px;margin-bottom:6px">'+
         ["Baby","Mother"].map(function(w9){
           return '<button class="pchip press" data-a="medW" data-x="'+w9+'" style="'+((ui.mwho||"Baby")===w9?'background:'+a.c+';color:#000':'')+'">'+w9+'</button>';
         }).join("")+'</div>'+
-      '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:8px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
+      '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
     '</div>'+
     '<div style="height:280px"></div></div>';
 }
@@ -3957,17 +3976,11 @@ function nightRemote(nc){
   for(i=0;i<rms.length;i++){
     var it=rms[i];
     h+='<div id="nrm-'+it.k+'" class="num" style="margin-top:14px;font-size:15px;font-weight:700;color:'+alpha(nc,0.85)+'">'+
-      esc(it.by)+' \u00B7 '+it.a.t+' \u00B7 '+fmtM(it.secs)+(it.run?'':' \u00B7 paused')+'</div>';
+      esc(it.by)+' \u00B7 '+it.a.t+' \u00B7 '+fmtM(it.secs)+(it.run?'<span class="pulse" style="margin-left:7px;font-size:11px;color:'+nc+'">\u25B6</span>':' \u00B7 paused')+'</div>';
   }
   return h;
 }
 function nightNF(nc){
-  var ss=allLive(), hasSleep=false, hasNursing=false, i;
-  for(i=0;i<ss.length;i++){
-    if(ss[i].k==="babysleep" || ss[i].k==="mothersleep") hasSleep=true;
-    if(ss[i].k==="nursing") hasNursing=true;
-  }
-  if(!hasSleep || hasNursing) return "";
   var un=upNext(); if(!un || !un.next) return "";
   var due = un.next<=Date.now();
   return '<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
@@ -3997,16 +4010,26 @@ function nCol(ls, nc, pill){
     '</div></div>';
 }
 function nightCol(){
-  if(S.baby && S.baby.sex==="Girl") return C.pink;
-  if(S.baby && S.baby.sex==="Boy") return "#6FA8FF";
-  return "#FF9A62";
+  if(S.baby && S.baby.sex==="Girl") return "#FF8FAC";
+  if(S.baby && S.baby.sex==="Boy") return "#9CC5FF";
+  return "#FFB27E";
+}
+function nightNavHtml(nc){
+  var items=[["summary","Summary","heart"],["activity","Activity","baby"],["sharing","Sharing","users"],["chat","Chat","message-circle"]];
+  function b(it){
+    return '<button class="press" data-a="nnav" data-x="'+it[0]+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:'+alpha(nc,0.85)+'">'+
+      ic(it[2],22,alpha(nc,0.85),{sw:2.2})+'<span style="font-size:11px;font-weight:600">'+it[1]+'</span></button>';
+  }
+  var log='<button class="press" data-a="nnav" data-x="log" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:0 6px 16px rgba(0,0,0,.5);background:'+nc+'">'+
+    ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">Log</span></button>';
+  return '<div style="display:flex;align-items:center;border-radius:999px;padding:6px;background:'+alpha(nc,0.14)+';border:1px solid '+alpha(nc,0.3)+'">'+b(items[0])+b(items[1])+log+b(items[2])+b(items[3])+'</div>';
 }
 function nightHtml(){
   var b=nightBits(), nc=nightCol();
-  var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#000;'+
+  var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
     'padding:96px 24px 40px;cursor:pointer">'+
-    '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.65)+';margin-bottom:8px">'+nsDate()+'</div>'+
+    '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+';margin-bottom:8px">'+nsDate()+'</div>'+
     '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
   var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;'+
@@ -4062,8 +4085,8 @@ function nightHtml(){
       '<span class="circ press" data-a="mbx" style="width:30px;height:30px;background:'+alpha(nc,0.16)+';position:relative">'+ic("x",14,nc)+'</span></span>';
   }
   h += (cap ? '<div style="position:absolute;left:16px;right:16px;bottom:78px;display:flex;justify-content:center;z-index:2">'+cap+'</div>' : '')+
-    '<div style="position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;font-size:12px;color:'+alpha(nc,0.45)+';pointer-events:none">Tap anywhere to exit \u00B7 screen stays awake</div>'+
-    '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);display:flex;align-items:center;gap:12px;opacity:.22;filter:grayscale(1);pointer-events:none">'+tabbarHtml()+'</div>'+
+    '<div style="position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;font-size:12px;color:'+alpha(nc,0.62)+';pointer-events:none">Tap anywhere to exit \u00B7 screen stays awake</div>'+
+    '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px)">'+nightNavHtml(nc)+'</div>'+
     '</div>';
   return h;
 }
@@ -4218,13 +4241,13 @@ function tabbarHtml(){
     {k:"chat",    t:"Chat",     icon:"message-circle", tint:"#5AC8FA"}
   ];
   function tabBtn(it){
-    var on=S.tab===it.k;
+    var on=S.tab===it.k && !(it.k==="summary" && S.sub==="hist");
     return '<button class="tab press'+(on?" on":"")+'" data-a="tab" data-x="'+it.k+'" style="position:relative">'+
       (it.k==="chat" && chatUnread() ? '<span style="position:absolute;top:5px;left:calc(50% + 8px);width:8px;height:8px;border-radius:4px;background:#FF453A;border:1.5px solid #000"></span>' : '')+
       ic(it.icon,22,on?it.tint:"#8E8E93",{sw:2.2, fill:(it.k==="summary"&&on)})+
       '<span class="tl" style="color:'+(on?it.tint:"#8E8E93")+'">'+it.t+'</span></button>';
   }
-  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:0 6px 16px rgba(0,0,0,.45);background:'+
+  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:'+(S.sub==="hist"?'0 0 0 3px #fff,0 6px 16px rgba(0,0,0,.45)':'0 6px 16px rgba(0,0,0,.45)')+';background:'+
     ((S.baby&&S.baby.sex)==="Boy"?"#6FA8FF":C.pink)+'">'+
     ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">Log</span></button>';
   return '<div class="tabbar">'+tabBtn(items[0])+tabBtn(items[1])+logBtn+tabBtn(items[2])+tabBtn(items[3])+'</div>';
@@ -4329,7 +4352,7 @@ function render(){
   document.getElementById("la").innerHTML =
     (S.tab!=="chat" && S.sub!=="cset" && S.eidx==null && !S.night && !ui.sheet) ? (ssFixedHtml() + (vis.length ? liveBarHtml(vis) : "")) : "";
   var bg9=document.getElementById("bgrad");
-  if(bg9) bg9.style.display=(S.tab==="summary" && S.sub==="" && S.eidx==null && !S.night && !ui.sheet) ? "block" : "none";
+  if(bg9) bg9.style.display=(S.tab!=="chat" && !S.night) ? "block" : "none";
   var navK9=S.tab+"|"+S.route+"|"+S.sub+"|"+(S.eidx==null?"":"e")+"|"+(S.pmode?1:0)+"|"+(ui.gtype||"");
   if(navK9!==ui.lastNav){ ui.lastNav=navK9; sc.scrollTop=0; }
   var tb=document.getElementById("tb");
@@ -4641,7 +4664,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.66";
+var APPVER="0.67";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -4872,7 +4895,7 @@ function hsCardHtml(dir){
       '<span style="font-size:15px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">'+c.title+'</span>'+
       '<span style="font-size:13px;color:var(--sub);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">'+c.sub+'</span></span>'+
     '<span class="circ" style="width:34px;height:34px;background:var(--card2);flex-shrink:0;margin-left:6px">'+ic(c.right,16,c.right==="repeat"?"#FF9F0A":C.sub)+'</span>'+
-    (cs.length>1?'<span style="position:absolute;bottom:5px;left:0;right:0;display:flex;justify-content:center;gap:4px">'+dots+'</span>':"")+
+    (cs.length>1?'<span style="position:absolute;top:50%;right:56px;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px">'+dots+'</span>':"")+
   '</div>';
 }
 function hsTick(){
