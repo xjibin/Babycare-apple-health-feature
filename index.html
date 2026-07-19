@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.67 -->
+<!-- Baby Care v0.68 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1114,7 +1114,7 @@ var A = {
       return;
     }
     S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; render();
-    if(x==="chat") setTimeout(chFit, 40); },
+    if(x==="chat"){ setTimeout(chFit, 40); try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(_n){} } },
   sub: function(x){
     S.sub=x;
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
@@ -1680,6 +1680,7 @@ var A = {
     chPrune();
     var m={id:Date.now()+Math.floor(Math.random()*1e4), txt:t.slice(0,500), by:(S.who||"Someone"), ts:new Date().toISOString()};
     S.chat.push(m); save();
+    try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(_n){}
     var cl=byId("chlist");
     if(cl){
       var em=byId("chempty");
@@ -2315,7 +2316,7 @@ function vSummary(){
   var age=babyAge(), un=upNext();
   var due = un && un.next ? un.next<Date.now() : false;
   var upHtml =
-    '<div class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;padding:16px;text-align:left">'+
+    '<div class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;min-height:156px;box-sizing:border-box">'+
       '<div class="rowsb" style="margin-bottom:10px">'+
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
         '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">'+
@@ -2335,7 +2336,7 @@ function vSummary(){
   var os=outSplit(), oChip=nappyChip(), lNap=lastNappy();
   var napLine = lNap ? 'Last Nappy \u00B7 '+agoHM(lNap.ts)+' \u00B7 '+((lNap.data&&lNap.data.type)||'') : 'No nappies logged yet';
   var outHtml =
-    '<div class="card press" data-a="sub" data-x="output" style="width:100%;margin-bottom:12px;padding:16px;text-align:left">'+
+    '<div class="card press" data-a="sub" data-x="output" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;min-height:156px;box-sizing:border-box">'+
       '<div class="rowsb" style="margin-bottom:4px">'+
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.yellow+';font-size:15px;font-weight:600">'+ic("layers",16,C.yellow)+'Today\u2019s Output tracking</span>'+
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:'+oChip.bg+';color:'+oChip.col+';white-space:nowrap">'+oChip.txt+'</span></div>'+
@@ -2378,21 +2379,18 @@ function vSummary(){
 
     (medPin()?medMilestoneHtml():"")+upHtml+outHtml+
 
-    '<button class="card press" data-a="night" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
-      '<span style="flex-shrink:0;margin-top:1px">'+ic("moon",22,C.indigo)+'</span>'+
-      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.indigo+'">Nightstand mode</span>'+
-      '<span style="display:block;height:12px"></span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Dim clock for calm night feeds</span></span>'+
-      '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
-
-    '<button class="card press" data-a="sub" data-x="dash" style="width:100%;display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">'+
-      '<span style="flex-shrink:0;margin-top:1px">'+ic("activity",22,C.blue)+'</span>'+
-      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.blue+'">Daily Dashboard</span>'+
-      '<span style="display:block;height:12px"></span>'+
-      '<span style="display:block;font-size:13px;color:var(--sub)">Today\u2019s totals per activity \u00B7 compared with yesterday</span></span>'+
-      '<span style="flex-shrink:0;margin-top:1px">'+ic("chevron-right",18,C.sub)+'</span></button>'+
-
     (medPin()?"":medMilestoneHtml())+
+
+    '<div style="display:flex;gap:12px;margin-bottom:12px">'+
+      '<button class="card press" data-a="night" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;text-align:left">'+
+        ic("moon",24,C.indigo)+
+        '<span style="font-size:15px;font-weight:600;color:'+C.indigo+'">Nightstand mode</span>'+
+        '<span style="font-size:12px;color:var(--sub);line-height:1.4">Dim clock for calm night feeds</span></button>'+
+      '<button class="card press" data-a="sub" data-x="dash" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;text-align:left">'+
+        ic("activity",24,C.blue)+
+        '<span style="font-size:15px;font-weight:600;color:'+C.blue+'">Daily Dashboard</span>'+
+        '<span style="font-size:12px;color:var(--sub);line-height:1.4">Today\u2019s totals vs yesterday</span></button>'+
+    '</div>+'.replace('</div>+','</div>')+
 
     '<div style="height:8px"></div>'+
 
@@ -2536,7 +2534,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.67</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.68</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3981,6 +3979,8 @@ function nightRemote(nc){
   return h;
 }
 function nightNF(nc){
+  var ss9=allLive(), i9;
+  for(i9=0;i9<ss9.length;i9++){ if(ss9[i9].k==="nursing") return ""; }
   var un=upNext(); if(!un || !un.next) return "";
   var due = un.next<=Date.now();
   return '<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
@@ -4028,7 +4028,7 @@ function nightHtml(){
   var b=nightBits(), nc=nightCol();
   var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
-    'padding:96px 24px 40px;cursor:pointer">'+
+    'padding:96px 24px 100px;cursor:pointer">'+
     '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+';margin-bottom:8px">'+nsDate()+'</div>'+
     '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
@@ -4069,6 +4069,7 @@ function nightHtml(){
     ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
+  h += '<div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:64px"><div style="text-align:center;font-size:12px;color:'+alpha(nc,0.6)+'">Tap anywhere to exit \u00B7 screen stays awake</div></div>';
   var mbs=S.sess.burp, cap="";
   if(mbs && mbs.mid){
     cap='<div class="mbcap" style="background:#111;border-color:'+alpha(nc,0.3)+'">'+ic("wind",18,nc)+
@@ -4084,8 +4085,7 @@ function nightHtml(){
       '<span style="font-size:11px;color:'+alpha(nc,0.6)+';position:relative">auto in 3s</span>'+
       '<span class="circ press" data-a="mbx" style="width:30px;height:30px;background:'+alpha(nc,0.16)+';position:relative">'+ic("x",14,nc)+'</span></span>';
   }
-  h += (cap ? '<div style="position:absolute;left:16px;right:16px;bottom:78px;display:flex;justify-content:center;z-index:2">'+cap+'</div>' : '')+
-    '<div style="position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;font-size:12px;color:'+alpha(nc,0.62)+';pointer-events:none">Tap anywhere to exit \u00B7 screen stays awake</div>'+
+  h += (cap ? '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);display:flex;justify-content:center;z-index:2">'+cap+'</div>' : '')+
     '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px)">'+nightNavHtml(nc)+'</div>'+
     '</div>';
   return h;
@@ -4247,8 +4247,8 @@ function tabbarHtml(){
       ic(it.icon,22,on?it.tint:"#8E8E93",{sw:2.2, fill:(it.k==="summary"&&on)})+
       '<span class="tl" style="color:'+(on?it.tint:"#8E8E93")+'">'+it.t+'</span></button>';
   }
-  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:'+(S.sub==="hist"?'0 0 0 3px #fff,0 6px 16px rgba(0,0,0,.45)':'0 6px 16px rgba(0,0,0,.45)')+';background:'+
-    ((S.baby&&S.baby.sex)==="Boy"?"#6FA8FF":C.pink)+'">'+
+  var gc9=((S.baby&&S.baby.sex)==="Boy"?"#6FA8FF":C.pink);
+  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:'+(S.sub==="hist"?'0 0 22px 6px '+alpha(gc9,0.10)+', 0 0 8px 2px '+alpha(gc9,0.10)+', 0 6px 16px rgba(0,0,0,.45)':'0 6px 16px rgba(0,0,0,.45)')+';background:'+gc9+'">'+
     ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">Log</span></button>';
   return '<div class="tabbar">'+tabBtn(items[0])+tabBtn(items[1])+logBtn+tabBtn(items[2])+tabBtn(items[3])+'</div>';
 }
@@ -4606,6 +4606,13 @@ function syMerge(doc){
       if(sat || Date.now()-(mc.ts||0)>cfgGet("cmdM")*6e4) delete S.cmd[mk9];
     }
   }
+  if(freshO.length){
+    for(var fo9=0; fo9<freshO.length; fo9++){
+      var fm9=freshO[fo9];
+      if(S.tab!=="chat" && Date.now()-new Date(fm9.ts).getTime() < 6e5)
+        notif((fm9.by||"Someone")+": "+(fm9.txt||""));
+    }
+  }
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
   if(doc.set && (doc.setUp||0)>(S.setUp||0)){
     S.baby=doc.set.baby||S.baby;
@@ -4664,7 +4671,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.67";
+var APPVER="0.68";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
