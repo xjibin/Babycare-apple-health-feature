@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.75 -->
+<!-- Baby Care v0.76 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -47,9 +47,9 @@
   .scroll.pad0{padding-bottom:28px;}
   #rotate{display:none;}
   @media screen and (orientation:landscape) and (max-height:600px){
-    #rotate{display:flex; position:fixed; inset:0; z-index:9999; background:#000; color:#fff;
-      flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px;}
-    .phone,.stage{display:none !important;}
+    #nclk, #cclk{ font-size:46px !important; letter-spacing:-1px !important; }
+    .nightwrap, #cwrap{ padding-top:calc(env(safe-area-inset-top, 0px) + 12px) !important; padding-bottom:12px !important; justify-content:flex-start !important; }
+    #cexit{ display:none !important; }
   }
   .tabwrap{position:absolute; left:16px; right:16px; bottom:18px; z-index:20; display:flex; align-items:center; gap:12px;}
 
@@ -1878,6 +1878,7 @@ var A = {
       A.press(sd);
     } else {
       A.tgl();
+      if(a.kind==="seat" && !seatSens.on) A.seaton();
     }
   },
   dashback: function(){ S.sub="hist"; render(); },
@@ -2610,7 +2611,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.75</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.76</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3094,7 +3095,10 @@ function vSeat(a){
         '<span id="sv_'+SEAT_CH[ci][0]+'" class="num" style="font-size:11px;color:'+a.c+'"></span></div>'+
         '<canvas id="sc_'+SEAT_CH[ci][0]+'" width="176" height="52" style="width:176px;height:52px;display:block;margin-top:6px"></canvas></div>';
     }
-    sensors='<div class="rowsb" style="margin-top:20px"><span style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--sub)">RIDE SENSORS \u00B7 13 LIVE CHANNELS</span>'+
+    sensors='<div class="card" style="width:100%;display:flex;align-items:center;gap:12px;margin-top:20px"><span style="flex:none">'+ic("gauge",22,C.green)+'</span>'+
+      '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600;color:'+C.green+'">Enabled ride sensing</span>'+
+      '<span style="display:block;font-size:12px;color:var(--sub)">Motion \u00B7 tilt \u00B7 GPS speed \u00B7 live</span></span>'+ic("check",18,C.green)+'</div>'+
+      '<div class="rowsb" style="margin-top:20px"><span style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--sub)">RIDE SENSORS \u00B7 13 LIVE CHANNELS</span>'+
       '<span id="jpill" style="font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--card2);color:#98989F">\u2013</span></div>'+
       '<div style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 2px 4px;margin:0 -4px">'+lanes+'</div>'+
       '<button class="press" data-a="seatgps" style="margin-top:8px;padding:4px;font-size:12px;font-weight:600;color:'+a.c+'">'+
@@ -4209,7 +4213,7 @@ function nightNavHtml(nc){
 }
 function nightHtml(){
   var b=nightBits(), nc=nightCol();
-  var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
+  var h = '<div class="press nightwrap" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
     'padding:96px 24px 100px;cursor:pointer">'+
     '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+';margin-bottom:8px">'+nsDate()+'</div>'+
@@ -4252,7 +4256,7 @@ function nightHtml(){
     ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
-  h += '<div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:64px"><div style="text-align:center;font-size:12px;color:'+alpha(nc,0.6)+'">Tap anywhere to exit \u00B7 screen stays awake</div></div>';
+  if(!ui.land) h += '<div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:64px"><div style="text-align:center;font-size:12px;color:'+alpha(nc,0.6)+'">Tap anywhere to exit \u00B7 screen stays awake</div></div>';
   var mbs=S.sess.burp, cap="";
   if(mbs && mbs.mid){
     cap='<div class="mbcap" style="background:#111;border-color:'+alpha(nc,0.3)+'">'+ic("wind",18,nc)+
@@ -4269,7 +4273,7 @@ function nightHtml(){
       '<span class="circ press" data-a="mbx" style="width:30px;height:30px;background:'+alpha(nc,0.16)+';position:relative">'+ic("x",14,nc)+'</span></span>';
   }
   h += (cap ? '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);display:flex;justify-content:center;z-index:2">'+cap+'</div>' : '')+
-    '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px)">'+nightNavHtml(nc)+'</div>'+
+    (ui.land ? '' : '<div style="position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px)">'+nightNavHtml(nc)+'</div>')+
     '</div>';
   return h;
 }
@@ -4560,7 +4564,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
-  document.getElementById("ov").innerHTML = S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml);
+  document.getElementById("ov").innerHTML = ui.land ? (S.sess.carseat ? cnightHtml() : nightHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
@@ -4869,7 +4873,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.75";
+var APPVER="0.76";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5880,7 +5884,7 @@ setInterval(function(){
   }
 
   /* carstand */
-  if(S.cnight){
+  if(S.cnight || (ui.land && S.sess.carseat)){
     var se4=S.sess.carseat;
     if(!se4){ S.cnight=false; render(); }
     else {
@@ -5895,7 +5899,7 @@ setInterval(function(){
   }
 
   /* nightstand */
-  if(S.night){
+  if(S.night || (ui.land && !S.sess.carseat)){
     var nc3=document.getElementById("nclk");
     if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
     var nd3=document.getElementById("ndate");
@@ -5941,11 +5945,17 @@ document.getElementById("sb-wifi").innerHTML = ic("wifi",16,"#fff");
 load();
 try{ if(window.screen && screen.orientation && screen.orientation.lock) screen.orientation.lock("portrait").catch(function(){}); }catch(e){}
 function setVH(){ try{ document.documentElement.style.setProperty("--appvh", (window.innerHeight||0)+"px"); }catch(e){} }
-setVH();
-window.addEventListener("resize", setVH);
-window.addEventListener("orientationchange", function(){ setVH(); setTimeout(setVH, 150); setTimeout(setVH, 400); });
-window.addEventListener("pageshow", setVH);
+function landCheck(){
+  var isL=false;
+  try{ isL = !!(window.matchMedia && window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches); }catch(e){}
+  if(ui.land!==isL){ ui.land=isL; render(); }
+}
+setVH(); landCheck();
+window.addEventListener("resize", function(){ setVH(); landCheck(); });
+window.addEventListener("orientationchange", function(){ setVH(); landCheck(); setTimeout(function(){ setVH(); landCheck(); }, 200); setTimeout(function(){ setVH(); landCheck(); }, 450); });
+window.addEventListener("pageshow", function(){ setVH(); landCheck(); });
 if(window.visualViewport) window.visualViewport.addEventListener("resize", setVH);
+try{ if(window.matchMedia){ var mq9=window.matchMedia("(orientation: landscape) and (max-height: 600px)"); if(mq9.addEventListener) mq9.addEventListener("change", landCheck); else if(mq9.addListener) mq9.addListener(landCheck); } }catch(e){}
 ensureOrder();
 
 /* Import JSON (full restore) */
