@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.80 -->
+<!-- Baby Care v0.82 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -48,14 +48,11 @@
   .scroll.pad0{padding-bottom:28px;}
   #rotate{display:none;}
   @media screen and (orientation:landscape) and (max-height:600px){
-    #rotate{display:flex; position:fixed; inset:0; z-index:9999; background:#000; color:#fff;
-      flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px;}
-    .phone,.stage{display:none !important;}
   }
   .tabwrap{position:absolute; left:16px; right:16px; bottom:18px; z-index:20; display:flex; align-items:center; gap:12px;}
 
   /* ---- fullscreen (on the iPhone) ---- */
-  @media (max-width:500px){
+  @media (max-width:500px), screen and (orientation:landscape) and (max-height:600px){
     html,body{position:fixed; top:0; left:0; width:100%; height:100%; overflow:hidden;}
     .stage{padding:0; height:var(--appvh, 100dvh); overflow:hidden;}
     .phone{width:100%; height:var(--appvh, 100dvh); border-radius:0; border:0; box-shadow:none;}
@@ -690,7 +687,7 @@ function dobValue(){
 var nsWake=null;
 function nsWakeReq(){
   try{
-    if(("wakeLock" in navigator) && (S.night||S.cnight) && !nsWake){
+    if(("wakeLock" in navigator) && (S.night||S.cnight||ui.land) && !nsWake){
       navigator.wakeLock.request("screen").then(function(w){
         nsWake=w;
         try{ w.addEventListener("release", function(){ nsWake=null; }); }catch(e){}
@@ -2677,7 +2674,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.80</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.82</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4277,6 +4274,59 @@ function nightNavHtml(nc){
     ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">'+t("log")+'</span></button>';
   return '<div style="display:flex;align-items:center;border-radius:999px;padding:6px;background:'+alpha(nc,0.14)+';border:1px solid '+alpha(nc,0.3)+'">'+b(items[0])+b(items[1])+log+b(items[2])+b(items[3])+'</div>';
 }
+function nightLandHtml(){
+  var b=nightBits(), nc=nightCol(), i;
+  var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
+  var keys=[]; for(i=0;i<b.lss.length;i++) keys.push(b.lss[i].k);
+  var sess="";
+  if(b.lss.length>=1){
+    sess='<div id="nacts" data-k="'+keys.join("|")+'" style="display:flex;gap:14px;align-items:stretch;width:100%">'+
+      nCol(b.lss[0], nc, pill)+
+      (b.lss.length>=2 ? '<span style="width:1px;flex:none;background:'+alpha(nc,0.22)+'"></span>'+nCol(b.lss[b.lss.length-1], nc, pill) : "")+
+      '</div>';
+  }
+  var info='<div style="font-size:16px;line-height:1.9;color:'+alpha(nc,0.8)+';text-align:center">'+
+    '<div id="nlf">'+b.lf+'</div>'+
+    (b.lfd ? '<div id="nlfd" style="font-size:14px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
+    (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
+    nightNF(nc)+nightRemote(nc)+'</div>';
+  return '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;display:flex;flex-direction:row;align-items:stretch;width:100%;cursor:pointer;padding:calc(env(safe-area-inset-top, 0px) + 10px) 18px 14px">'+
+    '<div style="flex:0 0 42%;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 10px">'+
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'+
+        '<div id="ndate" class="num" style="font-size:15px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+'">'+nsDate()+'</div>'+
+        '<div id="nclk" class="num" style="font-size:64px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
+      '</div>'+
+      '<div style="width:100%;max-width:340px;flex:none">'+nightNavHtml(nc)+'</div>'+
+    '</div>'+
+    '<span style="width:1px;flex:none;background:'+alpha(nc,0.14)+';margin:10px 6px"></span>'+
+    '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;overflow-y:auto;padding:6px 6px">'+sess+info+'</div>'+
+    '</div>';
+}
+function cLandHtml(){
+  var se=S.sess.carseat;
+  if(!se) return "";
+  var nc=cCol(), sec=sE(se), wt=cWarnText();
+  return '<div id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;display:flex;flex-direction:row;align-items:stretch;width:100%;padding:calc(env(safe-area-inset-top, 0px) + 10px) 18px 14px">'+
+    '<div style="flex:0 0 42%;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 10px">'+
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'+
+        '<div id="ndate" class="num" style="font-size:15px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+'">'+nsDate()+'</div>'+
+        '<div id="cclk" class="num" style="font-size:64px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
+      '</div>'+
+      '<button id="cexit" class="press" data-a="cnightoff" style="width:100%;max-width:340px;flex:none;height:48px;border-radius:16px;background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35)+';color:'+nc+';font-size:15px;font-weight:700">Exit Carstand view</button>'+
+    '</div>'+
+    '<span style="width:1px;flex:none;background:'+alpha(nc,0.14)+';margin:10px 6px"></span>'+
+    '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow-y:auto;padding:6px 10px">'+
+      '<div id="cttl" style="display:flex;align-items:center;gap:10px;justify-content:center;color:'+nc+'"><span id="cico">'+ic("car",22,nc)+'</span><span style="font-size:20px;font-weight:700">Car Seat</span></div>'+
+      '<div id="cst" class="num" style="font-size:44px;font-weight:700;color:'+nc+'">'+fmt(Math.round(sec))+(se.run?"":" \u00B7 paused")+'</div>'+
+      '<div id="cstat" style="font-size:15px;font-weight:600;color:'+alpha(nc,0.8)+'">'+cStatText()+'</div>'+
+      '<div style="display:flex;gap:12px;width:100%;max-width:360px">'+
+      '<button id="cb1" class="press" data-a="lapause" data-x="carseat" style="flex:1;height:50px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:16px;font-weight:700">'+(se.run?"Pause":"Resume")+'</button>'+
+      '<button id="cb2" class="press" data-a="nstop" data-x="carseat" style="flex:1;height:50px;border-radius:16px;background:'+alpha(nc,0.16)+';color:'+nc+';font-size:16px;font-weight:700">Stop &amp; save</button>'+
+      '</div>'+
+      '<div id="calrt" style="display:'+(wt?'flex':'none')+';flex-direction:row;align-items:center;gap:10px;color:'+nc+'"><span id="calrtic" class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(nc,0.16)+';border:2.5px solid '+nc+'">'+bang(nc,24)+'</span><span id="calrtt" style="font-size:14px;font-weight:700;text-align:left;line-height:1.35">'+wt+'</span></div>'+
+    '</div>'+
+    '</div>';
+}
 function nightHtml(){
   var b=nightBits(), nc=nightCol();
   var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
@@ -4631,7 +4681,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
-  document.getElementById("ov").innerHTML = S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml);
+  document.getElementById("ov").innerHTML = ui.land ? (S.sess.carseat ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
@@ -4940,7 +4990,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.80";
+var APPVER="0.82";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5953,8 +6003,8 @@ setInterval(function(){
   }
 
   /* carstand */
-  if(S.night||S.cnight) nsWakeReq();
-  if(S.cnight){
+  if(S.night||S.cnight||ui.land){ nsWakeReq(); } else if(nsWake){ try{ nsWake.release(); }catch(e){} nsWake=null; }
+  if(S.cnight || (ui.land && S.sess.carseat)){
     var se4=S.sess.carseat;
     if(!se4){ S.cnight=false; render(); }
     else {
@@ -5969,7 +6019,7 @@ setInterval(function(){
   }
 
   /* nightstand */
-  if(S.night){
+  if(S.night || (ui.land && !S.sess.carseat)){
     var nc3=document.getElementById("nclk");
     if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
     var nd3=document.getElementById("ndate");
@@ -6008,7 +6058,7 @@ setInterval(function(){
   }
 },1000);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden) render(); });
-document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight)) nsWakeReq(); });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||ui.land)) nsWakeReq(); });
 
 /* boot: static status bar icons + first paint */
 document.getElementById("isl-ic").innerHTML = ic("baby",13,"#fff",{sw:2.4});
@@ -6017,11 +6067,17 @@ load();
 applyLang();
 try{ if(window.screen && screen.orientation && screen.orientation.lock) screen.orientation.lock("portrait").catch(function(){}); }catch(e){}
 function setVH(){ try{ document.documentElement.style.setProperty("--appvh", (window.innerHeight||0)+"px"); }catch(e){} }
-setVH();
-window.addEventListener("resize", setVH);
-window.addEventListener("orientationchange", function(){ setVH(); setTimeout(setVH, 150); setTimeout(setVH, 400); });
-window.addEventListener("pageshow", setVH);
+function landCheck(){
+  var isL=false;
+  try{ isL = !!(window.matchMedia && window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches); }catch(e){}
+  if(ui.land!==isL){ ui.land=isL; render(); }
+}
+setVH(); landCheck();
+window.addEventListener("resize", function(){ setVH(); landCheck(); });
+window.addEventListener("orientationchange", function(){ setVH(); landCheck(); setTimeout(function(){ setVH(); landCheck(); }, 200); setTimeout(function(){ setVH(); landCheck(); }, 450); });
+window.addEventListener("pageshow", function(){ setVH(); landCheck(); });
 if(window.visualViewport) window.visualViewport.addEventListener("resize", setVH);
+try{ if(window.matchMedia){ var mq9=window.matchMedia("(orientation: landscape) and (max-height: 600px)"); if(mq9.addEventListener) mq9.addEventListener("change", landCheck); else if(mq9.addListener) mq9.addListener(landCheck); } }catch(e){}
 ensureOrder();
 
 /* Import JSON (full restore) */
