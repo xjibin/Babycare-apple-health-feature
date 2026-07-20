@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.70 -->
+<!-- Baby Care v0.71 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -45,11 +45,18 @@
     scrollbar-width:none; -webkit-overflow-scrolling:touch;}
   .scroll::-webkit-scrollbar{display:none;}
   .scroll.pad0{padding-bottom:28px;}
+  #rotate{display:none;}
+  @media screen and (orientation:landscape) and (max-height:600px){
+    #rotate{display:flex; position:fixed; inset:0; z-index:9999; background:#000; color:#fff;
+      flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px;}
+    .phone,.stage{display:none !important;}
+  }
   .tabwrap{position:absolute; left:16px; right:16px; bottom:18px; z-index:20; display:flex; align-items:center; gap:12px;}
 
   /* ---- fullscreen (on the iPhone) ---- */
   @media (max-width:500px){
-    .stage{padding:0;}
+    html,body{position:fixed; top:0; left:0; width:100%; height:100%; overflow:hidden;}
+    .stage{padding:0; height:100dvh; overflow:hidden;}
     .phone{width:100%; height:100dvh; border-radius:0; border:0; box-shadow:none;}
     .statusbar,.homebar,.caption{display:none;}
     .scroll{padding-top:calc(env(safe-area-inset-top) + 12px); padding-bottom:calc(env(safe-area-inset-bottom) + 112px);}
@@ -149,6 +156,7 @@
 </style>
 </head>
 <body>
+<div id="rotate"><div style="font-size:44px">↻</div><div style="font-size:18px;font-weight:800">Please rotate to portrait</div><div style="font-size:14px;color:#9a9a9f">Baby Care works best upright</div></div>
 <div class="stage">
   <div class="phone" id="phone">
     <div class="statusbar">
@@ -1315,7 +1323,30 @@ var A = {
     ui.mt[x]=!ui.mt[x];
     render();
   },
+  medStart: function(x){ ui.mstartD=Math.max(0, Math.min(365, (ui.mstartD||0) - (+x))); render(); },
+  emStart: function(x){ var p=x.split("|"); medEditSync(); var m=ui.medDraft&&ui.medDraft[+p[0]]; if(m){ m.ts0=(m.ts0||Date.now())+(+p[1])*864e5; if(m.ts0>Date.now()) m.ts0=Date.now(); } render(); },
+  medPastGo: function(){ medMigrate(); ui.medEdit=false; ui.medDraft=null; ui.medPast=true; ui.mpSel=(S.meds&&S.meds[0]?S.meds[0].id:null); if(ui.dts) ui.dts.mp=null; render(); },
+  mpCancel: function(){ ui.medPast=false; ui.mpSel=null; if(ui.dts) ui.dts.mp=null; render(); },
+  mpSel: function(x){ ui.mpSel=+x; render(); },
+  savePastMed: function(){
+    if(!ui.mpSel){ toast("Pick a medicine"); return; }
+    var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===ui.mpSel) m=S.meds[i];
+    if(!m){ toast("Pick a medicine"); return; }
+    var d=dtValue("mp");
+    if(d.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
+    var slot=curSlot(d.getHours()) || "m";
+    var sn = slot==="m"?"Morning":slot==="n"?"Noon":"Night";
+    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"medicine",
+      detail:m.name+" \u00B7 "+m.ml+" "+(m.unit||"ml")+" \u00B7 "+sn,
+      data:{mid:m.id, name:m.name, ml:m.ml, slot:slot},
+      ts:d.toISOString(), by:(S.who||undefined), up:Date.now()});
+    S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+    save();
+    ui.medPast=false; ui.mpSel=null; if(ui.dts) ui.dts.mp=null;
+    render(); toast("Past dose logged");
+  },
   medEditGo: function(){
+    ui.medPast=false;
     medMigrate();
     ui.medDraft=JSON.parse(JSON.stringify(S.meds||[]));
     ui.medEdit=true;
@@ -1361,9 +1392,9 @@ var A = {
     var mu=byId("munit"); var unit=((mu&&mu.value)||ui.munit||"ml");
     S.meds.push({id:Date.now(), name:nm, ml:ui.mml, unit:unit, times:{m:ui.mt.m, n:ui.mt.n, ni:ui.mt.ni},
       food:(ui.mfood||"After Food"), tillN:(ui.mtU==="sos"?0:(ui.mtN||2)), tillU:(ui.mtU||"w"),
-      whom:(ui.mwho||"Baby"), ts0:Date.now()});
+      whom:(ui.mwho||"Baby"), ts0:startAgoTs(ui.mstartD||0)});
     ui.mname=""; ui.mml=1; ui.mt={m:false,n:true,ni:false};
-    ui.mfood="After Food"; ui.mtN=2; ui.mtU="w"; ui.mwho="Baby"; ui.munit="ml";
+    ui.mfood="After Food"; ui.mtN=2; ui.mtU="w"; ui.mwho="Baby"; ui.munit="ml"; ui.mstartD=0;
     save(); render(); toast("Added "+nm);
   },
   medDel: function(x){
@@ -2574,7 +2605,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.70</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.71</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3088,6 +3119,15 @@ function vSeat(a){
 
 /* ============ daily medicine ============ */
 var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
+function startAgoTs(daysAgo){ var d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-(daysAgo||0)); return d.getTime(); }
+function startLblTs(ts0){
+  var t=new Date(); t.setHours(0,0,0,0);
+  var dm=new Date(ts0||Date.now()); dm.setHours(0,0,0,0);
+  var da=Math.round((t.getTime()-dm.getTime())/864e5);
+  if(da<=0) return "Today";
+  if(da===1) return "Yesterday";
+  return new Date(ts0||Date.now()).toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"})+" \u00B7 "+da+"d ago";
+}
 function medAddCardHtml(a, mtc){
   return '<div class="card" style="padding:16px;margin-bottom:8px">'+
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">ADD MEDICATION</div>'+
@@ -3124,6 +3164,12 @@ function medAddCardHtml(a, mtc){
         ["Baby","Mother"].map(function(w9){
           return '<button class="pchip press" data-a="medW" data-x="'+w9+'" style="'+((ui.mwho||"Baby")===w9?'background:'+a.c+';color:#000':'')+'">'+w9+'</button>';
         }).join("")+'</div>'+
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">STARTED</div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">'+
+        '<button class="circ press" data-a="medStart" data-x="-1" style="width:30px;height:30px;background:var(--card2)">'+ic("minus",14,"#fff")+'</button>'+
+        '<span class="num" style="flex:1;text-align:center;font-size:15px;font-weight:700">'+startLblTs(startAgoTs(ui.mstartD||0))+'</span>'+
+        '<button class="circ press" data-a="medStart" data-x="1" style="width:30px;height:30px;background:var(--card2)">'+ic("plus",14,"#fff")+'</button>'+
+      '</div>'+
       '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
     '</div>';
 }
@@ -3173,6 +3219,12 @@ function medFormHtml(m, idx, a){
       ["Baby","Mother"].map(function(w9){
         return '<button class="pchip press" data-a="emW" data-x="'+idx+'|'+w9+'" style="'+((m.whom||"Baby")===w9?'background:'+a.c+';color:#000':'')+'">'+w9+'</button>';
       }).join("")+'</div>'+
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin:16px 4px 8px">STARTED</div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:2px">'+
+      '<button class="circ press" data-a="emStart" data-x="'+idx+'|-1" style="width:30px;height:30px;background:var(--card2)">'+ic("minus",14,"#fff")+'</button>'+
+      '<span class="num" style="flex:1;text-align:center;font-size:15px;font-weight:700">'+startLblTs(m.ts0)+'</span>'+
+      '<button class="circ press" data-a="emStart" data-x="'+idx+'|1" style="width:30px;height:30px;background:var(--card2)">'+ic("plus",14,"#fff")+'</button>'+
+    '</div>'+
     '</div>';
 }
 function medEditFormsHtml(a){
@@ -3189,6 +3241,24 @@ function medEditSync(){
   }
 }
 function vMed(a){
+  if(ui.medPast){
+    medMigrate();
+    var pchips="", pi;
+    for(pi=0; pi<(S.meds||[]).length; pi++){
+      var pm=S.meds[pi];
+      pchips+='<button class="pchip press" data-a="mpSel" data-x="'+pm.id+'" style="'+(ui.mpSel===pm.id?'background:'+a.c+';color:#000':'')+'">'+esc(pm.name||"Med")+'</button>';
+    }
+    return '<div class="full" style="padding:0 4px">'+backBtn(a.c, "Medicine", "mpCancel")+
+      '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Add past medication</div>'+
+      '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Log a dose you gave earlier</div>'+
+      lbl("MEDICINE")+
+      (pchips ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+pchips+'</div>'
+              : '<div class="card" style="padding:16px;color:var(--sub);font-size:14px;margin-bottom:8px">Add a medication first.</div>')+
+      '<div style="height:8px"></div>'+lbl("TIME")+dtPicker("mp")+
+      '<div style="flex:1;min-height:20px"></div>'+
+      saveBar(a.c, !!ui.mpSel, "savePastMed", "Log dose")+
+      '</div>';
+  }
   var SLOTS=[["m","Morning"],["n","Noon"],["ni","Night"]];
   var tk=dayKey(new Date().toISOString());
   function done(id, slot){
@@ -3240,6 +3310,7 @@ function vMed(a){
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">TODAY</div>'+
       (n ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+todayH+'</div>'
          : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication below.</div>')+'</div>'+
+    '<button class="press" data-a="medPastGo" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:44px;border-radius:14px;margin-bottom:18px;background:var(--card);color:'+a.c+';font-size:15px;font-weight:700">'+ic("plus",16,a.c,{sw:2.6})+'Add past medication</button>'+
     (S.meds.length ? '<div class="card" style="padding:16px;margin-bottom:18px">'+
       '<div style="display:flex;align-items:center;margin-bottom:10px"><span style="flex:1;font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub)">MY MEDICATIONS</span>'+(ui.medEdit?'':'<button class="press" data-a="medEditGo" style="font-size:13px;font-weight:800;color:'+a.c+'">Edit</button>')+'</div>'+
       '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
@@ -3626,15 +3697,17 @@ function vEdit(){
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c, "Back", "eback")+
     '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Edit '+a.t+'</div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Logged '+dayLabel(e.ts)+' \u00B7 '+tClock(e.ts)+(e.by?' \u00B7 by '+esc(e.by):'')+'</div>'+
-    body+'<div style="flex:1;min-height:20px"></div>'+
-    saveBar(a.c, true, "eSave", "Save Changes")+
+    body+
     ((function(){
       var ee9=S.entries[S.eidx];
       return (ee9 && OKR[ee9.act] && dayKey(ee9.ts)===dayKey(Date.now()) && !sessActive(ee9.act))
         ? '<button class="press" data-a="resume" data-x="'+ee9.id+'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:16px;margin-top:14px;background:var(--card);font-size:15px;font-weight:700;color:#fff">'+ic("play",15,"#fff",{fill:true})+'Resume this session</button>'
         : "";
     })())+
-    '<button class="press" data-a="eDel" style="display:block;width:100%;text-align:center;margin-top:14px;padding:8px;color:var(--red);font-size:16px;font-weight:600">Delete Entry</button></div>';
+    '<button class="press" data-a="eDel" style="display:block;width:100%;text-align:center;margin-top:14px;padding:8px;color:var(--red);font-size:16px;font-weight:600">Delete Entry</button>'+
+    '<div style="flex:1;min-height:20px"></div>'+
+    saveBar(a.c, true, "eSave", "Save Changes")+
+    '</div>';
 }
 
 /* ============ Trends & predictions ============ */
@@ -4353,7 +4426,7 @@ function tabbarHtml(){
       '<span class="tl" style="color:'+(on?it.tint:"#8E8E93")+'">'+it.t+'</span></button>';
   }
   var gc9=((S.baby&&S.baby.sex)==="Boy"?"#6FA8FF":C.pink);
-  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:'+(S.sub==="hist"?'0 0 22px 6px '+alpha(gc9,0.10)+', 0 0 8px 2px '+alpha(gc9,0.10)+', 0 6px 16px rgba(0,0,0,.45)':'0 6px 16px rgba(0,0,0,.45)')+';background:'+gc9+'">'+
+  var logBtn='<button class="press" data-a="loggo" style="flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:56px;height:62px;border-radius:26px;margin:-16px 3px -2px;box-shadow:'+(S.sub==="hist"?'0 0 26px 7px '+alpha(gc9,0.12)+', 0 0 10px 3px '+alpha(gc9,0.12)+', 0 6px 16px rgba(0,0,0,.45)':'0 6px 16px rgba(0,0,0,.45)')+';background:'+gc9+'">'+
     ic("list",16,"#000",{sw:2.4})+'<span style="font-size:9px;font-weight:800;color:#000;line-height:1">Log</span></button>';
   return '<div class="tabbar">'+tabBtn(items[0])+tabBtn(items[1])+logBtn+tabBtn(items[2])+tabBtn(items[3])+'</div>';
 }
@@ -4425,6 +4498,7 @@ function render(){
       }
       else if(ia && ia.kind==="growth"){ initDT("g1", new Date()); ggInit(); }
       else if(ia && ia.kind==="vax"){ initVax(); initDT("v1", new Date()); }
+      else if(ia && ia.kind==="med" && ui.medPast) initDT("mp", new Date());
     }
   }
   if(S.tab==="sharing"){
@@ -4475,6 +4549,7 @@ function render(){
   var cb9=byId("csbar");
   if(cb9) cb9.style.display = (S.sub==="cset") ? "flex" : "none";
   if(ui.medEdit && !(S.tab==="activity" && S.route==="medicine")){ ui.medEdit=false; ui.medDraft=null; }
+  if(ui.medPast && !(S.tab==="activity" && S.route==="medicine")){ ui.medPast=false; ui.mpSel=null; }
   var mdb9=byId("medbar");
   if(mdb9) mdb9.style.display = ui.medEdit ? "flex" : "none";
   var q9=byId("csq");
@@ -4788,7 +4863,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.70";
+var APPVER="0.71";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5856,6 +5931,7 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden) r
 document.getElementById("isl-ic").innerHTML = ic("baby",13,"#fff",{sw:2.4});
 document.getElementById("sb-wifi").innerHTML = ic("wifi",16,"#fff");
 load();
+try{ if(window.screen && screen.orientation && screen.orientation.lock) screen.orientation.lock("portrait").catch(function(){}); }catch(e){}
 ensureOrder();
 
 /* Import JSON (full restore) */
