@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.88 -->
+<!-- Baby Care v0.89 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -390,16 +390,64 @@ function suggSide(){
   return cfgGet("sideDef");
 }
 function bandOf(ms){ var hh=new Date(ms).getHours(); return (hh>=cfgGet("dayStart") && hh<cfgGet("dayEnd")) ? "d" : "n"; }
+function feedAgeDef(){
+  var days=(S.baby&&S.baby.dob)? Math.floor((Date.now()-new Date(S.baby.dob).getTime())/864e5) : 20;
+  if(days<0) days=0;
+  var day,night;
+  if(days<28){ day=150; night=180; }
+  else if(days<56){ day=165; night=210; }
+  else if(days<84){ day=180; night=240; }
+  else if(days<168){ day=210; night=300; }
+  else { day=240; night=360; }
+  return {day:day, night:night, days:days};
+}
+function medF(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(a.length/2); return a.length%2 ? a[m] : (a[m-1]+a[m])/2; }
+function feedModel(){
+  var def=feedAgeDef();
+  var f=feedTimes(), gD=[], gN=[], i;
+  for(i=1;i<f.length;i++){
+    var g=(f[i]-f[i-1])/6e4;
+    if(g<=15 || g>600) continue;            // ignore cluster-feeds and logging gaps
+    if(bandOf(f[i-1])==="d") gD.push(g); else gN.push(g);
+  }
+  // weight recent feeds more: use last ~24 gaps of each band
+  gD=gD.slice(-24); gN=gN.slice(-24);
+  var lD=(gD.length>=4)? medF(gD) : null;
+  var lN=(gN.length>=3)? medF(gN) : null;
+  var manD=(S.feedIvD!=null), manN=(S.feedIvN!=null);
+  var ivD = manD ? S.feedIvD : (lD!=null ? Math.round(lD/5)*5 : def.day);
+  var ivN = manN ? S.feedIvN : (lN!=null ? Math.round(lN/5)*5 : def.night);
+  ivD=Math.max(45, Math.min(360, ivD)); ivN=Math.max(45, Math.min(480, ivN));
+  return {ivD:ivD, ivN:ivN, def:def,
+    srcD: manD?"manual":(lD!=null?"learned":"age"),
+    srcN: manN?"manual":(lN!=null?"learned":"age"),
+    nD:gD.length, nN:gN.length};
+}
+function feedSchedule(){
+  var f=feedTimes(), m=feedModel(), now=Date.now();
+  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime(), end=day0+864e5;
+  var out=[], i;
+  for(i=0;i<f.length;i++){ if(f[i]>=day0 && f[i]<=now) out.push({ts:f[i], done:true}); }
+  var t=f.length? f[f.length-1] : now, guard=0;
+  while(guard++<48){
+    var iv=(bandOf(t)==="d"?m.ivD:m.ivN)*6e4;
+    t+=iv;
+    if(t>end+1) break;
+    out.push({ts:t, done:false});
+  }
+  return {list:out, model:m};
+}
 function upNext(){
   var f=feedTimes(); if(!f.length) return null;
-  var autoD=120*6e4, autoN=180*6e4;
-  var ivD=(S.feedIvD!=null)? S.feedIvD*6e4 : autoD;
-  var ivN=(S.feedIvN!=null)? S.feedIvN*6e4 : autoN;
+  var m=feedModel();
+  var autoD=m.def.day*6e4, autoN=m.def.night*6e4;
+  var ivD=m.ivD*6e4, ivN=m.ivN*6e4;
   var band=bandOf(f[f.length-1]);
   var iv=(band==="d")?ivD:ivN;
   return {last:f[f.length-1], band:band, iv:iv, ivD:ivD, ivN:ivN, autoD:autoD, autoN:autoN,
     mD:(S.feedIvD!=null), mN:(S.feedIvN!=null),
     med:iv, auto:(band==="d"?autoD:autoN), manual:(band==="d"?(S.feedIvD!=null):(S.feedIvN!=null)),
+    src:(band==="d"?m.srcD:m.srcN), model:m,
     next:f[f.length-1]+iv, side:suggSide()};
 }
 function agoStr(ms){
@@ -1146,9 +1194,10 @@ var A = {
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
+      var fm9=feedModel();
       ui.fmD=(S.feedIvD!=null); ui.fmN=(S.feedIvN!=null);
-      ui.fivD = S.feedIvD!=null ? S.feedIvD : 120;
-      ui.fivN = S.feedIvN!=null ? S.feedIvN : 180;
+      ui.fivD = S.feedIvD!=null ? S.feedIvD : fm9.ivD;
+      ui.fivN = S.feedIvN!=null ? S.feedIvN : fm9.ivN;
     }
     render();
   },
@@ -2696,7 +2745,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.88</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.89</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3582,6 +3631,23 @@ function vFeed(){
     (due ? 'Due now' : tClock(nx))+'</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+
     (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+'</div></div>';
+  (function(){
+    var sch=feedSchedule(), mdl=sch.model, rows="", nextDone=false, i;
+    for(i=0;i<sch.list.length;i++){
+      var it=sch.list[i], mk, isNow=false, col="#fff", wt="700";
+      if(it.done){ mk=ic("check",15,C.green); col="var(--sub)"; wt="500"; }
+      else if(!nextDone){ nextDone=true; isNow=(it.ts<=Date.now()); mk=(isNow?'<span style="font-size:11px;font-weight:800;color:'+C.mint+'">NOW</span>':ic("clock",15,C.mint)); if(isNow) col=C.mint; }
+      else { mk=ic("clock",14,C.sub); col="var(--sub)"; wt="600"; }
+      rows+='<div style="display:flex;align-items:center;gap:12px;padding:11px 14px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
+        '<span style="width:26px;text-align:center;flex:none">'+mk+'</span>'+
+        '<span style="flex:1;font-size:15px;font-weight:'+wt+';color:'+col+'">'+((isNow)?'Due now \u00B7 '+tClock(it.ts):tClock(it.ts))+'</span>'+
+        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(it.ts)==="d"?"day":"night")+'</span></div>';
+    }
+    h += lbl("TODAY\u2019S FEED SCHEDULE")+'<div class="card" style="padding:2px 0;margin-bottom:8px">'+rows+'</div>'+
+      '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:16px;line-height:1.5">'+
+      ((mdl.srcD==="learned"||mdl.srcN==="learned")?'Learned from '+esc((S.baby&&S.baby.name)||"baby")+'\u2019s recent feeds':'Based on age \u2014 fills in as more feeds are logged')+
+      ' \u00B7 day ~'+fmtMin(mdl.ivD*60)+' ('+mdl.srcD+'), night ~'+fmtMin(mdl.ivN*60)+' ('+mdl.srcN+')</div>';
+  })();
   h += lbl("FEED INTERVAL")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
     stepRow("Day \u00B7 8am\u20138pm","fivd", fmtMin(ui.fivD*60), "", 5, 15, true)+
@@ -5012,7 +5078,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.88";
+var APPVER="0.89";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
