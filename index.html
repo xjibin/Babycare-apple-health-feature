@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.71 -->
+<!-- Baby Care v0.72 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1522,7 +1522,7 @@ var A = {
     render();
   },
   uprefresh: function(){
-    var u=location.pathname+"?u="+Date.now();
+    var u=location.href.replace(/[?#].*$/, "")+"?u="+Date.now();
     if(A._nav){ A._nav(u); return; }
     try{ location.replace(u); }catch(e){ try{ location.href=u; }catch(e2){} }
   },
@@ -2605,7 +2605,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.71</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.72</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4863,7 +4863,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.71";
+var APPVER="0.72";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5122,8 +5122,10 @@ function upModal(){
 }
 function upCheck(){
   try{
-    fetch(location.pathname+"?upc="+Date.now(), {cache:"no-store"})
-      .then(function(r){ return r.ok ? r.text() : null; })
+    var base=location.href.replace(/[?#].*$/, "");
+    fetch(base+"?upc="+Date.now()+Math.floor(Math.random()*1e6),
+      {cache:"no-store", headers:{"Cache-Control":"no-cache, no-store, must-revalidate", "Pragma":"no-cache"}})
+      .then(function(r){ return (r && r.ok) ? r.text() : null; })
       .then(function(t){
         if(!t) return;
         var m=t.match(/Test build v([0-9.]+)/);
@@ -6038,9 +6040,11 @@ byId("impf2").addEventListener("change", function(){
 })();
 
 setAppIcons();
-setTimeout(upCheck, 2500);
-setInterval(upCheck, 9e5);
+setTimeout(upCheck, 1200);
+setInterval(upCheck, 3e5);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden) upCheck(); });
+window.addEventListener("pageshow", function(){ upCheck(); });
+window.addEventListener("focus", function(){ upCheck(); });
 document.addEventListener("touchstart", function(e){
   var h=e.target && e.target.closest ? e.target.closest("#hstack") : null;
   if(h && e.touches && e.touches.length){
