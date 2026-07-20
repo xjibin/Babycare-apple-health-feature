@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.82 -->
+<!-- Baby Care v0.83 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2674,7 +2674,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.82</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.83</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4681,7 +4681,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
-  document.getElementById("ov").innerHTML = ui.land ? (S.sess.carseat ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
+  document.getElementById("ov").innerHTML = ui.land ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
@@ -4990,7 +4990,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.82";
+var APPVER="0.83";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -6004,7 +6004,7 @@ setInterval(function(){
 
   /* carstand */
   if(S.night||S.cnight||ui.land){ nsWakeReq(); } else if(nsWake){ try{ nsWake.release(); }catch(e){} nsWake=null; }
-  if(S.cnight || (ui.land && S.sess.carseat)){
+  if(S.cnight || (ui.land && sessActive("carseat"))){
     var se4=S.sess.carseat;
     if(!se4){ S.cnight=false; render(); }
     else {
@@ -6019,7 +6019,7 @@ setInterval(function(){
   }
 
   /* nightstand */
-  if(S.night || (ui.land && !S.sess.carseat)){
+  if(S.night || (ui.land && !sessActive("carseat"))){
     var nc3=document.getElementById("nclk");
     if(nc3) nc3.textContent = new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"");
     var nd3=document.getElementById("ndate");
