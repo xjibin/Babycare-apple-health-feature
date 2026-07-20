@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.73 -->
+<!-- Baby Care v0.74 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -888,11 +888,16 @@ function medPin(){
 function medMilestoneHtml(){
   var inner;
   medMigrate();
-  var am=(S.meds||[]).filter(function(m9){ return m9 && !medExpired(m9); });
+  var slot=curSlot();
+  var am=(S.meds||[]).filter(function(m9){ return m9 && !medExpired(m9) && (slot ? (m9.times && m9.times[slot]) : true); });
   if(!am.length){
-    inner='<div style="font-size:13px;color:var(--sub)">No medicines added.</div>';
+    var anyMed=(S.meds||[]).filter(function(m9){ return m9 && !medExpired(m9); }).length;
+    inner='<div style="font-size:13px;color:var(--sub)">'+(anyMed ? 'No medicines for this time of day.' : 'No medicines added.')+'</div>';
   } else {
-    inner='<div style="display:flex;gap:16px">'+medColHtml(am[0])+medColHtml(am.length>1?am[1]:null)+'</div>';
+    inner='';
+    for(var mi9=0; mi9<am.length; mi9+=2){
+      inner+='<div style="display:flex;gap:16px'+(mi9?';margin-top:14px':'')+'">'+medColHtml(am[mi9])+medColHtml(am.length>mi9+1?am[mi9+1]:null)+'</div>';
+    }
   }
   return '<div class="card press" data-a="openmed" style="margin-bottom:12px">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,C.green)+
@@ -2605,7 +2610,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.73</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.74</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4863,7 +4868,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.73";
+var APPVER="0.74";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
