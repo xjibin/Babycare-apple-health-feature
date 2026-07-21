@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.89 -->
+<!-- Baby Care v0.90 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -402,16 +402,70 @@ function feedAgeDef(){
   return {day:day, night:night, days:days};
 }
 function medF(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(a.length/2); return a.length%2 ? a[m] : (a[m-1]+a[m])/2; }
+function feedFactorStats(){
+  var now=Date.now(), win=now-10*864e5, i, e, t;
+  var durs=[], sleeps=[], lastSleepEnd=null, lastSleepMin=null;
+  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime();
+  var napToday=0, napWin=0, napDays={};
+  for(i=0;i<S.entries.length;i++){
+    e=S.entries[i]; t=new Date(e.ts).getTime();
+    if(e.act==="nursing" && e.data && e.data.total && t>=win) durs.push(e.data.total/60);
+    if(e.act==="babysleep" && e.data && e.data.sec && t>=win){ var mn=e.data.sec/60; sleeps.push(mn); if(lastSleepEnd==null||t>lastSleepEnd){ lastSleepEnd=t; lastSleepMin=mn; } }
+    if(e.act==="nappy"){ if(t>=day0) napToday++; if(t>=win){ napWin++; napDays[new Date(t).toDateString()]=1; } }
+  }
+  var nd=0, k; for(k in napDays) nd++; if(nd<1) nd=1;
+  return {avgDur:(durs.length?medF(durs):null), avgSleep:(sleeps.length?medF(sleeps):null),
+    lastSleepMin:lastSleepMin, lastSleepEnd:lastSleepEnd,
+    napToday:napToday, napPerDay:napWin/nd, nDur:durs.length, nSleep:sleeps.length};
+}
+function lastFeedDurMin(){
+  var best=null, bt=-1, i;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(isFeed(e)){ var t=new Date(e.ts).getTime(); if(t>bt){ bt=t; best=e; } } }
+  if(!best) return null;
+  var dd=best.data||{};
+  if(dd.total) return dd.total/60;
+  if(dd.min) return dd.min;
+  return null;
+}
+function lastFeedBurped(){
+  var f=feedTimes(); if(!f.length) return null;
+  var last=f[f.length-1], i;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="burp"){ var t=new Date(e.ts).getTime(); if(t>=last-2*6e4 && t<=last+25*6e4) return true; } }
+  return false;
+}
+function spurtWindow(days){ return (days>=6&&days<=11)||(days>=18&&days<=25)||(days>=40&&days<=47); }
+function feedAdjust(){
+  var f=feedTimes(); if(!f.length) return {adj:0, parts:[]};
+  var s=feedFactorStats(), parts=[], adj=0, x;
+  function cl(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+  var ld=lastFeedDurMin();
+  if(ld!=null && s.avgDur){ x=cl(28*(ld-s.avgDur)/s.avgDur, -20, 20); if(Math.abs(x)>=1){ adj+=x; parts.push({k:"Feed length", v:x}); } }
+  var days=feedAgeDef().days;
+  if(spurtWindow(days)){ x=-8; adj+=x; parts.push({k:"Growth spurt", v:x}); }
+  if(s.lastSleepMin!=null && s.avgSleep){
+    var woke=(Date.now()-s.lastSleepEnd)<45*6e4;
+    if(s.lastSleepMin>s.avgSleep*1.3 && woke){ x=-6; adj+=x; parts.push({k:"Long sleep", v:x}); }
+    else if(s.lastSleepMin<s.avgSleep*0.6){ x=4; adj+=x; parts.push({k:"Short naps", v:x}); }
+  }
+  if(s.napPerDay>=3){
+    var d1=new Date(); d1.setHours(0,0,0,0);
+    var frac=(Date.now()-d1.getTime())/864e5;
+    if(s.napToday < s.napPerDay*frac-1.5){ x=-4; adj+=x; parts.push({k:"Low output", v:x}); }
+  }
+  if(lastFeedBurped()===false){ x=-3; adj+=x; parts.push({k:"Not burped", v:x}); }
+  adj=cl(Math.round(adj), -30, 30);
+  return {adj:adj, parts:parts, stats:s};
+}
 function feedModel(){
   var def=feedAgeDef();
-  var f=feedTimes(), gD=[], gN=[], i;
+  var f=feedTimes(), gD=[], gN=[], i, win=Date.now()-10*864e5;
   for(i=1;i<f.length;i++){
+    if(f[i]<win) continue;                  // rolling 7-10 day window
     var g=(f[i]-f[i-1])/6e4;
     if(g<=15 || g>600) continue;            // ignore cluster-feeds and logging gaps
     if(bandOf(f[i-1])==="d") gD.push(g); else gN.push(g);
   }
-  // weight recent feeds more: use last ~24 gaps of each band
-  gD=gD.slice(-24); gN=gN.slice(-24);
+  gD=gD.slice(-40); gN=gN.slice(-40);
   var lD=(gD.length>=4)? medF(gD) : null;
   var lN=(gN.length>=3)? medF(gN) : null;
   var manD=(S.feedIvD!=null), manN=(S.feedIvN!=null);
@@ -423,15 +477,30 @@ function feedModel(){
     srcN: manN?"manual":(lN!=null?"learned":"age"),
     nD:gD.length, nN:gN.length};
 }
+function feedStats(){
+  var f=feedTimes(), now=Date.now(), i;
+  var wk=now-7*864e5, cnt=0, days={};
+  for(i=0;i<f.length;i++){ if(f[i]>=wk){ cnt++; days[new Date(f[i]).toDateString()]=1; } }
+  var nd=Math.max(1, 0); for(var k in days) nd++; if(nd<1) nd=1;
+  var perDay=Math.round(cnt/nd);
+  var ds=[];
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="nursing" && e.data && e.data.total) ds.push(e.data.total/60); }
+  var avgDur=null; if(ds.length){ var sum=0; for(i=0;i<ds.length;i++) sum+=ds[i]; avgDur=Math.round(sum/ds.length); }
+  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime(), wet=0, dirty=0;
+  for(i=0;i<S.entries.length;i++){ var e2=S.entries[i]; if(e2.act==="nappy" && new Date(e2.ts).getTime()>=day0){ var ty=(e2.data&&e2.data.type)||""; if(ty==="Wet") wet++; else if(ty) dirty++; } }
+  return {perDay:perDay, avgDur:avgDur, wet:wet, dirty:dirty, nDur:ds.length};
+}
 function feedSchedule(){
   var f=feedTimes(), m=feedModel(), now=Date.now();
   var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime(), end=day0+864e5;
   var out=[], i;
   for(i=0;i<f.length;i++){ if(f[i]>=day0 && f[i]<=now) out.push({ts:f[i], done:true}); }
+  var aj=feedAdjust(), sp=spurtWindow(feedAgeDef().days)?-8:0, first=true;
   var t=f.length? f[f.length-1] : now, guard=0;
   while(guard++<48){
     var iv=(bandOf(t)==="d"?m.ivD:m.ivN)*6e4;
-    t+=iv;
+    t += iv + (first?aj.adj:sp)*6e4;
+    first=false;
     if(t>end+1) break;
     out.push({ts:t, done:false});
   }
@@ -444,11 +513,12 @@ function upNext(){
   var ivD=m.ivD*6e4, ivN=m.ivN*6e4;
   var band=bandOf(f[f.length-1]);
   var iv=(band==="d")?ivD:ivN;
+  var aj=feedAdjust();
   return {last:f[f.length-1], band:band, iv:iv, ivD:ivD, ivN:ivN, autoD:autoD, autoN:autoN,
     mD:(S.feedIvD!=null), mN:(S.feedIvN!=null),
     med:iv, auto:(band==="d"?autoD:autoN), manual:(band==="d"?(S.feedIvD!=null):(S.feedIvN!=null)),
-    src:(band==="d"?m.srcD:m.srcN), model:m,
-    next:f[f.length-1]+iv, side:suggSide()};
+    src:(band==="d"?m.srcD:m.srcN), model:m, adj:aj.adj, adjParts:aj.parts,
+    next:f[f.length-1]+iv+aj.adj*6e4, side:suggSide()};
 }
 function agoStr(ms){
   var m=Math.max(0,Math.round((Date.now()-ms)/6e4));
@@ -2745,7 +2815,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.89</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.90</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3622,7 +3692,7 @@ function vFeed(){
     return h+'<div class="card" style="margin-top:16px;color:var(--sub);font-size:14px;line-height:1.6">'+
       'Predictions unlock after the first feed. Log a Nursing, Expressed or Formula entry and come back.</div>';
   }
-  var ivNow=(un.band==="d"?ui.fivD:ui.fivN), ivMs=ivNow*6e4, nx=un.last+ivMs, due=nx<Date.now();
+  var ivNow=(un.band==="d"?ui.fivD:ui.fivN), ivMs=ivNow*6e4, nx=un.last+ivMs+(un.adj||0)*6e4, due=nx<Date.now();
   var al = due ? Date.now()+ivMs : nx;
   h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Last feed '+agoStr(un.last)+' \u00B7 '+tClock(un.last)+'</div>';
   h += '<div class="card" style="margin-bottom:16px;text-align:center;padding:22px 16px">'+
@@ -3630,7 +3700,11 @@ function vFeed(){
     '<div class="num" style="font-size:44px;font-weight:700;letter-spacing:-1px;margin-top:6px;color:'+C.mint+'">'+
     (due ? 'Due now' : tClock(nx))+'</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+
-    (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+'</div></div>';
+    (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+' \u00B7 \u00B1'+(un.band==="d"?20:30)+' min</div></div>';
+  if(un.adjParts && un.adjParts.length){
+    var _pj=un.adjParts.map(function(p){ return p.k+' '+(p.v>=0?'+':'')+Math.round(p.v)+'m'; }).join(' \u00B7 ');
+    h += '<div style="font-size:12px;color:var(--sub);text-align:center;margin:-8px 0 16px;line-height:1.5">Tuned '+(un.adj>=0?'+':'')+un.adj+' min from base \u2014 '+_pj+'</div>';
+  }
   (function(){
     var sch=feedSchedule(), mdl=sch.model, rows="", nextDone=false, i;
     for(i=0;i<sch.list.length;i++){
@@ -3647,6 +3721,16 @@ function vFeed(){
       '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:16px;line-height:1.5">'+
       ((mdl.srcD==="learned"||mdl.srcN==="learned")?'Learned from '+esc((S.baby&&S.baby.name)||"baby")+'\u2019s recent feeds':'Based on age \u2014 fills in as more feeds are logged')+
       ' \u00B7 day ~'+fmtMin(mdl.ivD*60)+' ('+mdl.srcD+'), night ~'+fmtMin(mdl.ivN*60)+' ('+mdl.srcN+')</div>';
+  })();
+  (function(){
+    var st=feedStats(), nm=esc((S.baby&&S.baby.name)||"Baby"), bits=[];
+    bits.push("~"+st.perDay+"\u00D7/day");
+    if(st.avgDur) bits.push("~"+st.avgDur+" min each");
+    if(st.wet||st.dirty) bits.push("today "+st.wet+" wet / "+st.dirty+" dirty");
+    h += lbl("PATTERN \u00B7 LAST 7 DAYS")+
+      '<div class="card" style="padding:14px 16px;margin-bottom:16px;font-size:13px;color:var(--sub);line-height:1.6">'+
+      '<span style="color:#fff;font-weight:600">'+nm+'</span> feeds '+bits.join(" \u00B7 ")+
+      '. Intervals adapt to this rhythm \u2014 nights run a little longer than days.</div>';
   })();
   h += lbl("FEED INTERVAL")+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
@@ -5078,7 +5162,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.89";
+var APPVER="0.90";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
