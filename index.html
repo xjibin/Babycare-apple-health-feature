@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.94 -->
+<!-- Baby Care v0.95 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -70,9 +70,9 @@
   .actcard{display:block; width:100%; border-radius:24px; padding:20px; margin-bottom:16px; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .circ{border-radius:50%; display:flex; align-items:center; justify-content:center;}
   .chiprow{display:flex; gap:10px; margin-top:16px;}
-  #cards.grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
-  #cards.grid .actcard{width:auto; margin-bottom:0; padding:16px; border-radius:20px;}
-  #cards.grid .chiprow{margin-top:12px; gap:8px;}
+  #cards.grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch;}
+  #cards.grid .actcard{width:auto; margin-bottom:0; padding:16px; border-radius:20px; min-height:152px; display:flex; flex-direction:column;}
+  #cards.grid .chiprow{margin-top:auto; padding-top:12px; gap:8px;}
   #cards.grid .chip{height:38px; font-size:12px;}
   .chip{flex:1; height:44px; border-radius:12px; background:rgba(255,255,255,.06);
     display:flex; align-items:center; justify-content:center;}
@@ -240,7 +240,7 @@ var NAPPIES = [
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
 var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, cnight:false, eidx:null,
-  entries:[], sess:{}, order:[], custom:[], baby:{}, cfg:{}, lang:"en", feedIv:null, feedIvD:null, feedIvN:null, who:"",
+  entries:[], sess:{}, order:[], custom:[], baby:{}, cfg:{}, lang:"en", feedAuto:true, feedIv:null, feedIvD:null, feedIvN:null, who:"",
   meds:[{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false, n:true, ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
   hsIdx:0, hsHold:0, hsN:0, upVer:null, upDismissed:false, lbHide:0,
@@ -250,7 +250,7 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, autoSleep:S.autoSleep||null})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, autoSleep:S.autoSleep||null, feedAuto:(S.feedAuto!==false)})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -266,7 +266,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); } } catch(e){}
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -524,7 +524,7 @@ function feedModel(){
   gD=gD.slice(-40); gN=gN.slice(-40);
   var lD=(gD.length>=4)? medF(gD) : null;
   var lN=(gN.length>=3)? medF(gN) : null;
-  var manD=(S.feedIvD!=null), manN=(S.feedIvN!=null);
+  var auto=(S.feedAuto!==false), manD=(!auto && S.feedIvD!=null), manN=(!auto && S.feedIvN!=null);
   var ivD = manD ? S.feedIvD : (lD!=null ? Math.round(lD/5)*5 : def.day);
   var ivN = manN ? S.feedIvN : (lN!=null ? Math.round(lN/5)*5 : def.night);
   ivD=Math.max(45, Math.min(360, ivD)); ivN=Math.max(45, Math.min(480, ivN));
@@ -1322,10 +1322,10 @@ var A = {
     if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
-      var fm9=feedModel();
-      ui.fmD=(S.feedIvD!=null); ui.fmN=(S.feedIvN!=null);
-      ui.fivD = S.feedIvD!=null ? S.feedIvD : fm9.ivD;
-      ui.fivN = S.feedIvN!=null ? S.feedIvN : fm9.ivN;
+      var fm9=feedModel(), auto9=(S.feedAuto!==false);
+      ui.fmD=(!auto9 && S.feedIvD!=null); ui.fmN=(!auto9 && S.feedIvN!=null);
+      ui.fivD = ui.fmD ? S.feedIvD : fm9.ivD;
+      ui.fivN = ui.fmN ? S.feedIvN : fm9.ivN;
     }
     render();
   },
@@ -2142,6 +2142,14 @@ var A = {
     if(x==="n" && u2.autoN){ ui.fmN=false; ui.fivN=Math.round(u2.autoN/6e4); }
     render();
   },
+  feedAuto: function(){
+    S.feedAuto=(S.feedAuto===false);
+    var fm=feedModel(), auto=(S.feedAuto!==false);
+    ui.fmD=(!auto && S.feedIvD!=null); ui.fmN=(!auto && S.feedIvN!=null);
+    ui.fivD = ui.fmD ? S.feedIvD : fm.ivD;
+    ui.fivN = ui.fmN ? S.feedIvN : fm.ivN;
+    save(); render();
+  },
   fSave: function(){
     bumpSet();
     S.feedIvD = ui.fmD ? ui.fivD : null;
@@ -2917,7 +2925,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.94</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.95</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3891,6 +3899,7 @@ function vFeed(){
     return h+'<div class="card" style="margin-top:16px;color:var(--sub);font-size:14px;line-height:1.6">'+
       'Predictions unlock after the first feed. Log a Nursing, Expressed or Formula entry and come back.</div>';
   }
+  var auto=(S.feedAuto!==false);
   var ivNow=(un.band==="d"?ui.fivD:ui.fivN), ivMs=ivNow*6e4, nx=un.last+ivMs+(un.adj||0)*6e4, due=nx<Date.now();
   var al = due ? Date.now()+ivMs : nx;
   h += '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Last feed '+agoStr(un.last)+' \u00B7 '+tClock(un.last)+'</div>';
@@ -3904,6 +3913,11 @@ function vFeed(){
     var _pj=un.adjParts.map(function(p){ return p.k+' '+(p.v>=0?'+':'')+Math.round(p.v)+'m'; }).join(' \u00B7 ');
     h += '<div style="font-size:12px;color:var(--sub);text-align:center;margin:-8px 0 16px;line-height:1.5">Tuned '+(un.adj>=0?'+':'')+un.adj+' min from base \u2014 '+_pj+'</div>';
   }
+  h += '<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px">'+
+    '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">'+(auto?"Enabled":"Disabled")+' Auto Mode for Next Feed Predictions</div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-top:3px;line-height:1.4">'+(auto?"Predictions adapt automatically from feeds, sleep, nappies and age.":"Manual mode \u2014 set your own day/night feed intervals below.")+'</div></div>'+
+    '<button class="press" data-a="feedAuto" style="flex:none;width:52px;height:32px;border-radius:999px;background:'+(auto?C.mint:"#48484A")+';position:relative;transition:background .2s">'+
+    '<span style="position:absolute;top:3px;left:'+(auto?"23px":"3px")+';width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s"></span></button></div>';
   (function(){
     var sch=feedSchedule(), mdl=sch.model, rows="", nextDone=false, i;
     for(i=0;i<sch.list.length;i++){
@@ -3922,6 +3936,22 @@ function vFeed(){
       ' \u00B7 day ~'+fmtMin(mdl.ivD*60)+' ('+mdl.srcD+'), night ~'+fmtMin(mdl.ivN*60)+' ('+mdl.srcN+')</div>';
   })();
   (function(){
+    var mdl=feedModel();
+    var t0=new Date(); t0.setHours(0,0,0,0);
+    var tmA=t0.getTime()+864e5, tmB=tmA+864e5;
+    var t=un.next, g=0, trows="", n=0;
+    while(t<tmA && g++<300){ t += (bandOf(t)==="d"?mdl.ivD:mdl.ivN)*6e4; }
+    while(t<tmB && n<3 && g++<300){
+      trows+='<div style="display:flex;align-items:center;gap:12px;padding:11px 14px'+(n?";border-top:1px solid var(--hair)":"")+'">'+
+        '<span style="width:26px;text-align:center;flex:none">'+ic("clock",14,C.sub)+'</span>'+
+        '<span style="flex:1;font-size:15px;font-weight:600;color:var(--sub)">'+tClock(t)+'</span>'+
+        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(t)==="d"?"day":"night")+'</span></div>';
+      n++; t += (bandOf(t)==="d"?mdl.ivD:mdl.ivN)*6e4;
+    }
+    if(trows) h += lbl("TOMORROW\u2019S FEED SCHEDULE")+'<div class="card" style="padding:2px 0;margin-bottom:8px">'+trows+'</div>'+
+      '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:16px;line-height:1.5">First three \u00B7 projected with the same day/night intervals.</div>';
+  })();
+  (function(){
     var st=feedStats(), nm=esc((S.baby&&S.baby.name)||"Baby"), bits=[];
     bits.push("~"+st.perDay+"\u00D7/day");
     if(st.avgDur) bits.push("~"+st.avgDur+" min each");
@@ -3931,7 +3961,7 @@ function vFeed(){
       '<span style="color:#fff;font-weight:600">'+nm+'</span> feeds '+bits.join(" \u00B7 ")+
       '. Intervals adapt to this rhythm \u2014 nights run a little longer than days.</div>';
   })();
-  h += lbl("FEED INTERVAL")+
+  h += lbl("FEED INTERVAL")+'<div style="'+(auto?"opacity:.4;pointer-events:none":"")+'">'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
     stepRow("Day \u00B7 8am\u20138pm","fivd", fmtMin(ui.fivD*60), "", 5, 15, true)+
     '<div style="height:1px;background:var(--hair);margin:0 16px"></div>'+
@@ -3945,6 +3975,7 @@ function vFeed(){
   if(un.autoN && ui.fmN)
     rl+='<button class="press" data-a="fauto" data-x="n" style="color:'+C.mint+';font-size:14px;font-weight:600;padding:4px 10px">Night \u2192 suggested ('+fmtMin(un.autoN/1000)+')</button>';
   if(rl) h += '<div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:2px 0 8px">'+rl+'</div>';
+  h += '</div>';
   h += '<div id="alarmsec" style="height:14px"></div>'+lbl("IPHONE ALARM")+
     '<div class="card">'+
     '<button class="press" data-a="falarm" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left">'+
@@ -3969,56 +4000,8 @@ function vFeed(){
     '<span style="flex:1;font-size:15px;font-weight:600">Set Android alarm for '+tClock(al)+'</span>'+
     ic("chevron-right",16,C.sub)+'</a>'+
     '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">Opens the Clock app with this time pre-filled \u2014 confirm with one tap. If nothing happens, your browser blocked the web intent; set '+tClock(al)+' manually.</div></div>';
-  var eod=new Date(); eod.setHours(23,59,59,999); eod=eod.getTime();
-  var t0d=new Date(); t0d.setHours(0,0,0,0); t0d=t0d.getTime();
-  var srows="", scnt=0, doneN=0, k2, tf=[];
-  for(k2=S.entries.length-1;k2>=0;k2--){
-    var e2=S.entries[k2];
-    if(!isFeed(e2)) continue;
-    var tms=new Date(e2.ts).getTime();
-    if(tms<t0d || tms>Date.now()) continue;
-    tf.push(e2);
-  }
-  for(k2=0;k2<tf.length;k2++){
-    var e3=tf[k2], d3=e3.data||{};
-    var es3 = e3.act==="nursing" ? entrySide(e3) : null;
-    var lab = e3.act==="nursing"
-      ? (es3 ? es3+" side" : "Nursing")
-      : "Bottle"+(d3.ml?" \u00B7 "+d3.ml+" ml":"");
-    srows+='<div class="srow"'+(doneN?' style="border-top:1px solid var(--hair)"':'')+'>'+
-      '<span class="num" style="font-size:16px;font-weight:600;color:#34C77B">\u2713 '+tClock(new Date(e3.ts).getTime())+'</span>'+
-      '<span style="font-size:13px;color:#34C77B">'+lab+'</span></div>';
-    doneN++;
-  }
-  var t=due ? Date.now()+ivMs : nx, sside=un.side;
-  while(scnt<8 && t<=eod){
-    srows+='<div class="srow"'+((doneN+scnt)?' style="border-top:1px solid var(--hair)"':'')+'>'+
-      '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+'</span>'+
-      '<span style="font-size:13px;color:var(--sub)">'+sside+' side</span></div>';
-    scnt++;
-    sside = sside==="Left" ? "Right" : "Left";
-    t += (bandOf(t)==="d" ? ui.fivD : ui.fivN)*6e4;
-  }
-  if(!srows) srows='<div class="srow"><span style="font-size:13px;color:var(--sub)">No more feeds expected today</span></div>';
-  var trows="", tcnt=0, tguard=0;
-  while(tcnt<3 && tguard<60){
-    tguard++;
-    if(t>eod){
-      trows+='<div class="srow"'+(tcnt?' style="border-top:1px solid var(--hair)"':'')+'>'+
-        '<span class="num" style="font-size:16px;font-weight:600">'+tClock(t)+'</span>'+
-        '<span style="font-size:13px;color:var(--sub)">'+sside+' side</span></div>';
-      tcnt++;
-    }
-    sside = sside==="Left" ? "Right" : "Left";
-    t += (bandOf(t)==="d" ? ui.fivD : ui.fivN)*6e4;
-  }
-  h += '<div style="height:16px"></div>'+lbl("TODAY\u2019S FEED SCHEDULE")+
-    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">'+srows+'</div>'+
-    '<div style="font-size:12px;color:var(--sub);padding:0 4px">\u2713 done \u00B7 day every '+fmtMin(ui.fivD*60)+' \u00B7 night every '+fmtMin(ui.fivN*60)+' \u00B7 sides alternate \u00B7 updates live.</div>'+
-    '<div style="height:16px"></div>'+lbl("TOMORROW\u2019S FEED SCHEDULE")+
-    '<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">'+trows+'</div>'+
-    '<div style="font-size:12px;color:var(--sub);padding:0 4px">First three \u00B7 projected with the same day/night intervals.</div>';
-  h += saveBar(C.mint, true, "fSave");
+
+  if(!auto) h += saveBar(C.mint, true, "fSave");
   return h;
 }
 
@@ -5376,7 +5359,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.94";
+var APPVER="0.95";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
