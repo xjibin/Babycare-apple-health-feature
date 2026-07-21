@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.01 -->
+<!-- Baby Care v1.02 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2500,7 +2500,7 @@ var A = {
       h+='<button class="press" data-a="babySwitch" data-x="'+b.id+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;margin-bottom:10px;text-align:left;background:'+(active?alpha(C.pink,0.16):"var(--card2)")+';border:1px solid '+(active?alpha(C.pink,0.5):"transparent")+'">'+
         '<span class="circ" style="width:38px;height:38px;flex:none;background:'+alpha(C.pink,0.18)+'">'+ic("baby",20,C.pink)+'</span>'+
         '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</span>'+
-        '<span style="display:block;font-size:12px;color:var(--sub)">'+(active?"Active now":"Tap to switch")+'</span></span>'+
+        '<span style="display:block;font-size:12px;color:var(--sub)">'+(active?"Active now":"Tap to switch")+' \u00B7 '+((b.entries||[]).length)+' entries'+((b.baby&&b.baby.dob)?(' \u00B7 born '+new Date(b.baby.dob).toLocaleDateString()):'')+'</span></span>'+
         (active?'<span style="font-size:11px;font-weight:800;color:'+C.pink+'">ACTIVE</span>':"")+'</button>';
     }
     h+='<button class="press" data-a="babyAdd" style="width:100%;padding:14px;border-radius:16px;background:'+alpha(C.mint,0.16)+';color:'+C.mint+';font-size:15px;font-weight:700;margin-top:2px">+ Add another baby</button>'+
@@ -2793,7 +2793,7 @@ function vSettings(){
         bh+='<div style="display:flex;align-items:center;gap:10px;padding:10px 8px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
           '<button class="press" data-a="babySwitch" data-x="'+b.id+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left">'+
           '<span class="circ" style="width:34px;height:34px;flex:none;background:'+alpha(C.pink,0.18)+'">'+ic("baby",18,C.pink)+'</span>'+
-          '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+(active?' <span style="font-size:11px;color:'+C.pink+';font-weight:800">\u00B7 ACTIVE</span>':'')+'</span></span></button>'+
+          '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+(active?' <span style="font-size:11px;color:'+C.pink+';font-weight:800">\u00B7 ACTIVE</span>':'')+'</span><span style="display:block;font-size:12px;color:var(--sub)">'+((b.entries||[]).length)+' entries'+((b.baby&&b.baby.dob)?(' \u00B7 born '+new Date(b.baby.dob).toLocaleDateString()):'')+((b.baby&&b.baby.sex)?(' \u00B7 '+b.baby.sex):'')+'</span></span></button>'+
           '<button class="press" data-a="babyDelAsk" data-x="'+b.id+'" style="flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+alpha(C.red,0.16)+'">'+ic("cross",16,C.red)+'</button></div>';
       }
       return '<div style="font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.5px;margin:6px 4px 8px">BABY PROFILES</div>'+
@@ -3081,7 +3081,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.01</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.02</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5413,6 +5413,7 @@ var syBooted=false;
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
   if(doc.bid && S.activeBaby && doc.bid!==S.activeBaby) return false;
+  if(!doc.bid && S.babies && S.babies.length>1) return false;
   var changed=false, byId={}, i;
   for(i=0;i<S.entries.length;i++) byId[S.entries[i].id]=i;
   var tomb={};
@@ -5520,7 +5521,7 @@ function syMerge(doc){
   }
   syBooted=true;
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
-  if(doc.set && (doc.setUp||0)>(S.setUp||0)){
+  if(doc.set && (doc.setUp||0)>(S.setUp||0) && (!doc.bid || !S.activeBaby || doc.bid===S.activeBaby)){
     S.baby=doc.set.baby||S.baby;
     S.meds=doc.set.meds||S.meds;
     S.cfg=doc.set.cfg||S.cfg;
@@ -5577,7 +5578,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.01";
+var APPVER="1.02";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
