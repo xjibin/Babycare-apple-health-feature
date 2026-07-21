@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.03 -->
+<!-- Baby Care v1.04 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2543,6 +2543,7 @@ var A = {
     S.tab="summary"; S.sub="settings"; S.eidx=null;
     save(); csModalHide(); render(); toast("Baby profile deleted");
   },
+  msync: function(x){ manualSync(x); },
   impJson: function(){ var f=byId("impf"); f.value=""; f.click(); },
   invite: function(){ toast("Invites aren\u2019t in this test build"); },
   trends: function(){ toast("Trends aren\u2019t in this test build"); },
@@ -3082,7 +3083,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.03</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.04</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5090,6 +5091,13 @@ function vSharing(){
       '<button class="press" data-a="syForce" style="margin-top:12px;width:100%;height:44px;border-radius:14px;background:rgba(255,69,58,.2);color:'+C.red+';font-size:14px;font-weight:700">Use this phone\u2019s data</button></div>' : "")+
     '<div style="font-size:11px;color:var(--sub);line-height:1.55">Free endpoint in ~2 min: console.firebase.google.com \u2192 create project \u2192 Realtime Database \u2192 start in test mode \u2192 use <span class="num">https://YOUR-DB.firebaseio.com/iza.json</span>. Last-writer-wins per entry; deletions carry over; \u201CLogged by\u201D stays per phone so Mum and Dad entries stay attributed.</div></div>'+
 
+    '<div class="card" style="padding:20px;margin-top:12px">'+ic("repeat",28,C.mint)+
+    '<div style="font-size:20px;font-weight:700;margin-top:12px">Manual sync</div>'+
+    '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">Auto-sync keeps running on its own. Use these to force an immediate reconcile if two phones drift apart (e.g. after switching baby profiles). Entries merge by id \u2014 nothing is overwritten.</div>'+
+    '<button class="press" data-a="msync" data-x="entries" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:16px;margin-top:16px;background:'+C.mint+';color:#000;font-size:16px;font-weight:700">'+ic("list",17,"#000")+'Sync activity entries</button>'+
+    '<button class="press" data-a="msync" data-x="profile" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:16px;margin-top:10px;background:var(--card2);color:#fff;font-size:16px;font-weight:600">'+ic("baby",17,"#fff")+'Sync baby profile</button>'+
+    (SY.on?'':'<div style="font-size:12px;color:'+C.red+';margin-top:10px">Turn on Live sync above first.</div>')+
+    '</div>'+
     '<div class="card" style="padding:20px;margin-top:12px">'+ic("repeat",28,C.teal)+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Caregiver handoff</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">AirDrop the full log to your partner\u2019s phone, '+
@@ -5413,8 +5421,10 @@ function sySig(){
 var syBooted=false;
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
-  if(doc.bid && S.activeBaby && doc.bid!==S.activeBaby) return false;
-  if(!doc.bid && S.babies && S.babies.length>1) return false;
+  if(!SY.force){
+    if(doc.bid && S.activeBaby && doc.bid!==S.activeBaby) return false;
+    if(!doc.bid && S.babies && S.babies.length>1) return false;
+  }
   var changed=false, byId={}, i;
   for(i=0;i<S.entries.length;i++) byId[S.entries[i].id]=i;
   var tomb={};
@@ -5522,7 +5532,7 @@ function syMerge(doc){
   }
   syBooted=true;
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
-  if(doc.set && (doc.setUp||0)>(S.setUp||0) && (!doc.bid || !S.activeBaby || doc.bid===S.activeBaby)){
+  if(doc.set && (doc.setUp||0)>(S.setUp||0) && SY.force!=="entries" && (SY.force==="profile" || !doc.bid || !S.activeBaby || doc.bid===S.activeBaby)){
     S.baby=doc.set.baby||S.baby;
     S.meds=doc.set.meds||S.meds;
     S.cfg=doc.set.cfg||S.cfg;
@@ -5540,6 +5550,34 @@ function syMerge(doc){
     if(!S.editing && !ui.sheet && !(S.tab==="chat" && document.getElementById("chin") && document.getElementById("chin").value)) render();
   }
   return changed;
+}
+function manualSync(mode){
+  if(!SY.on || !SY.url || !SY.pass){ toast("Add the endpoint URL + passphrase and turn on Live sync first"); return; }
+  if(SY.busy){ toast("Sync already in progress\u2026"); return; }
+  SY.busy=true; SY.err=""; toast(mode==="entries"?"Syncing activity entries\u2026":"Syncing baby profile\u2026");
+  var before=S.entries.length;
+  syKey(function(key){
+    fetch(SY.url, {method:"GET", headers:{"Accept":"application/json"}})
+      .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error("GET "+r.status); return r.json(); })
+      .then(function(body){
+        function pushNow(){
+          syEnc(key, syDoc(), function(blob){
+            fetch(SY.url, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({c:blob})})
+              .then(function(r2){ if(!r2.ok) throw new Error("PUT "+r2.status);
+                SY.pushSig=sySig(); SY.lastOk=Date.now(); SY.err=""; SY.busy=false; save(); render();
+                if(mode==="entries"){ var added=S.entries.length-before; toast(added>0?("Synced \u2014 "+added+" new entr"+(added===1?"y":"ies")+" \u00B7 "+S.entries.length+" total"):("Entries already in sync \u00B7 "+S.entries.length+" total")); }
+                else toast("Baby profile synced");
+              })
+              .catch(function(e2){ SY.err=String(e2.message||e2); SY.busy=false; render(); toast("Sync failed \u2014 "+SY.err); });
+          });
+        }
+        if(body && body.c){
+          syDec(key, body.c, function(doc){ SY.force=mode; try{ syMerge(doc); } finally { SY.force=null; } pushNow(); },
+            function(){ SY.busy=false; toast("Wrong passphrase or corrupt data"); });
+        } else pushNow();
+      })
+      .catch(function(e){ SY.err=String(e.message||e); SY.busy=false; render(); toast("Sync failed \u2014 check connection"); });
+  });
 }
 function syTick(){
   if(!SY.on || SY.busy || !SY.url || !SY.pass) return;
@@ -5579,7 +5617,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.03";
+var APPVER="1.04";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
