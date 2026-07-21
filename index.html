@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.99 -->
+<!-- Baby Care v1.00 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -250,7 +250,7 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, autoSleep:S.autoSleep||null, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, mother:S.mother||{}})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, autoSleep:S.autoSleep||null, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, mother:S.mother||{}, notifSeen:S.notifSeen||{}})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -266,7 +266,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{}; } } catch(e){}
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -1315,6 +1315,7 @@ function addEntry(k, detail, data){ addEntryAt(k, detail, data, new Date().toISO
 /* ============ actions ============ */
 var A = {
   tab: function(x){
+    if(typeof Notification!=="undefined" && Notification.permission==="default"){ try{ Notification.requestPermission(); }catch(e){} }
     if(S.tab===x && x!=="chat" && S.sub==="" && S.route==="list" && S.eidx==null && !S.pmode){
       var sc9=document.getElementById("scroll");
       if(sc9) sc9.scrollTo({top:0, behavior:"smooth"});
@@ -2907,7 +2908,7 @@ function logMatch(a){
 function logPillsHtml(){
   if(!ui.logFilter) ui.logFilter=[];
   var PILLS=[["nursing","Nursing"],["nappy","Nappy"],["burp","Burp"],["vomit","Vomit"],["medicine","Medicine"],["sleep","Sleep"],["carseat","Car seat"]], i;
-  var h='<div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 8px;margin-bottom:6px;align-items:center">';
+  var h='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 8px;margin-bottom:6px;align-items:center">';
   for(i=0;i<PILLS.length;i++){ var on=(ui.logFilter.indexOf(PILLS[i][0])>=0);
     h+='<button class="press" data-a="logFilt" data-x="'+PILLS[i][0]+'" style="flex:none;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;background:'+(on?C.blue:"var(--card2)")+';color:'+(on?"#000":"#fff")+'">'+PILLS[i][1]+'</button>';
   }
@@ -2973,7 +2974,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.99</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.00</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5468,7 +5469,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.99";
+var APPVER="1.00";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -5954,6 +5955,34 @@ function jitThresh(){
   if(d<90) return [0.6, 1.5];
   if(d<180) return [0.8, 2.0];
   return [1.0, 2.5];
+}
+function notifTick(){
+  if(typeof Notification==="undefined" || Notification.permission!=="granted") return;
+  if(!S.notifSeen) S.notifSeen={};
+  var now=Date.now(), tk=dayKey(now), changed=false, i, nm=((S.baby&&S.baby.name)||"baby");
+  // 1) next feed due now
+  var un=(typeof upNext==="function")?upNext():null;
+  if(un && un.next<=now){
+    var fk="feed:"+un.next;
+    if(!S.notifSeen[fk]){ notif("Next feed is due now \u2014 "+nm+" \u00B7 start on the "+un.side); S.notifSeen[fk]=1; changed=true; }
+  }
+  // 2) medicine by dosage time-of-day slot
+  var slot=(typeof curSlot==="function")?curSlot():null;
+  if(slot && S.meds){
+    for(i=0;i<S.meds.length;i++){ var m=S.meds[i];
+      if(m && m.times && m.times[slot] && !medSlotDone(m.id, slot)){
+        var mk="med:"+m.id+":"+tk+":"+slot;
+        if(!S.notifSeen[mk]){ notif((m.name||"Medicine")+" reminder \u2014 "+(m.ml||"")+(m.unit||"ml")+" \u00B7 "+(slot==="m"?"morning":slot==="n"?"noon":"night")+" dose"); S.notifSeen[mk]=1; changed=true; }
+      }
+    }
+  }
+  // 3) nappy o'clock (>= 2.5h since the last nappy)
+  var lt=0; for(i=0;i<S.entries.length;i++){ if(S.entries[i].act==="nappy"){ var t=new Date(S.entries[i].ts).getTime(); if(t>lt) lt=t; } }
+  if(lt && (now-lt)>=150*6e4){
+    var nk="nappy:"+lt, gap=now-lt, hh=Math.floor(gap/3600000), mm=Math.round((gap%3600000)/60000);
+    if(!S.notifSeen[nk]){ notif("Nappy o\u2019clock \u2014 "+(hh?hh+" hr"+(hh>1?"s":"")+" ":"")+mm+" min since the last nappy"); S.notifSeen[nk]=1; changed=true; }
+  }
+  if(changed){ var ks=Object.keys(S.notifSeen); if(ks.length>80){ for(var q=0;q<ks.length-50;q++) delete S.notifSeen[ks[q]]; } save(); }
 }
 function notif(msg){
   try{
@@ -6486,6 +6515,7 @@ setInterval(function(){
     if(!sessActive(_ak)){ var _as=ssn(_ak); _as.run=true; _as.at=Date.now(); if(!_as.st) _as.st=Date.now(); save(); if(typeof toast==="function") toast("Started "+(_ak==="mothersleep"?"mother":"baby")+" sleep", 2800); render(); }
     else save();
   }
+  notifTick();
   if(S.night||S.cnight||(ui.land && !ui.landX)){ nsWakeReq(); } else if(nsWake){ try{ nsWake.release(); }catch(e){} nsWake=null; }
   if(S.cnight || (ui.land && sessActive("carseat"))){
     var se4=S.sess.carseat;
