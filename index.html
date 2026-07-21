@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.90 -->
+<!-- Baby Care v0.91 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -213,6 +213,7 @@ var ACTS = [
   {k:"nursing",    t:"Nursing",      icon:"baby",       c:C.pink,   kind:"dual"},
   {k:"nappy",      t:"Nappy Status", icon:"layers",     c:C.yellow, kind:"nappy"},
   {k:"burp",       t:"Burp",         icon:"wind",       c:C.brown,  kind:"burp"},
+  {k:"vomit",      t:"Vomit / Spit-up", icon:"droplet",  c:C.coral,  kind:"vomit"},
   {k:"babysleep",  t:"Baby Sleep",   icon:"moon",       c:C.lav,    kind:"single"},
   {k:"mothersleep",t:"Mother Sleep", icon:"bed-double", c:C.indigo, kind:"single"},
   {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.rose,   kind:"med"},
@@ -402,6 +403,55 @@ function feedAgeDef(){
   return {day:day, night:night, days:days};
 }
 function medF(a){ if(!a.length) return null; a=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(a.length/2); return a.length%2 ? a[m] : (a[m-1]+a[m])/2; }
+function lastVomit(){
+  var best=null, bt=-1, i;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="vomit"){ var t=new Date(e.ts).getTime(); if(t>bt){ bt=t; best=e; } } }
+  return best? {ts:bt, data:best.data||{}} : null;
+}
+function vomFlag(){ var v=ui.vom||{}; return v.type==="Projectile"||v.look==="Yellow"||v.look==="Green"||v.look==="Blood"||v.after==="Distressed"; }
+function vomPills(field, opts){
+  var v=(ui.vom||{})[field], h='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">', i;
+  for(i=0;i<opts.length;i++){
+    var o=opts[i], on=(v===o.v), fl=o.flag;
+    h+='<button class="press" data-a="vomSet" data-x="'+field+'|'+o.v+'" style="padding:9px 13px;border-radius:12px;font-size:14px;font-weight:600;'+
+      (on?('background:'+(fl?C.coral:C.mint)+';color:#000'):('background:var(--card2);color:'+(fl?C.coral:'#fff')))+'">'+o.l+'</button>';
+  }
+  return h+'</div>';
+}
+function vomSec(title){ return '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--sub);margin-bottom:7px">'+title+'</div>'; }
+function vomitHtml(){
+  var flag=vomFlag();
+  var h='<div style="max-height:76vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:0 2px">'+
+    '<div style="font-size:19px;font-weight:700;margin-bottom:4px">Log spit-up / vomit</div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-bottom:16px">Recorded for your pediatrician \u00B7 time & gap from last feed captured automatically</div>';
+  h+=vomSec("TYPE")+vomPills("type",[{v:"Spit-up",l:"Spit-up (dribble)"},{v:"Vomiting",l:"Vomiting (forceful)"},{v:"Projectile",l:"Projectile",flag:1}]);
+  h+=vomSec("VOLUME")+vomPills("vol",[{v:5,l:"Coin \u00B7 ~5 ml"},{v:15,l:"Jar-lid \u00B7 ~15 ml"},{v:45,l:"Soaked \u00B7 ~45 ml"}]);
+  h+=vomSec("LOOK")+vomPills("look",[{v:"Fresh",l:"Fresh milk"},{v:"Curdled",l:"Curdled"},{v:"Yellow",l:"Yellow",flag:1},{v:"Green",l:"Green",flag:1},{v:"Blood",l:"Blood / pink",flag:1}]);
+  h+=vomSec("EXIT ROUTE")+vomPills("exit",[{v:"Mouth",l:"Mouth"},{v:"Mouth+Nose",l:"Mouth + nose"}]);
+  h+=vomSec("AFTERWARD")+vomPills("after",[{v:"Content",l:"Content (happy spitter)"},{v:"Distressed",l:"Distressed",flag:1}]);
+  if(flag) h+='<div style="background:'+alpha(C.coral,0.15)+';border:1px solid '+alpha(C.coral,0.5)+';border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:'+C.coral+';line-height:1.5;font-weight:600">\u26A0\uFE0F Red-flag sign selected \u2014 contact your pediatrician or seek urgent care. Bile (green/yellow), blood, projectile, or a distressed/lethargic baby need prompt review.</div>';
+  h+='<div style="display:flex;gap:10px;margin-top:4px">'+
+    '<button class="press" data-a="vomCancel" style="flex:1;height:48px;border-radius:14px;background:var(--card2);font-size:15px;font-weight:700;color:#fff">Cancel</button>'+
+    '<button class="press" data-a="vomSave" style="flex:1;height:48px;border-radius:14px;background:'+(flag?C.coral:C.mint)+';font-size:15px;font-weight:800;color:#000">Save</button></div>'+
+    '</div>';
+  return h;
+}
+function vomitCardHtml(){
+  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime();
+  var cnt=0, lastE=null, flagToday=false, i;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="vomit"){ var t=new Date(e.ts).getTime();
+    if(t>=day0){ cnt++; if(e.data&&e.data.flag) flagToday=true; }
+    if(!lastE || t>new Date(lastE.ts).getTime()) lastE=e; } }
+  var sub = lastE ? ('Last '+agoStr(new Date(lastE.ts).getTime())+' \u00B7 '+esc(lastE.detail)) : 'Tap to log a spit-up or vomit';
+  return '<button class="card press" data-a="vomitOpen" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:16px">'+
+    '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(C.coral,0.18)+'">'+ic("droplet",22,C.coral)+'</span>'+
+    '<span style="flex:1;min-width:0">'+
+      '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700;color:'+C.coral+'">Vomit / Spit-up</span>'+
+      (cnt?'<span style="font-size:12px;font-weight:700;color:var(--sub)">'+cnt+' today</span>':'')+
+      (flagToday?'<span style="font-size:11px;font-weight:800;color:'+C.coral+'">\u26A0\uFE0F flag</span>':'')+'</span>'+
+      '<span style="display:block;font-size:13px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</span>'+
+    '</span>'+ic("plus",20,C.coral)+'</button>';
+}
 function feedFactorStats(){
   var now=Date.now(), win=now-10*864e5, i, e, t;
   var durs=[], sleeps=[], lastSleepEnd=null, lastSleepMin=null;
@@ -453,6 +503,8 @@ function feedAdjust(){
     if(s.napToday < s.napPerDay*frac-1.5){ x=-4; adj+=x; parts.push({k:"Low output", v:x}); }
   }
   if(lastFeedBurped()===false){ x=-3; adj+=x; parts.push({k:"Not burped", v:x}); }
+  var _vlast=f[f.length-1], _vom=lastVomit();
+  if(_vom && _vom.ts>_vlast && (Date.now()-_vom.ts)<3*3600000){ x=-cl(Math.round((_vom.data.vol||5)/4), 3, 15); adj+=x; parts.push({k:"Vomited", v:x}); }
   adj=cl(Math.round(adj), -30, 30);
   return {adj:adj, parts:parts, stats:s};
 }
@@ -1272,7 +1324,27 @@ var A = {
     render();
   },
   subback: function(){ S.sub=""; render(); },
+  vomitOpen: function(){ ui.vom={type:"Spit-up", vol:5, look:"Fresh", exit:"Mouth", after:"Content"}; csModal(vomitHtml()); },
+  vomSet: function(x){ var p=x.split("|"); if(!ui.vom) ui.vom={}; ui.vom[p[0]]=(p[0]==="vol"? +p[1] : p[1]); csModal(vomitHtml()); },
+  vomCancel: function(){ csModalHide(); },
+  vomSave: function(){
+    var v=ui.vom||{}, f=feedTimes(), since=null;
+    if(f.length) since=Math.round((Date.now()-f[f.length-1])/6e4);
+    var flag=(v.type==="Projectile"||v.look==="Yellow"||v.look==="Green"||v.look==="Blood"||v.after==="Distressed");
+    var det=(v.type||"Spit-up")+" \u00B7 ~"+(v.vol||5)+"ml \u00B7 "+(v.look||"Fresh")+" \u00B7 "+(v.exit||"Mouth")+" \u00B7 "+(v.after||"Content");
+    var e={id:Date.now(), act:"vomit", detail:det, data:{type:v.type, vol:v.vol, look:v.look, exit:v.exit, after:v.after, sinceFeedMin:since, burpedBefore:lastFeedBurped(), flag:flag}, ts:new Date().toISOString(), by:S.who||""};
+    S.entries.push(e); S.entries.sort(function(a,b){return new Date(a.ts)-new Date(b.ts);});
+    save();
+    csModalHide(); render();
+    if(flag){
+      csModal('<div style="font-size:18px;font-weight:800;color:'+C.coral+';margin-bottom:8px">\u26A0\uFE0F Seek medical advice</div>'+
+        '<div style="font-size:14px;color:#fff;line-height:1.55;margin-bottom:6px">You logged a red-flag sign (bile-coloured, blood, projectile, or a distressed baby). Contact your pediatrician or urgent care promptly.</div>'+
+        '<div style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:16px">Also seek care for fever, a hard or bloated tummy, or a baby who is hard to wake.</div>'+
+        '<button class="press" data-a="vomCancel" style="width:100%;height:48px;border-radius:14px;background:'+C.coral+';font-size:15px;font-weight:800;color:#000">Got it</button>');
+    } else { toast("Vomit logged \u00B7 next feed updated", 3000); }
+  },
   open: function(x){
+    if(x==="vomit"){ A.vomitOpen(); return; }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
@@ -2641,7 +2713,7 @@ function vSummary(){
       ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>'+
 
-    (medPin()?medMilestoneHtml():"")+upHtml+outHtml+
+    (medPin()?medMilestoneHtml():"")+upHtml+outHtml+vomitCardHtml()+
 
     (medPin()?"":medMilestoneHtml())+
 
@@ -2815,7 +2887,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.90</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.91</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5162,7 +5234,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.90";
+var APPVER="0.91";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
