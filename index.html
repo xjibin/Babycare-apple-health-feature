@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.00 -->
+<!-- Baby Care v1.01 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -240,17 +240,43 @@ var NAPPIES = [
 /* ============ state & on-device storage ============ */
 var KEY = "babycare.v1";
 var S = { tab:"summary", route:"list", sub:"", editing:false, pmode:false, night:false, cnight:false, eidx:null,
-  entries:[], sess:{}, order:[], custom:[], baby:{}, cfg:{}, lang:"en", feedAuto:true, chatOn:false, feedIv:null, feedIvD:null, feedIvN:null, who:"",
+  entries:[], sess:{}, order:[], custom:[], baby:{}, babies:[], activeBaby:null, cfg:{}, lang:"en", feedAuto:true, chatOn:false, feedIv:null, feedIvD:null, feedIvN:null, who:"",
   meds:[{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false, n:true, ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}] };
 var ui = { sheet:false, ml:0, pml:60, sel:null, qty:0, unit:"ml", col:"#FF6482", icon:"sparkles",
   hsIdx:0, hsHold:0, hsN:0, upVer:null, upDismissed:false, lbHide:0,
   pl:0, pr:0, pdur:0, dts:{}, gtype:"weight", gv:3200, vq:"", vax:null, b:{}, dob:null, fiv:150, fauto:true, fivD:150, fivN:150, fmD:false, fmN:false, ss:null, syEye:false, dd:{}, bt:"Short", mml:1, mt:{m:false,n:true,ni:false}, mname:"", as:false, mb:null, dday:null, logFilter:[] };
 var MEM = false;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e){ MEM = true; }
+var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","mother","del","setUp","rsess","autoSleep"];
+function babyDef(f){
+  if(f==="entries"||f==="order"||f==="custom"||f==="hiddenCards"||f==="del") return [];
+  if(f==="sess"||f==="rsess"||f==="mother"||f==="baby") return {};
+  if(f==="meds") return [{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false,n:true,ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}];
+  if(f==="setUp") return 0;
+  return null;
+}
+function mkBaby(){
+  var b={id:"b"+Date.now()+Math.floor(Math.random()*1000)}, i;
+  for(i=0;i<PERBABY.length;i++) b[PERBABY[i]]=babyDef(PERBABY[i]);
+  return b;
+}
+function babyRec(id){ var i; for(i=0;i<(S.babies||[]).length;i++) if(S.babies[i].id===id) return S.babies[i]; return null; }
+function babyStash(){
+  var b=babyRec(S.activeBaby); if(!b) return;
+  var i; for(i=0;i<PERBABY.length;i++) b[PERBABY[i]]=S[PERBABY[i]];
+}
+function babyLoad(id, skipStash){
+  if(!skipStash) babyStash();
+  var b=babyRec(id); if(!b) return;
+  var i; for(i=0;i<PERBABY.length;i++) S[PERBABY[i]]=(b[PERBABY[i]]!==undefined? b[PERBABY[i]] : babyDef(PERBABY[i]));
+  S.activeBaby=id;
+}
+function activeBabyName(){ return (S.baby&&S.baby.name)||"Baby"; }
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
-  try { localStorage.setItem(KEY, JSON.stringify({v:3, entries:S.entries, sess:S.sess, order:S.order, custom:S.custom, baby:S.baby, feedIvD:S.feedIvD, feedIvN:S.feedIvN, who:S.who, meds:S.meds, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, hiddenCards:S.hiddenCards||[], seen:S.seen||{}, rsess:S.rsess||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, autoSleep:S.autoSleep||null, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, mother:S.mother||{}, notifSeen:S.notifSeen||{}})); }
+  babyStash();
+  try { localStorage.setItem(KEY, JSON.stringify({v:4, babies:S.babies, activeBaby:S.activeBaby, who:S.who, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, seen:S.seen||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, notifSeen:S.notifSeen||{}})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -266,7 +292,11 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{}; } } catch(e){}
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{};
+      if(d.babies && d.babies.length){ S.babies=d.babies; S.activeBaby=d.activeBaby||d.babies[0].id; babyLoad(S.activeBaby, true); }
+      else { var nb=mkBaby(); var pi; for(pi=0;pi<PERBABY.length;pi++){ if(S[PERBABY[pi]]!==undefined) nb[PERBABY[pi]]=S[PERBABY[pi]]; } S.babies=[nb]; S.activeBaby=nb.id; }
+      } } catch(e){}
+      if(!S.babies || !S.babies.length){ var nb0=mkBaby(); S.babies=[nb0]; S.activeBaby=nb0.id; babyLoad(nb0.id, true); }
   fixOrder();
   if(!S.reads) S.reads={};
   if(!S.chat) S.chat=[];
@@ -2461,6 +2491,57 @@ var A = {
     if(!se.st) se.st=Date.now();
     save(); render();
   },
+  babySheet: function(){
+    babyStash();
+    var h='<div style="font-size:19px;font-weight:700;margin-bottom:4px">Baby profiles</div>'+
+      '<div style="font-size:12px;color:var(--sub);margin-bottom:16px">Each baby\u2019s data is kept completely separate.</div>', i;
+    for(i=0;i<S.babies.length;i++){
+      var b=S.babies[i], active=(b.id===S.activeBaby), nm=(b.baby&&b.baby.name)||"Unnamed baby";
+      h+='<button class="press" data-a="babySwitch" data-x="'+b.id+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;margin-bottom:10px;text-align:left;background:'+(active?alpha(C.pink,0.16):"var(--card2)")+';border:1px solid '+(active?alpha(C.pink,0.5):"transparent")+'">'+
+        '<span class="circ" style="width:38px;height:38px;flex:none;background:'+alpha(C.pink,0.18)+'">'+ic("baby",20,C.pink)+'</span>'+
+        '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+'</span>'+
+        '<span style="display:block;font-size:12px;color:var(--sub)">'+(active?"Active now":"Tap to switch")+'</span></span>'+
+        (active?'<span style="font-size:11px;font-weight:800;color:'+C.pink+'">ACTIVE</span>':"")+'</button>';
+    }
+    h+='<button class="press" data-a="babyAdd" style="width:100%;padding:14px;border-radius:16px;background:'+alpha(C.mint,0.16)+';color:'+C.mint+';font-size:15px;font-weight:700;margin-top:2px">+ Add another baby</button>'+
+      '<button class="press" data-a="vomAck" style="width:100%;height:46px;border-radius:14px;background:var(--card2);color:#fff;font-size:15px;font-weight:700;margin-top:10px;display:flex;align-items:center;justify-content:center">Close</button>';
+    csModal(h);
+  },
+  babySwitch: function(x){
+    if(x===S.activeBaby){ csModalHide(); return; }
+    babyLoad(x); S.tab="summary"; S.sub=""; S.route="list"; S.eidx=null; ui.logFilter=[]; ui.logExpand={};
+    save(); csModalHide(); render(); toast("Switched to "+activeBabyName());
+  },
+  babyAdd: function(){
+    var nb=mkBaby(); S.babies.push(nb); babyLoad(nb.id); save();
+    csModalHide(); A.gotoBaby(); toast("New baby profile \u2014 add their details");
+  },
+  babyDelAsk: function(x){
+    csModal('<div style="font-size:18px;font-weight:800;margin-bottom:8px">Delete baby profile?</div>'+
+      '<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:18px">Do you really wish to delete this baby profile? Any data lost cannot be retrieved once deleted.</div>'+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="press" data-a="babyDelName" data-x="'+x+'" style="flex:1;height:48px;border-radius:14px;background:'+C.red+';color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center">Yes, Delete</button>'+
+      '<button class="press" data-a="vomAck" style="flex:1;height:48px;border-radius:14px;background:var(--card2);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">No, Exit</button></div>');
+  },
+  babyDelName: function(x){
+    var b=babyRec(x), nm=(b&&b.baby&&b.baby.name)||"";
+    csModal('<div style="font-size:18px;font-weight:800;margin-bottom:8px">Type the name to confirm</div>'+
+      '<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:14px">Type <b style="color:#fff">'+esc(nm||"the baby\u2019s name")+'</b> to permanently delete this profile and all of its data.</div>'+
+      '<input id="delName" class="ninput" placeholder="Baby name" autocomplete="off" style="margin-bottom:16px">'+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="press" data-a="babyDelDo" data-x="'+x+'" style="flex:1;height:48px;border-radius:14px;background:'+C.red+';color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center">Delete</button>'+
+      '<button class="press" data-a="vomAck" style="flex:1;height:48px;border-radius:14px;background:var(--card2);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">Exit</button></div>');
+  },
+  babyDelDo: function(x){
+    var b=babyRec(x), nm=(b&&b.baby&&b.baby.name)||"", typed=((byId("delName")||{}).value||"").trim();
+    if(!b || typed!==nm){ csModalHide(); toast("Wrong name, Baby Profile not deleted"); return; }
+    var wasActive=(x===S.activeBaby);
+    S.babies=S.babies.filter(function(bb){ return bb.id!==x; });
+    if(!S.babies.length){ var nb=mkBaby(); S.babies=[nb]; S.activeBaby=null; babyLoad(nb.id, true); }
+    else if(wasActive){ S.activeBaby=null; babyLoad(S.babies[0].id, true); }
+    S.tab="summary"; S.sub="settings"; S.eidx=null;
+    save(); csModalHide(); render(); toast("Baby profile deleted");
+  },
   impJson: function(){ var f=byId("impf"); f.value=""; f.click(); },
   invite: function(){ toast("Invites aren\u2019t in this test build"); },
   trends: function(){ toast("Trends aren\u2019t in this test build"); },
@@ -2476,12 +2557,27 @@ var A = {
 };
 document.addEventListener("click", function(e){
   anT=0;
+  if(ui._held){ ui._held=false; return; }
   var el=e.target.closest("[data-a]");
   if(!el || el.hasAttribute("disabled")) return;
   var fn=A[el.getAttribute("data-a")];
   if(fn) fn(el.getAttribute("data-x"));
 });
 
+/* generic long-press for [data-hold] (e.g. the navbar Baby button) */
+var holdT2=null;
+document.addEventListener("pointerdown", function(ev){
+  var el=ev.target.closest ? ev.target.closest("[data-hold]") : null;
+  if(!el) return;
+  var sx=ev.clientX, sy=ev.clientY;
+  clearTimeout(holdT2);
+  var pm=function(e2){ if(Math.abs(e2.clientX-sx)>10||Math.abs(e2.clientY-sy)>10) cancel(); };
+  var cancel=function(){ clearTimeout(holdT2); holdT2=null; document.removeEventListener("pointermove",pm); document.removeEventListener("pointerup",cancel); document.removeEventListener("pointercancel",cancel); };
+  holdT2=setTimeout(function(){ cancel(); ui._held=true; var a=el.getAttribute("data-hold"); if(A[a]) A[a](el.getAttribute("data-x")||""); }, 500);
+  document.addEventListener("pointermove",pm);
+  document.addEventListener("pointerup",cancel);
+  document.addEventListener("pointercancel",cancel);
+});
 /* long-press a card to enter wiggle mode; drag full cards to reorder (iOS style) */
 var lpT=null;
 document.addEventListener("pointerdown", function(ev){
@@ -2693,6 +2789,17 @@ function vSettings(){
       '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">'+t("cfg")+'</span>'+
       '<span style="display:block;font-size:13px;color:var(--sub);margin-top:2px">Fine-tune feeds, sleep, medicine and sync</span></span>'+
       ic("chevron-right",18,C.sub)+'</button>'+
+    (function(){ babyStash(); var bh='', i; for(i=0;i<S.babies.length;i++){ var b=S.babies[i], active=(b.id===S.activeBaby), nm=(b.baby&&b.baby.name)||"Unnamed baby";
+        bh+='<div style="display:flex;align-items:center;gap:10px;padding:10px 8px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
+          '<button class="press" data-a="babySwitch" data-x="'+b.id+'" style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left">'+
+          '<span class="circ" style="width:34px;height:34px;flex:none;background:'+alpha(C.pink,0.18)+'">'+ic("baby",18,C.pink)+'</span>'+
+          '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(nm)+(active?' <span style="font-size:11px;color:'+C.pink+';font-weight:800">\u00B7 ACTIVE</span>':'')+'</span></span></button>'+
+          '<button class="press" data-a="babyDelAsk" data-x="'+b.id+'" style="flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+alpha(C.red,0.16)+'">'+ic("cross",16,C.red)+'</button></div>';
+      }
+      return '<div style="font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.5px;margin:6px 4px 8px">BABY PROFILES</div>'+
+        '<div class="card" style="padding:6px 8px;margin-bottom:14px">'+bh+
+        '<button class="press" data-a="babyAdd" style="width:100%;padding:12px;border-radius:12px;background:'+alpha(C.mint,0.14)+';color:'+C.mint+';font-size:14px;font-weight:700;margin-top:6px">+ Add another baby</button></div>';
+    })()+
     '<div class="card" style="margin-bottom:14px;padding:16px;display:flex;align-items:center;gap:12px">'+
       ic("message-circle",22,C.blue)+
       '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Chat</span>'+
@@ -2974,7 +3081,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.00</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.01</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3957,7 +4064,7 @@ function vFeed(){
     '<div class="num" style="font-size:44px;font-weight:700;letter-spacing:-1px;margin-top:6px;color:'+C.mint+'">'+
     (due ? 'Due now' : tClock(nx))+'</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+
-    (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+' \u00B7 \u00B1'+(un.band==="d"?20:30)+' min</div></div>';
+    (due ? ('Was ~'+tClock(nx)+' \u00B7 ') : '')+'Start on the '+un.side+'</div></div>';
   if(un.adjParts && un.adjParts.length){
     var _pj=un.adjParts.map(function(p){ return p.k+' '+(p.v>=0?'+':'')+Math.round(p.v)+'m'; }).join(' \u00B7 ');
     h += '<div style="font-size:12px;color:var(--sub);text-align:center;margin:-8px 0 16px;line-height:1.5">Tuned '+(un.adj>=0?'+':'')+un.adj+' min from base \u2014 '+_pj+'</div>';
@@ -5024,7 +5131,7 @@ function tabbarHtml(){
   }
   function babyTabBtn(){
     var on=(S.tab==="summary" && S.sub==="baby"), nm=(S.baby&&S.baby.name)||"Baby";
-    return '<button class="tab press'+(on?" on":"")+'" data-a="gotoBaby" style="position:relative">'+
+    return '<button class="tab press'+(on?" on":"")+'" data-a="gotoBaby" data-hold="babySheet" style="position:relative">'+
       ic("baby",22,on?C.pink:"#8E8E93",{sw:2.2})+
       '<span class="tl" style="color:'+(on?C.pink:"#8E8E93")+';max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span></button>';
   }
@@ -5288,7 +5395,7 @@ function liveOut(){
 }
 function syDoc(){
   chPrune();
-  return {v:1, up:Date.now(), entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
+  return {v:1, up:Date.now(), bid:S.activeBaby, entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
     set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[]}};
 }
 function sySig(){
@@ -5305,6 +5412,7 @@ function sySig(){
 var syBooted=false;
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
+  if(doc.bid && S.activeBaby && doc.bid!==S.activeBaby) return false;
   var changed=false, byId={}, i;
   for(i=0;i<S.entries.length;i++) byId[S.entries[i].id]=i;
   var tomb={};
@@ -5469,7 +5577,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.00";
+var APPVER="1.01";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
