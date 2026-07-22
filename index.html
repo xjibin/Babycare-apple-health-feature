@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.06 -->
+<!-- Baby Care v1.07 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3100,7 +3100,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.06</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.07</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5438,10 +5438,9 @@ function sySig(){
 var syBooted=false;
 function syMerge(doc){
   if(!doc || !doc.entries) return false;
-  if(!SY.force){
-    if(doc.bid && S.activeBaby && doc.bid!==S.activeBaby) return false;
-    if(!doc.bid && S.babies && S.babies.length>1) return false;
-  }
+  /* Baby isolation is handled by per-baby endpoints (each baby syncs to its own URL),
+     so we no longer block merges by baby id here — that was silently blocking entries,
+     the live/remote-activity capsule, and chat between two devices on the same endpoint. */
   var changed=false, byId={}, i;
   for(i=0;i<S.entries.length;i++) byId[S.entries[i].id]=i;
   var tomb={};
@@ -5549,7 +5548,7 @@ function syMerge(doc){
   }
   syBooted=true;
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
-  if(doc.set && (doc.setUp||0)>(S.setUp||0) && SY.force!=="entries" && (SY.force==="profile" || !doc.bid || !S.activeBaby || doc.bid===S.activeBaby)){
+  if(doc.set && (doc.setUp||0)>(S.setUp||0) && SY.force!=="entries"){
     S.baby=doc.set.baby||S.baby;
     if(doc.set.mother) S.mother=doc.set.mother;
     S.meds=doc.set.meds||S.meds;
@@ -5642,7 +5641,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.06";
+var APPVER="1.07";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
