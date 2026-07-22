@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.05 -->
+<!-- Baby Care v1.06 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -259,18 +259,26 @@ function mkBaby(){
   var b={id:"b"+Date.now()+Math.floor(Math.random()*1000), created:Date.now()}, i;
   for(i=0;i<PERBABY.length;i++) b[PERBABY[i]]=babyDef(PERBABY[i]);
   b.baby={dob:new Date().toISOString()};
+  b.sync={on:false, url:"", pass:""};
   return b;
 }
 function babyRec(id){ var i; for(i=0;i<(S.babies||[]).length;i++) if(S.babies[i].id===id) return S.babies[i]; return null; }
 function babyStash(){
   var b=babyRec(S.activeBaby); if(!b) return;
   var i; for(i=0;i<PERBABY.length;i++) b[PERBABY[i]]=S[PERBABY[i]];
+  if(typeof SY!=="undefined") b.sync={on:SY.on, url:SY.url, pass:SY.pass};
 }
 function babyLoad(id, skipStash){
   if(!skipStash) babyStash();
   var b=babyRec(id); if(!b) return;
   var i; for(i=0;i<PERBABY.length;i++) S[PERBABY[i]]=(b[PERBABY[i]]!==undefined? b[PERBABY[i]] : babyDef(PERBABY[i]));
   S.activeBaby=id;
+  if(typeof SY!=="undefined"){
+    if(b.sync){ SY.on=!!b.sync.on; SY.url=b.sync.url||""; SY.pass=b.sync.pass||""; }
+    else { SY.on=false; SY.url=""; SY.pass=""; }
+    SY.key=null; SY.pushSig=""; SY.err=""; SY.busy=false;
+    if(typeof sySaveCfg==="function") sySaveCfg();
+  }
 }
 function activeBabyName(){ return (S.baby&&S.baby.name)||"Baby"; }
 function save(){
@@ -294,8 +302,8 @@ function load(){
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
       S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{};
-      if(d.babies && d.babies.length){ S.babies=d.babies; for(var bz=0;bz<S.babies.length;bz++){ if(!S.babies[bz].created) S.babies[bz].created=Date.now(); } S.activeBaby=d.activeBaby||d.babies[0].id; babyLoad(S.activeBaby, true); }
-      else { var nb=mkBaby(); var pi; for(pi=0;pi<PERBABY.length;pi++){ if(S[PERBABY[pi]]!==undefined) nb[PERBABY[pi]]=S[PERBABY[pi]]; } S.babies=[nb]; S.activeBaby=nb.id; }
+      if(d.babies && d.babies.length){ S.babies=d.babies; S.activeBaby=d.activeBaby||d.babies[0].id; for(var bz=0;bz<S.babies.length;bz++){ if(!S.babies[bz].created) S.babies[bz].created=Date.now(); if(!S.babies[bz].sync){ S.babies[bz].sync=(S.babies[bz].id===S.activeBaby && typeof SY!=="undefined")?{on:SY.on,url:SY.url,pass:SY.pass}:{on:false,url:"",pass:""}; } } babyLoad(S.activeBaby, true); }
+      else { var nb=mkBaby(); var pi; for(pi=0;pi<PERBABY.length;pi++){ if(S[PERBABY[pi]]!==undefined) nb[PERBABY[pi]]=S[PERBABY[pi]]; } if(typeof SY!=="undefined") nb.sync={on:SY.on,url:SY.url,pass:SY.pass}; S.babies=[nb]; S.activeBaby=nb.id; }
       } } catch(e){}
       if(!S.babies || !S.babies.length){ var nb0=mkBaby(); S.babies=[nb0]; S.activeBaby=nb0.id; babyLoad(nb0.id, true); }
   fixOrder();
@@ -3024,12 +3032,14 @@ function logMatch(a){
 function logPillsHtml(){
   if(!ui.logFilter) ui.logFilter=[];
   var PILLS=[["nursing","Nursing"],["nappy","Nappy"],["burp","Burp"],["vomit","Vomit"],["medicine","Medicine"],["sleep","Sleep"],["carseat","Car seat"]], i;
-  var h='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 8px;margin-bottom:6px;align-items:center">';
+  var h='<div class="card" style="padding:14px 16px;margin-bottom:10px">'+
+    '<div style="font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.5px;margin-bottom:10px">Filter by</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
   for(i=0;i<PILLS.length;i++){ var on=(ui.logFilter.indexOf(PILLS[i][0])>=0);
     h+='<button class="press" data-a="logFilt" data-x="'+PILLS[i][0]+'" style="flex:none;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:700;background:'+(on?C.blue:"var(--card2)")+';color:'+(on?"#000":"#fff")+'">'+PILLS[i][1]+'</button>';
   }
   h+='<button class="press" data-a="logFiltClear" style="flex:none;width:40px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--card2)" title="Clear filters">'+ic("repeat",16,ui.logFilter.length?C.blue:"var(--sub)")+'</button>';
-  return h+'</div>';
+  return h+'</div></div>';
 }
 function vHistory(){
   var h = backBtn(C.blue, "Summary", "subback") +
@@ -3090,7 +3100,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.05</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.06</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5077,7 +5087,7 @@ function vSharing(){
     usersCardHtml()+
 
     '<div class="card" style="padding:20px">'+ic("users",30,C.pink)+
-    '<div style="font-size:20px;font-weight:700;margin-top:12px">Live sync <span style="font-size:11px;font-weight:700;color:#FF9F0A;vertical-align:middle">TESTING</span></div>'+
+    '<div style="font-size:20px;font-weight:700;margin-top:12px">Live sync <span style="font-size:11px;font-weight:700;color:#FF9F0A;vertical-align:middle">TESTING</span></div>'+'<div style="font-size:12px;font-weight:600;color:'+C.mint+';margin-top:4px">'+esc(activeBabyName())+' \u00B7 each baby uses its own endpoint</div>'+
     '<div style="font-size:13px;color:var(--sub);margin:4px 0 10px;line-height:1.5">Both phones enter the same endpoint URL and passphrase. Everything is encrypted on-device before upload \u2014 the server only ever sees ciphertext. Syncs about every 25 s while the app is open.</div>'+
     '<div class="card" style="padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px">'+
       '<textarea id="syurl" class="ninput" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Endpoint URL \u00B7 e.g. https://\u2026.firebasedatabase.app/iza.json" style="flex:1;background:transparent;border:none;resize:none;line-height:1.5;word-break:break-all;padding:4px;min-width:0">'+esc(SY.url)+'</textarea>'+
@@ -5412,7 +5422,7 @@ function liveOut(){
 function syDoc(){
   chPrune();
   return {v:1, up:Date.now(), bid:S.activeBaby, entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
-    set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[]}};
+    set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[], mother:S.mother||{}}};
 }
 function sySig(){
   var d=syDoc(), sum=0, i;
@@ -5541,6 +5551,7 @@ function syMerge(doc){
   if(S.night && freshO.length) nightToast(freshO[freshO.length-1]);
   if(doc.set && (doc.setUp||0)>(S.setUp||0) && SY.force!=="entries" && (SY.force==="profile" || !doc.bid || !S.activeBaby || doc.bid===S.activeBaby)){
     S.baby=doc.set.baby||S.baby;
+    if(doc.set.mother) S.mother=doc.set.mother;
     S.meds=doc.set.meds||S.meds;
     S.cfg=doc.set.cfg||S.cfg;
     S.order=doc.set.order||S.order; S.hiddenCards=doc.set.hidden||S.hiddenCards||[]; fixOrder();
@@ -5579,7 +5590,14 @@ function manualSync(mode){
           });
         }
         if(body && body.c){
-          syDec(key, body.c, function(doc){ SY.force=mode; try{ syMerge(doc); } finally { SY.force=null; } pushNow(); },
+          syDec(key, body.c, function(doc){
+            if(mode==="profile"){
+              var rS=(doc&&doc.setUp)||0;
+              if(rS > (S.setUp||0)){ SY.force="profile"; try{ syMerge(doc); } finally { SY.force=null; } }
+              else { bumpSet(); }   // this device's profile is newer/equal -> make it authoritative, then push
+            } else { SY.force=mode; try{ syMerge(doc); } finally { SY.force=null; } }
+            pushNow();
+          },
             function(){ SY.busy=false; toast("Wrong passphrase or corrupt data"); });
         } else pushNow();
       })
@@ -5624,7 +5642,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.05";
+var APPVER="1.06";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -6731,6 +6749,7 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden &&
 /* boot: static status bar icons + first paint */
 document.getElementById("isl-ic").innerHTML = ic("baby",13,"#fff",{sw:2.4});
 document.getElementById("sb-wifi").innerHTML = ic("wifi",16,"#fff");
+syLoadCfg();
 load();
 applyLang();
 try{ if(window.screen && screen.orientation && screen.orientation.lock) screen.orientation.lock("portrait").catch(function(){}); }catch(e){}
