@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.13 -->
+<!-- Baby Care v1.14 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -265,8 +265,14 @@ function mkBaby(){
   return b;
 }
 function babyRec(id){ var i; for(i=0;i<(S.babies||[]).length;i++) if(S.babies[i].id===id) return S.babies[i]; return null; }
+function babyGuard(){
+  if(!S.babies) S.babies=[];
+  if(!S.babies.length){ var nb=mkBaby(); var i; for(i=0;i<PERBABY.length;i++){ if(S[PERBABY[i]]!==undefined) nb[PERBABY[i]]=S[PERBABY[i]]; } S.babies=[nb]; S.activeBaby=nb.id; return nb; }
+  if(!babyRec(S.activeBaby)) S.activeBaby=S.babies[0].id;   // dangling pointer -> re-point to a real record
+  return babyRec(S.activeBaby);
+}
 function babyStash(){
-  var b=babyRec(S.activeBaby); if(!b) return;
+  var b=babyGuard(); if(!b) return;
   var i; for(i=0;i<PERBABY.length;i++) b[PERBABY[i]]=S[PERBABY[i]];
   if(typeof SY!=="undefined") b.sync={on:SY.on, url:SY.url, pass:SY.pass};
 }
@@ -286,6 +292,7 @@ function activeBabyName(){ return (S.baby&&S.baby.name)||"Baby"; }
 function save(){
   if (MEM) return;
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
+  babyGuard();
   babyStash();
   try { localStorage.setItem(KEY, JSON.stringify({v:4, babies:S.babies, activeBaby:S.activeBaby, who:S.who, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, seen:S.seen||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, notifSeen:S.notifSeen||{}})); }
   catch(e){ MEM = true; render(); }
@@ -1360,7 +1367,8 @@ function ssn(k){ if(!S.sess[k]) S.sess[k]={sec:0,run:false,at:0}; return S.sess[
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
 function addEntryAt(k, detail, data, ts){
-  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined), up:Date.now()});
+  babyGuard();
+  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
   S.entries.sort(function(x,y){ return x.ts<y.ts ? 1 : (x.ts>y.ts ? -1 : 0); });
   save();
   S.route="list"; S.pmode=false; ui.sheet=false;
@@ -3138,7 +3146,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.13</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.14</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5469,7 +5477,7 @@ function liveOut(){
   return o;
 }
 function syDoc(){
-  chPrune();
+  chPrune(); babyGuard();
   return {v:1, up:Date.now(), bid:S.activeBaby, entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
     set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[], mother:S.mother||{}}};
 }
@@ -5699,7 +5707,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.13";
+var APPVER="1.14";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
