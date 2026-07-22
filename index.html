@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.11 -->
+<!-- Baby Care v1.12 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -70,6 +70,8 @@
   .actcard{display:block; width:100%; border-radius:24px; padding:20px; margin-bottom:16px; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .circ{border-radius:50%; display:flex; align-items:center; justify-content:center;}
   .chiprow{display:flex; gap:10px; margin-top:16px;}
+  @keyframes recalcSlide{0%{transform:translateX(-120%)}100%{transform:translateX(360%)}}
+  .recalcbar{animation:recalcSlide 1s linear infinite;}
   #cards.grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch;}
   #cards.grid .actcard{width:auto; margin-bottom:0; padding:16px; border-radius:20px; min-height:152px; display:flex; flex-direction:column;}
   #cards.grid .chiprow{margin-top:auto; padding-top:12px; gap:8px;}
@@ -1334,13 +1336,15 @@ function dayLabel(ts){
   if(diff===0) return "Today"; if(diff===1) return "Yesterday";
   return d.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"});
 }
-function toast(msg, ms, go){
+function toast(msg, ms, go, hi){
   var t=document.getElementById("toast");
   t.textContent=msg; t.style.opacity="1"; t._ms=ms||1600;
+  t.style.border = hi ? ("2px solid "+C.mint) : "";
+  t.style.boxShadow = hi ? ("0 0 18px "+alpha(C.mint,0.55)) : "";
   t.style.pointerEvents = go ? "auto" : "none";
   t.onclick = go ? function(){ t.style.opacity="0"; t.onclick=null; if(A[go.a]) A[go.a](go.x); } : null;
   clearTimeout(t._h);
-  t._h=setTimeout(function(){ t.style.opacity="0"; t.onclick=null; }, t._ms);
+  t._h=setTimeout(function(){ t.style.opacity="0"; t.onclick=null; t.style.border=""; t.style.boxShadow=""; }, t._ms);
 }
 
 /* timestamp-based sessions: survive locking the phone / app being killed */
@@ -2201,6 +2205,22 @@ var A = {
     if(x==="d" && u2.autoD){ ui.fmD=false; ui.fivD=Math.round(u2.autoD/6e4); }
     if(x==="n" && u2.autoN){ ui.fmN=false; ui.fivN=Math.round(u2.autoN/6e4); }
     render();
+  },
+  feedRecalc: function(){
+    if(ui.recalcing) return;
+    ui.recalcing=true; render();
+    var un0=upNext(), b0=un0?un0.band:"d";
+    var oldNext = un0 ? (un0.last + ((b0==="d"?ui.fivD:ui.fivN)||0)*6e4 + (un0.adj||0)*6e4) : null;
+    setTimeout(function(){
+      var m=feedModel();
+      ui.fmD=false; ui.fmN=false; ui.fivD=m.ivD; ui.fivN=m.ivN;
+      var un1=upNext(), b1=un1?un1.band:"d";
+      var newNext = un1 ? (un1.last + ((b1==="d"?ui.fivD:ui.fivN)||0)*6e4 + (un1.adj||0)*6e4) : null;
+      ui.recalcing=false; save(); render();
+      var changed = (oldNext!=null && newNext!=null && Math.abs(newNext-oldNext)>=60000);
+      if(changed) toast("Good catch. Timings are updated for Next Feed.", 4000, null, true);
+      else toast("No changes made. They are good now", 2800);
+    }, 1000);
   },
   feedAuto: function(){
     S.feedAuto=(S.feedAuto===false);
@@ -3111,7 +3131,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.11</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.12</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4099,11 +4119,17 @@ function vFeed(){
     var _pj=un.adjParts.map(function(p){ return p.k+' '+(p.v>=0?'+':'')+Math.round(p.v)+'m'; }).join(' \u00B7 ');
     h += '<div style="font-size:12px;color:var(--sub);text-align:center;margin:-8px 0 16px;line-height:1.5">Tuned '+(un.adj>=0?'+':'')+un.adj+' min from base \u2014 '+_pj+'</div>';
   }
-  h += '<div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px">'+
+  h += '<div class="card" style="margin-bottom:16px">'+
+    '<div style="display:flex;align-items:center;gap:12px">'+
     '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">'+(auto?"Enabled":"Disabled")+' Auto Mode for Next Feed Predictions</div>'+
     '<div style="font-size:12px;color:var(--sub);margin-top:3px;line-height:1.4">'+(auto?"Predictions adapt automatically from feeds, sleep, nappies and age.":"Manual mode \u2014 set your own day/night feed intervals below.")+'</div></div>'+
     '<button class="press" data-a="feedAuto" style="flex:none;width:52px;height:32px;border-radius:999px;background:'+(auto?C.mint:"#48484A")+';position:relative;transition:background .2s">'+
-    '<span style="position:absolute;top:3px;left:'+(auto?"23px":"3px")+';width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s"></span></button></div>';
+    '<span style="position:absolute;top:3px;left:'+(auto?"23px":"3px")+';width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s"></span></button></div>'+
+    (auto ? ('<button class="press" data-a="feedRecalc" style="width:100%;height:44px;border-radius:14px;margin-top:16px;background:var(--card2);color:'+C.mint+';font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px'+(ui.recalcing?";opacity:.55;pointer-events:none":"")+'">'+ic("repeat",16,C.mint)+'Force recalculate</button>'+
+      '<div style="font-size:12px;color:var(--sub);margin-top:9px;line-height:1.45">Predictions refine themselves each time you log a feed or nappy \u2014 tap this only if the times still feel off.</div>'+
+      (ui.recalcing ? '<div style="margin-top:16px;padding:0 2px"><div style="height:6px;border-radius:999px;background:#2A2A2C;overflow:hidden"><div class="recalcbar" style="height:100%;width:38%;border-radius:999px;background:'+C.mint+'"></div></div><div style="font-size:13px;color:var(--sub);margin-top:10px;text-align:center;font-weight:600">Recalculating\u2026</div></div>' : "")
+    ) : "")+
+    '</div>';
   (function(){
     var sch=feedSchedule(), mdl=sch.model, rows="", nextDone=false, i;
     for(i=0;i<sch.list.length;i++){
@@ -5666,7 +5692,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.11";
+var APPVER="1.12";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
