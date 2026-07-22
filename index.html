@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.15 -->
+<!-- Baby Care v1.16 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -489,20 +489,22 @@ function vomitHtml(){
   return h;
 }
 function vomitCardHtml(){
-  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime();
-  var cnt=0, lastE=null, flagToday=false, i;
+  var d0=new Date(); d0.setHours(0,0,0,0); var day0=d0.getTime(), h24=Date.now()-24*36e5;
+  var cnt=0, lastE=null, flagToday=false, v24=false, i;
   for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="vomit"){ var t=new Date(e.ts).getTime();
     if(t>=day0){ cnt++; if(e.data&&e.data.flag) flagToday=true; }
+    if(t>=h24) v24=true;
     if(!lastE || t>new Date(lastE.ts).getTime()) lastE=e; } }
   var sub = lastE ? ('Last '+agoStr(new Date(lastE.ts).getTime())+' \u00B7 '+esc(lastE.detail)) : 'Tap to log a spit-up or vomit';
-  return '<button class="card press" data-a="vomitOpen" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:16px">'+
+  return '<button class="card press" data-a="vomitOpen" style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:'+(v24?16:8)+'px">'+
     '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(C.coral,0.18)+'">'+ic("droplet",22,C.coral)+'</span>'+
     '<span style="flex:1;min-width:0">'+
       '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700;color:'+C.coral+'">Vomit / Spit-up</span>'+
       (cnt?'<span style="font-size:12px;font-weight:700;color:var(--sub)">'+cnt+' today</span>':'')+
       (flagToday?'<span style="font-size:11px;font-weight:800;color:'+C.coral+'">\u26A0\uFE0F flag</span>':'')+'</span>'+
       '<span style="display:block;font-size:13px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</span>'+
-    '</span>'+ic("plus",20,C.coral)+'</button>';
+    '</span>'+ic("plus",20,C.coral)+'</button>'+
+    (v24 ? "" : '<div style="font-size:12.5px;color:#34C77B;font-weight:600;margin:-10px 2px 16px;padding-left:4px;display:flex;align-items:center;gap:6px">'+ic("check",14,"#34C77B")+'All good for last 24 hrs</div>');
 }
 function feedFactorStats(){
   var now=Date.now(), win=now-7*864e5, i, e, t;
@@ -3150,7 +3152,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.15</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.16</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5711,7 +5713,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.15";
+var APPVER="1.16";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -6218,7 +6220,16 @@ function notifTick(){
       }
     }
   }
-  // 3) nappy o'clock (>= 2.5h since the last nappy)
+  // 3) nappy prediction ("Mixed/Wet due now") \u2014 mirrors the in-app smart-stack hero
+  try {
+    var ch=nappyChip();
+    if(ch && ch.txt && ch.txt.indexOf("due now")>=0){
+      var lf9=(typeof lastFeed==="function")?lastFeed():null;
+      var pk="npred:"+(lf9?new Date(lf9.ts).getTime():tk);
+      if(!S.notifSeen[pk]){ notif(ch.txt.replace(" due now"," nappy likely due now")+" \u2014 "+nm); S.notifSeen[pk]=1; changed=true; }
+    }
+  } catch(ePred){}
+  // 4) nappy o'clock (>= 2.5h since the last nappy)
   var lt=0; for(i=0;i<S.entries.length;i++){ if(S.entries[i].act==="nappy"){ var t=new Date(S.entries[i].ts).getTime(); if(t>lt) lt=t; } }
   if(lt && (now-lt)>=150*6e4){
     var nk="nappy:"+lt, gap=now-lt, hh=Math.floor(gap/3600000), mm=Math.round((gap%3600000)/60000);
