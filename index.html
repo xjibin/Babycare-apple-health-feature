@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.14 -->
+<!-- Baby Care v1.15 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1363,6 +1363,8 @@ function ds(k){ if(!S.sess[k]) S.sess[k]={l:0,r:0,side:null,run:false,at:0}; ret
 function dsE(s){ var ex=s.run?(Date.now()-s.at)/1000:0;
   return { l:s.l+(s.side==="L"?ex:0), r:s.r+(s.side==="R"?ex:0) }; }
 function dsFold(s){ var e=dsE(s); s.l=e.l; s.r=e.r; s.at=Date.now(); }
+function nurseGapPause(s){ if(s && s.run && !s.pausedAt) s.pausedAt=Date.now(); }        // mark the moment nursing was paused
+function nurseGapResume(s){ if(s && !s.run && s.pausedAt){ var g=Math.round((Date.now()-s.pausedAt)/1000); if(g>=2){ (s.gaps=s.gaps||[]).push(g); s.pausedSec=(s.pausedSec||0)+g; } s.pausedAt=0; } }  // on resume, note the gap since the pause
 function ssn(k){ if(!S.sess[k]) S.sess[k]={sec:0,run:false,at:0}; return S.sess[k]; }
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
@@ -1545,8 +1547,8 @@ var A = {
     var s=ds(S.route);
     if(!s.startSide) s.startSide=x;
     if(!s.st) s.st=Date.now();
-    if(s.run && s.side===x){ dsFold(s); s.run=false; }
-    else { dsFold(s); s.side=x; s.run=true; s.at=Date.now(); }
+    if(s.run && s.side===x){ nurseGapPause(s); dsFold(s); s.run=false; }
+    else { nurseGapResume(s); dsFold(s); s.side=x; s.run=true; s.at=Date.now(); }
     save(); render();
   },
   tgl: function(){
@@ -1583,11 +1585,12 @@ var A = {
     var a=act(S.route);
     if(a.kind==="dual"){
       var s=ds(a.k), l=Math.round(s.l), r=Math.round(s.r), tot=l+r;
+      var ps=Math.round(s.pausedSec||0), pdT=(ps>0?" \u00B7 paused "+fmt(ps):""), pgaps=s.gaps||[];
       delete S.sess[a.k];
       var ss2=s.startSide||null;
       if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2,side:s.side||ss2});
-      else if(a.k==="nursing" && s.st) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2}, new Date(s.st).toISOString());
-      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2});
+      else if(a.k==="nursing" && s.st) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total"+pdT, {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2,pausedSec:ps,gaps:pgaps}, new Date(s.st).toISOString());
+      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total"+pdT, {l:l,r:r,total:tot,startSide:ss2,side:s.side||ss2,pausedSec:ps,gaps:pgaps});
     } else {
       var s2=ssn(a.k), sec=Math.round(s2.sec);
       delete S.sess[a.k];
@@ -2013,7 +2016,7 @@ var A = {
     var k="nursing", s=S.sess[k];
     if(s){
       if(s.side===x){ A.lapause(k); return; }
-      dsFold(s); s.side=x; if(!s.startSide) s.startSide=x;
+      nurseGapResume(s); dsFold(s); s.side=x; if(!s.startSide) s.startSide=x;
       s.run=true; s.at=Date.now(); save(); render(); return;
     }
     stopSleeps();
@@ -2089,7 +2092,7 @@ var A = {
     ui.ss=null;
     var s=S.sess.nursing;
     if(s){
-      dsFold(s); s.side=other; if(!s.startSide) s.startSide=other;
+      nurseGapResume(s); dsFold(s); s.side=other; if(!s.startSide) s.startSide=other;
       s.run=true; s.at=Date.now(); save();
     }
     render();
@@ -2504,11 +2507,12 @@ var A = {
       dsFold(se); se.run=false;
       var l=Math.round(se.l), r=Math.round(se.r), tot=l+r;
       var ss2=se.startSide||null, st0=se.st;
+      var ps=Math.round(se.pausedSec||0), pdT=(ps>0?" \u00B7 paused "+fmt(ps):""), pgaps=se.gaps||[];
       delete S.sess[x];
       if(tot<1){ save(); render(); return; }
       if(a.pump) addEntry(a.k, fmt(tot)+" \u00B7 "+ui.pml+" ml collected", {l:l,r:r,total:tot,ml:ui.pml,startSide:ss2,side:se.side||ss2});
-      else if(a.k==="nursing" && st0) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2}, new Date(st0).toISOString());
-      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total", {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2});
+      else if(a.k==="nursing" && st0) addEntryAt(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total"+pdT, {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2,pausedSec:ps,gaps:pgaps}, new Date(st0).toISOString());
+      else addEntry(a.k, "L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total"+pdT, {l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2,pausedSec:ps,gaps:pgaps});
     } else {
       sFold(se); se.run=false;
       var sec=Math.round(se.sec), wasMid=!!se.mid;
@@ -2527,8 +2531,8 @@ var A = {
   lapause: function(x){
     var a=act(x), se=S.sess[x]; if(!a||!se) return;
     if(a.kind==="dual"){
-      if(se.run){ dsFold(se); se.run=false; }
-      else { se.side=se.side||"L"; if(!se.startSide) se.startSide=se.side; se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now(); }
+      if(se.run){ nurseGapPause(se); dsFold(se); se.run=false; }
+      else { nurseGapResume(se); se.side=se.side||"L"; if(!se.startSide) se.startSide=se.side; se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now(); }
     } else {
       if(se.run){ sFold(se); se.run=false; } else { se.run=true; se.at=Date.now(); if(!se.st) se.st=Date.now(); }
     }
@@ -3146,7 +3150,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.14</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.15</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5707,7 +5711,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.14";
+var APPVER="1.15";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
