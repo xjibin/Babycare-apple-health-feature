@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.19 -->
+<!-- Baby Care v1.20 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2187,7 +2187,9 @@ var A = {
   },
   mergeJson: function(){ var f=byId("impf2"); f.value=""; f.click(); },
   docGen: function(){
-    var sD=dValue("rs"), eD=dValue("re");
+    var fF=byId("docFrom"), fT=byId("docTo");
+    var sD=(fF&&fF.value)?new Date(fF.value):dValue("rs");
+    var eD=(fT&&fT.value)?new Date(fT.value):dValue("re");
     if(sD.getTime()>eD.getTime()){ toast("Start date is after end date"); return; }
     openDoc(docHtml(sD, eD), today());
   },
@@ -2898,10 +2900,18 @@ function langListHtml(){
     '<div style="font-size:13px;color:var(--sub);margin-bottom:8px">'+t("chooseLang")+'</div>'+
     '<div style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -2px">'+rows+'</div>';
 }
+function setFilter(q){
+  q=(q||"").trim().toLowerCase();
+  var root=document.querySelector("#scroll .full"); if(!root) return;
+  var kids=root.children, i;
+  for(i=0;i<kids.length;i++){ var el=kids[i]; if((el.className||"").indexOf("card")<0) continue;
+    el.style.display = (!q || (el.textContent||"").toLowerCase().indexOf(q)>=0) ? "" : "none"; }
+}
 function vSettings(){
   return '<div class="full">'+
     backBtn(C.blue, "Summary", "subback")+
     '<div style="font-size:30px;font-weight:700;letter-spacing:-.5px;margin:6px 0 8px">'+t("settings")+'</div>'+
+    '<div style="position:relative;margin:4px 0 16px">'+ic("search",17,"var(--sub)",{style:"position:absolute;left:14px;top:50%;transform:translateY(-50%)"})+'<input id="setSearch" class="ninput" placeholder="Search settings\u2026" autocomplete="off" autocapitalize="off" oninput="try{setFilter(this.value)}catch(e){}" style="width:100%;background:var(--card2);border:0;border-radius:14px;color:#fff;font-size:16px;padding:12px 14px 12px 42px;outline:none"></div>'+
     '<button class="card press" data-a="langOpen" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:16px">'+
       ic("globe",22,C.blue)+
       '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:15px;font-weight:600">'+t("language")+'</span>'+
@@ -2934,6 +2944,7 @@ function vSettings(){
       '<span style="display:block;font-size:13px;color:var(--sub);margin-top:2px">'+(S.chatOn?"Enabled \u2014 shows in the bottom bar":"Disabled \u2014 Baby Profile shows in the bottom bar instead")+'</span></span>'+
       '<button class="press" data-a="chatToggle" style="flex:none;width:52px;height:32px;border-radius:999px;background:'+(S.chatOn?C.mint:"#48484A")+';position:relative;transition:background .2s"><span style="position:absolute;top:3px;left:'+(S.chatOn?"23px":"3px")+';width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s"></span></button>'+
     '</div>'+
+    syncCardsHtml()+
     '<div style="height:60px"></div></div>';
 }
 /* vSummary(): the home dashboard — hero smartstack, next-feed card, today totals, quick cards. */
@@ -3200,19 +3211,20 @@ function vHistory(){
       var right = expanded
         ? '<button class="circ press" data-a="dayDoc" data-x="'+ts9+'" style="width:30px;height:30px;background:var(--card2)" title="Download one-pager">'+ic("download",15,C.blue)+'</button>'
         : '<span style="font-size:13px;color:var(--sub);font-weight:600">'+rn+' entr'+(rn===1?"y":"ies")+'</span>';
-      h += '<div style="margin:20px 0 10px"><div class="rowsb">'+label+right+'</div><div class="hchips">'+chips+'</div></div>'+
+      h += '<div style="margin:'+(pinned?"20px":"30px")+' 0 10px"><div class="rowsb">'+label+right+'</div><div class="hchips">'+chips+'</div></div>'+
         (expanded ? '<div class="card" style="padding:0;overflow:hidden">'+rows+'</div>' : '');
     }
     if(logActive() && !shownG) h += '<div class="card" style="color:var(--sub);font-size:15px;margin-top:14px">No matching entries for this filter \u2014 tap the refresh icon to clear.</div>';
   }
   var base=location.origin+location.pathname;
+  h += onePagerHtml();
   h += '<div style="font-size:22px;font-weight:700;margin:28px 0 12px">Manage Data</div>'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">'+
     '<button class="listopt press" data-a="expCsv" style="color:var(--blue);font-size:16px">Export as CSV</button>'+
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.19</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.20</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5202,13 +5214,8 @@ function usersCardHtml(){
     '<div style="font-size:13px;color:var(--sub);margin:4px 0 12px;line-height:1.5">Everyone on '+esc((S.baby&&S.baby.name)||"the baby")+'\u2019s sync stream and when they were last active.</div>'+
     '<div style="background:var(--card2);border-radius:16px;overflow:hidden;padding:0 14px">'+rows+'</div></div>';
 }
-function vSharing(){
-  var tags=["Nursing","Bottle feeds","Pumping","Sleep","Nappy changes","Growth","Vaccines"], th="", i;
-  for(i=0;i<tags.length;i++)
-    th+='<span style="border-radius:999px;padding:6px 14px;background:var(--card2);font-size:13px;font-weight:500">'+tags[i]+'</span>';
-  return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:20px">Sharing</div>'+
-
-    usersCardHtml()+
+function syncCardsHtml(){
+  return ''+usersCardHtml()+
 
     '<div class="card" style="padding:20px">'+ic("users",30,C.pink)+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Live sync <span style="font-size:11px;font-weight:700;color:#FF9F0A;vertical-align:middle">TESTING</span></div>'+'<div style="font-size:12px;font-weight:600;color:'+C.mint+';margin-top:4px">'+esc(activeBabyName())+' \u00B7 each baby uses its own endpoint</div>'+
@@ -5248,16 +5255,25 @@ function vSharing(){
     ic("upload",17,"#000")+'Send to partner\u2026</button>'+
     '<button class="press" data-a="mergeJson" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;'+
     'border-radius:16px;margin-top:10px;background:var(--card2);color:#fff;font-size:16px;font-weight:600">'+
-    ic("download",17,"#fff")+'Merge from partner\u2026</button></div>'+
-
-    '<div class="card" style="padding:20px;margin-top:12px">'+ic("line-chart",28,C.blue)+
+    ic("download",17,"#fff")+'Merge from partner\u2026</button></div>';
+}
+function onePagerHtml(){
+  return ''+'<div class="card" style="padding:20px;margin-top:12px">'+ic("line-chart",28,C.blue)+
     '<div style="font-size:20px;font-weight:700;margin-top:12px">Pediatrician one-pager</div>'+
     '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">A print-ready summary of feeding, output, sleep, growth and vaccines for the dates you pick.</div>'+
-    '<div style="margin-top:16px">'+lbl("FROM")+dPicker("rs")+
-    '<div style="height:12px"></div>'+lbl("TO")+dPicker("re")+'</div>'+
+    '<div style="margin-top:16px">'+lbl("FROM")+'<div class="card" style="padding:0;margin-bottom:12px"><input id="docFrom" type="datetime-local" class="ninput" value="'+dtLocal(new Date(Date.now()-7*864e5))+'"></div>'+lbl("TO")+'<div class="card" style="padding:0"><input id="docTo" type="datetime-local" class="ninput" value="'+dtLocal(new Date())+'"></div></div>'+
     '<button class="press" data-a="docGen" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;'+
     'border-radius:16px;margin-top:16px;background:'+C.blue+';color:#000;font-size:16px;font-weight:700">Generate one-pager</button>'+
-    '<div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">Opens in the browser \u2014 use the share sheet there to print or save as PDF.</div></div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">Opens in the browser \u2014 use the share sheet there to print or save as PDF.</div></div>';
+}
+function dtLocal(d){ function p(n){return (n<10?"0":"")+n;} return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
+function vSharing(){
+  var tags=["Nursing","Bottle feeds","Pumping","Sleep","Nappy changes","Growth","Vaccines"], th="", i;
+  for(i=0;i<tags.length;i++)
+    th+='<span style="border-radius:999px;padding:6px 14px;background:var(--card2);font-size:13px;font-weight:500">'+tags[i]+'</span>';
+  return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:20px">Sharing</div>'+
+
+    '<div class="card" style="padding:20px;margin-bottom:12px">'+ic("info",26,C.blue)+'<div style="font-size:18px;font-weight:700;margin-top:10px">Sync & sharing moved</div>'+'<div style="font-size:13px;color:var(--sub);margin-top:6px;line-height:1.55">Live sync, manual sync, users and caregiver handoff now live in <b style="color:#fff">Settings</b>. The pediatrician one-pager is in the <b style="color:#fff">Activity Log</b> (Log tab).</div></div>'+
 
     '<div class="card" style="padding:20px;margin-top:12px">'+
     '<div style="font-size:16px;font-weight:600;margin-bottom:12px">What gets shared</div>'+
@@ -5788,7 +5804,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.19";
+var APPVER="1.20";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
