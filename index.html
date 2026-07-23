@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.23 -->
+<!-- Baby Care v1.24 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3269,7 +3269,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.23</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.24</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5440,7 +5440,7 @@ function vInventory(){
   if(ui.invPick) return invPickHtml();
   var inv=S.inventory, i, cards="";
   for(i=0;i<inv.length;i++){ var it=inv[i]; if(!it.affs) it.affs=[]; if(it.link){ if(!it.affs.length) it.affs.push({link:it.link,name:"Buy on Amazon",price:"",img:""}); delete it.link; }
-    var qty=+it.qty||0, left=invLeft(it), pct=qty>0?Math.round(left/qty*100):0, dl=invDays(it), low=(qty>0&&(left<=0||(dl!=null&&dl<2)));
+    var qty=+it.qty||0, left=invLeft(it), pct=qty>0?Math.round(left/qty*100):0, dl=invDays(it), low=(qty>0&&(left<=0||(dl!=null&&dl<2))), showAff=((qty<=0)||(left<=0.2*qty));
     var pt=[]; if(+it.per.mix) pt.push((+it.per.mix)+"/mixed"); if(+it.per.wet) pt.push((+it.per.wet)+"/wet"); if(+it.per.nurse) pt.push((+it.per.nurse)+"/feed");
     cards+='<div class="card" style="padding:16px;margin-bottom:12px'+(low?';border:1px solid '+alpha(C.red,0.5):'')+'">'+
       '<div style="display:flex;align-items:center;gap:12px">'+
@@ -5451,7 +5451,7 @@ function vInventory(){
       '</div>'+
       (qty>0?'<div style="height:6px;border-radius:999px;background:#2A2A2C;overflow:hidden;margin-top:12px"><div style="height:100%;width:'+Math.max(0,Math.min(100,pct))+'%;background:'+(low?C.red:C.mint)+'"></div></div>'+
         '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--sub)"><span>'+(pt.length?"Uses "+pt.join(" \u00B7 "):"No auto-use")+'</span><span style="color:'+(low?C.red:"var(--sub)")+';font-weight:600">'+(dl!=null?(dl<0.5?"Running out":"\u2248 "+Math.round(dl)+"d left"):"")+'</span></div>':
-        '<div style="font-size:12px;color:var(--sub);margin-top:8px">'+(pt.length?"Will use "+pt.join(" \u00B7 "):"No auto-use")+'</div>')+invAffs(it)+
+        '<div style="font-size:12px;color:var(--sub);margin-top:8px">'+(pt.length?"Will use "+pt.join(" \u00B7 "):"No auto-use")+'</div>')+(showAff?invAffs(it):"")+
     '</div>';
   }
   return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:8px">Inventory</div>'+
@@ -6015,7 +6015,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.23";
+var APPVER="1.24";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
