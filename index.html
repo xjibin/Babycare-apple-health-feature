@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.22 -->
+<!-- Baby Care v1.23 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -337,7 +337,7 @@ function save(){
   if(S.who){ S.seen=S.seen||{}; S.seen[S.who]=Date.now(); }
   babyGuard();
   babyStash();
-  try { localStorage.setItem(KEY, JSON.stringify({v:4, babies:S.babies, activeBaby:S.activeBaby, who:S.who, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, seen:S.seen||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, notifSeen:S.notifSeen||{}})); }
+  try { localStorage.setItem(KEY, JSON.stringify({v:4, babies:S.babies, activeBaby:S.activeBaby, who:S.who, chat:S.chat||[], chatSeen:S.chatSeen||0, reads:S.reads||{}, seen:S.seen||{}, cmd:S.cmd||{}, cmdAp:S.cmdAp||{}, cfg:S.cfg||{}, lang:S.lang||"en", grid:!!S.grid, feedAuto:(S.feedAuto!==false), chatOn:!!S.chatOn, notifSeen:S.notifSeen||{}, catalogX:S.catalogX||[]})); }
   catch(e){ MEM = true; render(); }
 }
 function load(){
@@ -353,7 +353,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{};
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{}; S.catalogX=d.catalogX||[];
       if(d.babies && d.babies.length){ S.babies=d.babies; S.activeBaby=d.activeBaby||d.babies[0].id; for(var bz=0;bz<S.babies.length;bz++){ if(!S.babies[bz].created) S.babies[bz].created=Date.now(); if(!S.babies[bz].sync){ S.babies[bz].sync=(S.babies[bz].id===S.activeBaby && typeof SY!=="undefined")?{on:SY.on,url:SY.url,pass:SY.pass}:{on:false,url:"",pass:""}; } } babyLoad(S.activeBaby, true); }
       else { var nb=mkBaby(); var pi; for(pi=0;pi<PERBABY.length;pi++){ if(S[PERBABY[pi]]!==undefined) nb[PERBABY[pi]]=S[PERBABY[pi]]; } if(typeof SY!=="undefined") nb.sync={on:SY.on,url:SY.url,pass:SY.pass}; S.babies=[nb]; S.activeBaby=nb.id; }
       } } catch(e){}
@@ -1452,7 +1452,7 @@ var A = {
       if(sc9) sc9.scrollTo({top:0, behavior:"smooth"});
       return;
     }
-    S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; ui.logFilter=[]; ui.logExpand={}; render();
+    S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; ui.logFilter=[]; ui.logExpand={}; ui.affDel=null; ui.invPick=false; render();
     if(x==="chat") setTimeout(chFit, 40); if(x==="chat"||x==="sharing"){ try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(_n){} } },
   sub: function(x){
     S.sub=x;
@@ -1476,10 +1476,22 @@ var A = {
     if(!S.inventory) S.inventory=[];
     var it=x?invRec(x):null;
     if(it){ if((+it.qty||0)!==qty) it.since=Date.now(); it.name=name; it.qty=qty; it.unit=unit; it.per=per; }
-    else { S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:name, cat:"other", unit:unit, qty:qty, since:Date.now(), per:per, affs:[]}); }
+    else { S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:name, cat:"other", unit:unit, qty:qty, since:Date.now(), per:per, affs:[]});
+      if(!S.catalogX) S.catalogX=[]; var cx=true,ci; for(ci=0;ci<S.catalogX.length;ci++) if((S.catalogX[ci].name||"").toLowerCase()===name.toLowerCase()) cx=false; if(cx && !invCatFind(name)) S.catalogX.push({name:name,cat:"other",unit:unit,per:per}); }
     save(); csModalHide(); render(); toast(it?"Updated":"Product added");
   },
   invDel: function(x){ S.inventory=(S.inventory||[]).filter(function(z){return z.id!==x;}); save(); csModalHide(); render(); toast("Product removed"); },
+  invPickOpen: function(){ ui.invPick=true; render(); var el=byId("scroll"); if(el) el.scrollTop=0; },
+  invPickClose: function(){ ui.invPick=false; render(); },
+  invPickOther: function(){ ui.invPick=false; render(); A.invEdit(""); },
+  invPickAdd: function(x){
+    if(!S.inventory) S.inventory=babyDef("inventory");
+    var i, ex=false; for(i=0;i<S.inventory.length;i++) if((S.inventory[i].name||"").toLowerCase()===(x||"").toLowerCase()) ex=true;
+    if(ex){ ui.invPick=false; render(); toast(x+" is already in your inventory"); return; }
+    var cat=invCatFind(x);
+    S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:x, cat:(cat?cat.cat:"other"), unit:(cat?cat.unit:""), qty:0, since:Date.now(), per:(cat?{mix:+cat.per.mix||0,wet:+cat.per.wet||0,nurse:+cat.per.nurse||0}:{mix:0,wet:0,nurse:0}), affs:(cat&&cat.affs?cat.affs.slice():[])});
+    ui.invPick=false; save(); render(); toast(x+" added \u2014 tap + to set stock");
+  },
   invAffAdd: function(x){ csModal(affForm(x)); },
   invAffSave: function(x){
     var g=function(id){var e=byId(id);return e?(e.value||"").trim():"";};
@@ -1489,11 +1501,13 @@ var A = {
     it.affs.push({img:g("aff_img"), name:g("aff_name")||"Product", price:g("aff_price"), link:link});
     save(); csModalHide(); render(); toast("Affiliate product added");
   },
-  invAffDel: function(x){ var p=(x||"").split(":"), idx=parseInt(p.pop(),10), id=p.join(":"), it=invRec(id); if(it&&it.affs){ it.affs.splice(idx,1); save(); render(); } },
+  invAffOpen: function(x){ if(ui.affDel){ ui.affDel=null; render(); return; } var p=(x||"").split(":"), idx=parseInt(p.pop(),10), id=p.join(":"), it=invRec(id); if(it&&it.affs&&it.affs[idx]&&it.affs[idx].link){ try{ window.open(it.affs[idx].link,"_blank","noopener"); }catch(e){} } },
+  invAffHold: function(x){ ui.affDel=x; render(); },
+  invAffDel: function(x){ var p=(x||"").split(":"), idx=parseInt(p.pop(),10), id=p.join(":"), it=invRec(id); if(it&&it.affs){ it.affs.splice(idx,1); } ui.affDel=null; save(); render(); },
   logExpand: function(x){ if(!ui.logExpand) ui.logExpand={}; ui.logExpand[x]=!ui.logExpand[x]; render(); },
   logFilt: function(x){ if(!ui.logFilter) ui.logFilter=[]; var i=ui.logFilter.indexOf(x); if(i>=0) ui.logFilter.splice(i,1); else ui.logFilter.push(x); render(); },
   logFiltClear: function(){ ui.logFilter=[]; render(); },
-  subback: function(){ S.sub=""; ui.logFilter=[]; ui.logExpand={}; render(); },
+  subback: function(){ S.sub=""; ui.logFilter=[]; ui.logExpand={}; ui.affDel=null; ui.invPick=false; render(); },
   vomitOpen: function(){ ui.vom={type:"Spit-up", vol:5, look:"Fresh", exit:"Mouth", after:"Content", ts:Date.now(), past:false}; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); },
   vomSet: function(x){ var p=x.split("|"); if(!ui.vom) ui.vom={}; ui.vom[p[0]]=(p[0]==="vol"? +p[1] : p[1]); render(); },
   vomCancel: function(){ S.route="list"; ui.vom=null; render(); },
@@ -3255,7 +3269,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.22</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.23</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5315,15 +5329,94 @@ function invRate(it){ var wk=Math.max(it.since||0, Date.now()-7*864e5), u=invUse
 function invDays(it){ var r=invRate(it); return r>0? invLeft(it)/r : null; }
 function invRec(id){ var i,inv=S.inventory||[]; for(i=0;i<inv.length;i++) if(inv[i].id===id) return inv[i]; return null; }
 function invIcon(cat){ return cat==="nappy"?"layers":(cat==="wipe"?"droplet":(cat==="cream"?"heart":(cat==="sheet"?"layers":"package"))); }
+var INVCAT=[
+  {name:"Baby bath towel",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby blanket",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby body wash",cat:"cream",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby carrier",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby detergent",cat:"cream",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby lotion",cat:"cream",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby monitor",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby nail clippers",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby oil",cat:"cream",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby powder",cat:"cream",unit:"g",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby shampoo",cat:"cream",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby socks & mittens",cat:"clothing",unit:"pairs",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby thermometer",cat:"health",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby water wipes",cat:"wipe",unit:"wipes",per:{mix:3,wet:2,nurse:0}},
+  {name:"Barrier cream",cat:"cream",unit:"cm",per:{mix:1,wet:0,nurse:0}},
+  {name:"Bibs",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Bottle sterilizer",cat:"feeding",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Breast pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:1}},
+  {name:"Breast pump",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Burp cloths",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:1}},
+  {name:"Car seat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Changing mat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Cotton balls",cat:"wipe",unit:"balls",per:{mix:4,wet:2,nurse:0}},
+  {name:"Cotton pads",cat:"wipe",unit:"pads",per:{mix:2,wet:1,nurse:0}},
+  {name:"Crib sheets",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Diaper bag",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Diaper rash cream",cat:"cream",unit:"cm",per:{mix:2.5,wet:0,nurse:0}},
+  {name:"Disposable dry sheets",cat:"sheet",unit:"sheets",per:{mix:0.5,wet:0,nurse:0}},
+  {name:"Dry wipes",cat:"wipe",unit:"wipes",per:{mix:1,wet:1,nurse:1}},
+  {name:"Feeding bottles",cat:"feeding",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Formula milk",cat:"feeding",unit:"g",per:{mix:0,wet:0,nurse:0}},
+  {name:"Gripe water",cat:"health",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Hooded towel",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Maternity pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:0}},
+  {name:"Muslin cloths",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Nappies / Diapers",cat:"nappy",unit:"nappies",per:{mix:1,wet:1,nurse:0}},
+  {name:"Nasal aspirator",cat:"health",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Nipple cream",cat:"cream",unit:"applications",per:{mix:0,wet:0,nurse:1}},
+  {name:"Nursing bra",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Nursing pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:1}},
+  {name:"Onesies / Bodysuits",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"ORS sachets",cat:"health",unit:"sachets",per:{mix:0,wet:0,nurse:0}},
+  {name:"Pacifier / Dummy",cat:"feeding",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Perineal spray",cat:"mom",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Prenatal vitamins",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Stretch mark cream",cat:"mom",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Stroller",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Swaddle blankets",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Teether",cat:"feeding",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Vitamin D drops",cat:"health",unit:"ml",per:{mix:0,wet:0,nurse:0}},
+  {name:"Washcloths",cat:"wipe",unit:"cloths",per:{mix:1,wet:1,nurse:0}}
+];
+function invCatalog(){ var base=INVCAT.slice(), x=S.catalogX||[], i,j;
+  for(i=0;i<x.length;i++){ var f=false; for(j=0;j<base.length;j++) if(base[j].name.toLowerCase()===(x[i].name||"").toLowerCase()) f=true; if(!f) base.push(x[i]); }
+  base.sort(function(a,b){ return a.name.toLowerCase()<b.name.toLowerCase()?-1:1; }); return base; }
+function invCatFind(name){ var l=invCatalog(),i; for(i=0;i<l.length;i++) if(l[i].name.toLowerCase()===(name||"").toLowerCase()) return l[i]; return null; }
+function invPickFilter(q){ q=(q||"").trim().toLowerCase(); var list=document.getElementById("invPickList"); if(!list) return;
+  var kids=list.children,i,any=false; for(i=0;i<kids.length;i++){ var el=kids[i], nm=el.getAttribute("data-nm")||(el.textContent||"").toLowerCase(), hit=(!q||nm.indexOf(q)>=0); el.style.display=hit?"":"none"; if(hit) any=true; }
+  var none=document.getElementById("invPickNone"); if(none) none.style.display=any?"none":"block"; }
+function invPickHtml(){
+  var list=invCatalog(), i, rows="", inv=S.inventory||[];
+  for(i=0;i<list.length;i++){ var it=list[i], have=false,k; for(k=0;k<inv.length;k++) if((inv[k].name||"").toLowerCase()===it.name.toLowerCase()) have=true;
+    var auto=it.per&&(it.per.mix||it.per.wet||it.per.nurse);
+    rows+='<button class="press" data-a="invPickAdd" data-x="'+esc(it.name)+'" data-nm="'+esc(it.name.toLowerCase())+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 4px;text-align:left;border-bottom:1px solid var(--hair)">'+
+      '<span class="circ" style="width:34px;height:34px;flex:none;background:'+alpha(C.mint,0.16)+'">'+ic(invIcon(it.cat),18,C.mint)+'</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600;color:#fff">'+esc(it.name)+'</span>'+
+      (auto?'<span style="display:block;font-size:12px;color:var(--sub);margin-top:1px">auto-depletes as you log</span>':'')+'</span>'+
+      (have?'<span style="font-size:12px;font-weight:700;color:'+C.mint+'">Added</span>':ic("plus",18,"var(--sub)"))+'</button>';
+  }
+  return '<button class="circ press" data-a="invPickClose" style="width:34px;height:34px;background:var(--card2);margin-top:8px">'+ic("chevron-left",18,"#fff")+'</button>'+
+    '<div style="font-size:30px;font-weight:700;letter-spacing:-.5px;margin:10px 0 6px">Add a product</div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:14px;line-height:1.5">Pick from common newborn, baby and mum essentials \u2014 or add your own at the bottom.</div>'+
+    '<div style="position:relative;margin-bottom:8px">'+ic("search",17,"var(--sub)",{style:"position:absolute;left:14px;top:50%;transform:translateY(-50%)"})+'<input id="invPickSearch" class="ninput" placeholder="Search products\u2026" autocomplete="off" autocapitalize="off" oninput="try{invPickFilter(this.value)}catch(e){}" style="width:100%;background:var(--card2);border:0;border-radius:14px;color:#fff;font-size:16px;padding:12px 14px 12px 42px;outline:none"></div>'+
+    '<div id="invPickList">'+rows+'</div>'+
+    '<div id="invPickNone" style="display:none;font-size:14px;color:var(--sub);text-align:center;padding:18px">No match \u2014 add it as a custom product below.</div>'+
+    '<button class="press" data-a="invPickOther" style="width:100%;padding:16px;border-radius:16px;background:'+alpha(C.mint,0.16)+';color:'+C.mint+';font-size:15px;font-weight:700;margin-top:14px">+ Other product (add your own)</button>'+
+    '<div style="height:90px"></div>';
+}
+function curFmt(p){ p=((p==null?"":p)+"").trim(); if(!p) return ""; return /^[0-9.,]+$/.test(p) ? ("\u20B9"+p) : p; }
 function invAffs(it){
   var affs=it.affs||[], j, s='<div style="display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:14px;padding-bottom:2px">';
   for(j=0;j<affs.length;j++){ var af=affs[j];
-    s+='<div style="position:relative;flex:none;width:132px">'+
-      '<a href="'+esc(af.link||"#")+'" target="_blank" rel="noopener" class="press" style="display:block;background:var(--card2);border-radius:12px;overflow:hidden;text-decoration:none">'+
+    s+='<div class="press" data-a="invAffOpen" data-hold="invAffHold" data-x="'+it.id+':'+j+'" style="position:relative;flex:none;width:132px;background:var(--card2);border-radius:12px;overflow:hidden">'+
       (af.img?'<img src="'+esc(af.img)+'" loading="lazy" style="width:132px;height:104px;object-fit:cover;display:block">':'<div style="width:132px;height:104px;display:flex;align-items:center;justify-content:center;background:#2A2A2C">'+ic("package",28,"var(--sub)")+'</div>')+
       '<div style="padding:8px 9px"><div style="font-size:12px;color:#fff;line-height:1.3;max-height:31px;overflow:hidden">'+esc(af.name||"Product")+'</div>'+
-      '<div style="font-size:13px;font-weight:800;color:'+C.mint+';margin-top:4px">'+esc(af.price||"")+'</div></div></a>'+
-      '<button class="press" data-a="invAffDel" data-x="'+it.id+':'+j+'" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);border:0;display:flex;align-items:center;justify-content:center">'+ic("cross",12,"#fff")+'</button>'+
+      '<div style="font-size:13px;font-weight:800;color:'+C.mint+';margin-top:4px">'+esc(curFmt(af.price))+'</div></div>'+
+      (ui.affDel===(it.id+":"+j)?'<button class="press" data-a="invAffDel" data-x="'+it.id+':'+j+'" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:'+C.red+';border:0;display:flex;align-items:center;justify-content:center">'+ic("cross",13,"#fff")+'</button>':'')+
       '</div>';
   }
   s+='<button class="press" data-a="invAffAdd" data-x="'+it.id+'" style="flex:none;width:132px;min-height:150px;border-radius:12px;background:var(--card2);border:1px dashed '+alpha(C.mint,0.5)+';color:'+C.mint+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700">'+ic("plus",20,C.mint)+'Add link</button>';
@@ -5344,6 +5437,7 @@ function affForm(id){
 }
 function vInventory(){
   if(!S.inventory) S.inventory=babyDef("inventory");
+  if(ui.invPick) return invPickHtml();
   var inv=S.inventory, i, cards="";
   for(i=0;i<inv.length;i++){ var it=inv[i]; if(!it.affs) it.affs=[]; if(it.link){ if(!it.affs.length) it.affs.push({link:it.link,name:"Buy on Amazon",price:"",img:""}); delete it.link; }
     var qty=+it.qty||0, left=invLeft(it), pct=qty>0?Math.round(left/qty*100):0, dl=invDays(it), low=(qty>0&&(left<=0||(dl!=null&&dl<2)));
@@ -5363,7 +5457,7 @@ function vInventory(){
   return '<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;padding-top:16px;margin-bottom:8px">Inventory</div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:18px;line-height:1.5">Your baby supplies. Stock depletes automatically as you log nappies and feeds, with a rough \u201Cdays left\u201D from recent use. Tap + on a product to restock, set how much each event uses, or add your Amazon link.</div>'+
     cards+
-    '<button class="press" data-a="invEdit" data-x="" style="width:100%;padding:14px;border-radius:16px;background:'+alpha(C.mint,0.16)+';color:'+C.mint+';font-size:15px;font-weight:700">+ Add product</button>'+
+    '<button class="press" data-a="invPickOpen" style="width:100%;padding:14px;border-radius:16px;background:'+alpha(C.mint,0.16)+';color:'+C.mint+';font-size:15px;font-weight:700">+ Add product</button>'+
     '<div style="height:90px"></div>';
 }
 function invForm(it){
@@ -5921,7 +6015,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.22";
+var APPVER="1.23";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
