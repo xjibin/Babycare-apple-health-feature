@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.24 -->
+<!-- Baby Care v1.25 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3269,7 +3269,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.24</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.25</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6015,7 +6015,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.24";
+var APPVER="1.25";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -6026,7 +6026,7 @@ function outSplit(){
   }
   return {w:w, m:m};
 }
-function lastNappy(){ for(var i=0;i<S.entries.length;i++) if(S.entries[i].act==="nappy") return S.entries[i]; return null; }
+function lastNappy(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(S.entries[i].act==="nappy"){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
 function agoHM(ts){
   var d=Math.max(0, Date.now()-new Date(ts).getTime());
   var h=Math.floor(d/36e5), m=Math.floor((d%36e5)/6e4);
@@ -6158,16 +6158,18 @@ function vaccNext(){
   return null;
 }
 function lastFeedT(){
-  for(var i=0;i<S.entries.length;i++){
+  var bt=0,i,t;
+  for(i=0;i<S.entries.length;i++){
     var e=S.entries[i];
-    if(e.act==="nursing" || e.act==="bottle") return new Date(e.ts).getTime();
+    if(e.act==="nursing" || e.act==="bottle"){ t=new Date(e.ts).getTime(); if(t>bt) bt=t; }
   }
-  return 0;
+  return bt;
 }
 function lastNappyT(){
-  for(var i=0;i<S.entries.length;i++)
-    if(S.entries[i].act==="nappy") return new Date(S.entries[i].ts).getTime();
-  return 0;
+  var bt=0,i,t;
+  for(i=0;i<S.entries.length;i++)
+    if(S.entries[i].act==="nappy"){ t=new Date(S.entries[i].ts).getTime(); if(t>bt) bt=t; }
+  return bt;
 }
 function sleepAsk(){
   if(S.sess && S.sess.babysleep) return null;
@@ -6288,7 +6290,7 @@ function upCheck(){
       })["catch"](function(){});
   }catch(e){}
 }
-function lastFeed(){ for(var i=0;i<S.entries.length;i++) if(isFeed(S.entries[i])) return S.entries[i]; return null; }
+function lastFeed(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(isFeed(S.entries[i])){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
 function lastFeedLine(){
   var e=lastFeed(); if(!e) return "Log a feed to start predictions";
   var what = e.act==="nursing"
