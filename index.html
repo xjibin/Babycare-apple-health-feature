@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.29 -->
+<!-- Baby Care v1.30 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -869,18 +869,23 @@ function rRun(k){
    NOW from the live mirror (S.rsess), so the log + prediction update immediately without
    waiting for the owner's phone. Deterministic id ("rs-<key>-<start>") so the owner does
    not create a duplicate when it later processes the stop command. */
-function aidFrom(who, st, k){
-  who=((who||"usr")+"").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,6)||"usr";
+function aidAbbr(k, data){
+  if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN"};
+  return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
+}
+function aidFrom(who, st, k, data){
+  who=((who||"USR")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6)||"USR";
   var d=new Date(st||Date.now());
   var y=d.getFullYear(), mo=("0"+(d.getMonth()+1)).slice(-2), da=("0"+d.getDate()).slice(-2);
-  var h=d.getHours(), ap=(h<12?"am":"pm"), h12=((h+11)%12)+1, hh=("0"+h12).slice(-2), mm=("0"+d.getMinutes()).slice(-2);
-  var ab={nursing:"nurs",pumping:"pump",babysleep:"bsleep",mothersleep:"msleep",carseat:"seat",burp:"burp",vomit:"vomt",nappy:"napy",medicine:"medn"}[k] || (k||"act").slice(0,4);
-  return who+y+mo+da+ab+hh+mm+ap;   /* e.g. mum20260728nurs0656pm */
+  var h=d.getHours(), ap=(h<12?"AM":"PM"), h12=((h+11)%12)+1, hh=("0"+h12).slice(-2), mm=("0"+d.getMinutes()).slice(-2);
+  return who+y+mo+da+aidAbbr(k,data)+hh+mm+ap;   /* e.g. MUM20260728NURS0940PM */
 }
+function aidUnique(base){ var id=base, n=1, z; for(;;){ var hit=false; for(z=0;z<S.entries.length;z++){ if(S.entries[z].id===id){ hit=true; break; } } if(!hit) return id; n++; id=base+"-"+n; } }
 function rStopSave(k){
   var it=(S.rsess||{})[k]; if(!it||!it.s) return false;
   var a=act(k); if(!a) return false;
-  var se=it.s, st0=se.st||0, id=aidFrom(it.by||"", st0, k), i;
+  var se=it.s, st0=se.st||0, id=aidFrom(it.by||"", st0, k, se), i;
   for(i=0;i<S.entries.length;i++) if(S.entries[i].id===id) return true;
   var by=it.by||"", det, data, ts;
   if(a.kind==="dual"){
@@ -1467,7 +1472,7 @@ function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
 function addEntryAt(k, detail, data, ts){
   babyGuard();
-  S.entries.push({id: Date.now()+Math.floor(Math.random()*1e4), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+  S.entries.push({id: aidUnique(aidFrom((S.who||""), ts, k, data)), act:k, detail:detail, data:data||{}, ts:ts, by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
   S.entries.sort(function(x,y){ return x.ts<y.ts ? 1 : (x.ts>y.ts ? -1 : 0); });
   save();
   S.route="list"; S.pmode=false; ui.sheet=false;
@@ -1915,6 +1920,12 @@ var A = {
     if(p) SY.pass=p.value;
     ui.syEye=!ui.syEye;
     render();
+  },
+  copyId: function(x){
+    var v=String(x||""); if(!v){ toast("No activity ID"); return; }
+    var done=function(){ toast("Activity ID copied"); };
+    var legacy=function(){ try{ var ta=document.createElement("textarea"); ta.value=v; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); done(); }catch(e){ toast("Copy blocked \u2014 select the text to copy"); } };
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done, legacy); } else legacy();
   },
   sycopy: function(x){
     var el=byId(x==="url"?"syurl":"sypass");
@@ -2643,7 +2654,7 @@ var A = {
   },
   nstop: function(x){
     var a=act(x), se=S.sess[x]; if(!a || !se) return;
-    var __aid=aidFrom((S.who||""), se.st||Date.now(), x), __i;
+    var __aid=aidFrom((S.who||""), se.st||Date.now(), x, se), __i;
     for(__i=0;__i<S.entries.length;__i++){ if(S.entries[__i].id===__aid){ if(x==="nursing"){ disarmMB(); saveMidBurp(); } delete S.sess[x]; save(); render(); return; } }
     var __n0=S.entries.length;
     if(x==="nursing"){ disarmMB(); saveMidBurp(); }
@@ -3311,7 +3322,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.29</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.30</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4515,7 +4526,7 @@ function vEdit(){
   }
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c, "Back", "eback")+
     '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Edit '+a.t+'</div>'+
-    '<div style="font-size:11px;color:var(--sub);margin:6px 0 2px;font-family:ui-monospace,Menlo,monospace;word-break:break-all">Activity ID \u00B7 '+esc(String(e.id))+'</div>'+
+    '<div class="press" data-hold="copyId" data-x="'+esc(String(e.id))+'" style="font-size:11px;color:var(--sub);margin:6px 0 2px;font-family:ui-monospace,Menlo,monospace;word-break:break-all;cursor:pointer">Activity ID \u00B7 '+esc(String(e.id))+' \u00B7 <span style="opacity:.65">hold to copy</span></div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Logged '+dayLabel(e.ts)+' \u00B7 '+tClock(e.ts)+(e.by?' \u00B7 by '+esc(e.by):'')+'</div>'+
     body+
     ((function(){
@@ -5914,7 +5925,7 @@ function syMerge(doc){
     }
   }
   for(var rkk in S.sess){ if(!S.sess.hasOwnProperty(rkk) || !S.sess[rkk]) continue;
-    var raid=aidFrom((S.who||""), S.sess[rkk].st||0, rkk), rzz, rex=false;
+    var raid=aidFrom((S.who||""), S.sess[rkk].st||0, rkk, S.sess[rkk]), rzz, rex=false;
     for(rzz=0;rzz<S.entries.length;rzz++) if(S.entries[rzz].id===raid){ rex=true; break; }
     if(rex){ if(rkk==="nursing"){ disarmMB(); saveMidBurp(); } delete S.sess[rkk]; changed=true; }
   }
@@ -6062,7 +6073,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.29";
+var APPVER="1.30";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7007,9 +7018,10 @@ function saveMidBurp(){
   delete S.sess.burp;
   ui.mb=null;
   if(sec<1) return true;
-  S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"burp",
+  var mbTs=new Date().toISOString();
+  S.entries.push({id:aidUnique(aidFrom((S.who||""), mbTs, "burp", {type:"Mid"})), act:"burp",
     detail:fmt(sec)+" \u00B7 Mid burp", data:{sec:sec, type:"Mid"},
-    ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
+    ts:mbTs, by:(S.who||undefined), up:Date.now()});
   S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
   toast("Mid burp saved");
   return true;
