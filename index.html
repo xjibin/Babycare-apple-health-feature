@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.25 -->
+<!-- Baby Care v1.26 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -864,6 +864,44 @@ function rRun(k){
   }
   var it=S.rsess && S.rsess[k];
   return !!(it && it.s && it.s.run);
+}
+function rElapsed(se, kind, ref){
+  ref = ref || Date.now();
+  if(kind==="dual"){
+    var l=(se.l||0), r=(se.r||0);
+    if(se.run){ var add=Math.max(0,(ref-(se.at||ref))/1000); if(se.side==="R") r+=add; else l+=add; }
+    return {l:l, r:r};
+  }
+  var s=(se.sec||0); if(se.run) s+=Math.max(0,(ref-(se.at||ref))/1000); return s;
+}
+/* rStopSave(k): a remote user saving the OWNER's running session — build the saved entry
+   NOW from the live mirror (S.rsess), so the log + prediction update immediately without
+   waiting for the owner's phone. Deterministic id ("rs-<key>-<start>") so the owner does
+   not create a duplicate when it later processes the stop command. */
+function rStopSave(k){
+  var it=(S.rsess||{})[k]; if(!it||!it.s) return false;
+  var a=act(k); if(!a) return false;
+  var se=it.s, st0=se.st||0, id="rs-"+k+"-"+st0, i;
+  for(i=0;i<S.entries.length;i++) if(S.entries[i].id===id) return true;
+  var by=it.by||"", det, data, ts;
+  if(a.kind==="dual"){
+    var e=rElapsed(se,"dual",it.up), l=Math.round(e.l), r=Math.round(e.r), tot=l+r;
+    if(tot<1) return false;
+    var ss2=se.startSide||null, ps=Math.round(se.pausedSec||0), pdT=(ps>0?" \u00B7 paused "+fmt(ps):"");
+    det="L "+fmt(l)+" \u00B7 R "+fmt(r)+" \u00B7 "+fmt(tot)+" total"+pdT;
+    data={l:l,r:r,total:tot,startSide:ss2,side:se.side||ss2,pausedSec:ps,gaps:se.gaps||[]};
+    ts=st0?new Date(st0).toISOString():new Date().toISOString();
+  } else {
+    var sec=Math.round(rElapsed(se,a.kind,it.up));
+    if(sec<1) return false;
+    if(a.kind==="seat"){ var sd=seatEntryData(sec); det=fmt(sec)+" in car seat"+(sd.over?" \u00B7 over the "+fmtMin(sd.limitMin*60)+" limit":""); data=sd; }
+    else if(a.kind==="burp"){ det=fmt(sec)+" \u00B7 burp"; data={sec:sec,type:"Short"}; }
+    else { det=fmt(sec)+" of sleep"; data={sec:sec}; }
+    ts=new Date().toISOString();
+  }
+  S.entries.push({id:id, act:k, detail:det, data:data, ts:ts, by:by, up:Date.now(), bid:S.activeBaby});
+  save();
+  return true;
 }
 function remoteSessions(){
   var out=[], rs=S.rsess||{}, k;
@@ -2094,10 +2132,11 @@ var A = {
   },
   rstop: function(x){
     var it=(S.rsess||{})[x]; if(!it) return;
+    var saved=rStopSave(x);
     S.cmd=S.cmd||{};
     S.cmd[x]={op:"stop", ts:Date.now(), by:(S.who||"")};
     save(); render();
-    toast("Saving on "+(it.by||"their")+"\u2019s phone\u2026");
+    toast(saved ? "Saved \u00B7 log & next feed updated" : "Saving on "+(it.by||"their")+"\u2019s phone\u2026");
   },
   ggo: function(x){
     S.tab="activity"; A.open("growth"); A.gt(x);
@@ -3269,7 +3308,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.25</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.26</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5879,7 +5918,8 @@ function syMerge(doc){
   }
   if(JSON.stringify(nrs)!==JSON.stringify(S.rsess||{})){ S.rsess=nrs; changed=true; }
   var rn9=nrs.nursing;
-  if(rn9 && rn9.s && rn9.s.run && (sessActive("babysleep")||sessActive("mothersleep"))){
+  var nursingStopping9 = !!(S.cmd && S.cmd.nursing && S.cmd.nursing.op==="stop");
+  if(rn9 && rn9.s && rn9.s.run && !nursingStopping9 && (sessActive("babysleep")||sessActive("mothersleep"))){
     stopSleeps(rn9.by||"");
     changed=true;
   }
@@ -5895,9 +5935,10 @@ function syMerge(doc){
       if(cc.op==="pause"){ if(S.sess[ck].run) A.lapause(ck); }
       else if(cc.op==="resume"){ if(!S.sess[ck].run) A.lapause(ck); }
       else if(cc.op==="stop"){
-        var r8=S.route, t8=S.tab;
-        A.nstop(ck);
-        S.route=r8; S.tab=t8;
+        var st9=(S.sess[ck]&&S.sess[ck].st)||0, rid9="rs-"+ck+"-"+st9, exists9=false, z9;
+        for(z9=0;z9<S.entries.length;z9++) if(S.entries[z9].id===rid9){ exists9=true; break; }
+        if(exists9){ delete S.sess[ck]; }
+        else { var r8=S.route, t8=S.tab; A.nstop(ck); S.route=r8; S.tab=t8; }
       }
       changed=true;
     }
@@ -6015,7 +6056,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.25";
+var APPVER="1.26";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
