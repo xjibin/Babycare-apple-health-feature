@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.33 -->
+<!-- Baby Care v1.34 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2452,6 +2452,12 @@ var A = {
     try{ location.href=url; }catch(err){}
     toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
   },
+  falarmAt: function(x){
+    var t=parseInt(x,10); if(!t) return;
+    var url="shortcuts://run-shortcut?name=Feed%20Alarm&input=text&text="+encodeURIComponent(tClock(t));
+    try{ location.href=url; }catch(err){}
+    toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
+  },
   eopen: function(x){
     var i=+x, e=S.entries[i]; if(!e) return;
     S.eidx=i; ui.sheet=false; ui.dts={};
@@ -3379,7 +3385,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.33</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.34</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4347,6 +4353,10 @@ function vOutput(){
 }
 
 /* ============ next-feed schedule editor ============ */
+function alarmPill(ts){
+  var t=new Date(ts).getTime();
+  return '<button class="press" data-a="falarmAt" data-x="'+t+'" title="Set iPhone alarm" style="flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--card2);color:'+C.mint+';font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px">'+ic("alarm-clock",13,C.mint)+'Set alarm</button>';
+}
 /* vFeed(): the Next Feed screen — prediction, Auto Mode + Force Recalculate, schedule, manual intervals. */
 function vFeed(){
   var un=upNext();
@@ -4391,7 +4401,7 @@ function vFeed(){
       rows+='<div style="display:flex;align-items:center;gap:12px;padding:11px 14px'+(i?';border-top:1px solid var(--hair)':'')+'">'+
         '<span style="width:26px;text-align:center;flex:none">'+mk+'</span>'+
         '<span style="flex:1;font-size:15px;font-weight:'+wt+';color:'+col+'">'+((isNow)?'Due now \u00B7 '+tClock(it.ts):tClock(it.ts))+'</span>'+
-        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(it.ts)==="d"?"day":"night")+'</span></div>';
+        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(it.ts)==="d"?"day":"night")+'</span>'+(it.done?"":alarmPill(it.ts))+'</div>';
     }
     h += lbl("TODAY\u2019S FEED SCHEDULE")+'<div class="card" style="padding:2px 0;margin-bottom:8px">'+rows+'</div>'+
       '<div style="font-size:12px;color:var(--sub);padding:0 4px;margin-bottom:16px;line-height:1.5">'+
@@ -4408,7 +4418,7 @@ function vFeed(){
       trows+='<div style="display:flex;align-items:center;gap:12px;padding:11px 14px'+(n?";border-top:1px solid var(--hair)":"")+'">'+
         '<span style="width:26px;text-align:center;flex:none">'+ic("clock",14,C.sub)+'</span>'+
         '<span style="flex:1;font-size:15px;font-weight:600;color:var(--sub)">'+tClock(t)+'</span>'+
-        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(t)==="d"?"day":"night")+'</span></div>';
+        '<span style="font-size:12px;color:var(--sub)">'+(bandOf(t)==="d"?"day":"night")+'</span>'+alarmPill(t)+'</div>';
       n++; t += (bandOf(t)==="d"?mdl.ivD:mdl.ivN)*6e4;
     }
     if(trows) h += lbl("TOMORROW\u2019S FEED SCHEDULE")+'<div class="card" style="padding:2px 0;margin-bottom:8px">'+trows+'</div>'+
@@ -6132,7 +6142,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.33";
+var APPVER="1.34";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
