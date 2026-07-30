@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.34 -->
+<!-- Baby Care v1.35 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -251,7 +251,7 @@ var ACTS = [
   {k:"vaccine",    t:"Vaccines",     icon:"syringe",    c:C.coral,  kind:"vax"},
   {k:"carseat",    t:"Car Seat",     icon:"car",        c:C.sky,    kind:"seat"},
   {k:"expressed",  t:"Expressed",    icon:"droplets",   c:C.teal,   kind:"amount", hint:"Expressed breast milk given by bottle"},
-  {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"amount", hint:"Formula feed"},
+  {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"burp", hint:"Formula feed"},
   {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
   {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
   {k:"tummytime",  t:"Tummy Time",   icon:"activity",   c:C.green,  kind:"single"},
@@ -1735,6 +1735,7 @@ var A = {
   },
   stop: function(){
     var a=act(S.route);
+    if(S.route==="formula"){ A.fmlStop(); return; }
     if(a.kind==="dual"){
       var s=ds(S.route); dsFold(s); s.run=false;
       disarmMB(); saveMidBurp();
@@ -2452,6 +2453,37 @@ var A = {
     try{ location.href=url; }catch(err){}
     toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
   },
+  fml: function(x){ ui.fml=parseInt(x,10)||formulaVols().def; render(); },
+  fmlQuick: function(){
+    S.tab="activity"; S.route="formula"; S.sub=""; S.eidx=null;
+    var s=ssn("formula"); if(!s.st){ s.st=Date.now(); } s.run=true; s.at=Date.now();
+    ui.fml=formulaVols().def;
+    save(); render();
+  },
+  fmlStop: function(){
+    var s=S.sess.formula; if(!s) return;
+    sFold(s); s.run=false; save();
+    if(ui.fml==null) ui.fml=formulaVols().def;
+    csModal(fmlConsumeHtml(ui.fml));
+    if(ui._fmlTO) clearTimeout(ui._fmlTO);
+    ui._fmlTO=setTimeout(function(){ var m=byId("csmodal"); if(m && m.style.display!=="none") A.fmlSave("0"); }, 5000);
+  },
+  fmlSave: function(x){
+    if(ui._fmlTO){ clearTimeout(ui._fmlTO); ui._fmlTO=null; }
+    var sel=(ui.fml==null?formulaVols().def:ui.fml), rem=parseInt(x,10)||0, consumed=Math.max(0, sel-rem);
+    var s=S.sess.formula, sec=s?Math.round(sE(s)):0, st=(s&&s.st)||Date.now();
+    var aid=aidFrom((S.who||""), st, "formula"), i, ex=false;
+    for(i=0;i<S.entries.length;i++) if(S.entries[i].id===aid){ ex=true; break; }
+    if(!ex){
+      S.entries.push({id:aid, act:"formula",
+        detail:consumed+"ml \u00B7 "+fmt(sec)+(rem>0?" \u00B7 "+rem+"ml left":" \u00B7 finished"),
+        data:{ml:consumed, offered:sel, left:rem, sec:sec},
+        ts:new Date(st).toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+    }
+    delete S.sess.formula; ui.fml=null;
+    csModalHide(); S.route="list"; save(); render();
+    toast("Formula saved \u00B7 "+consumed+"ml");
+  },
   falarmAt: function(x){
     var t=parseInt(x,10); if(!t) return;
     var url="shortcuts://run-shortcut?name=Feed%20Alarm&input=text&text="+encodeURIComponent(tClock(t));
@@ -2719,7 +2751,7 @@ var A = {
       var sec=Math.round(se.sec), wasMid=!!se.mid;
       delete S.sess[x];
       if(sec<1){ save(); render(); return; }
-      if(a.kind==="burp"){ var bt2=wasMid?"Mid":(ui.bt||"Short"); addEntry(a.k, fmt(sec)+" \u00B7 "+bt2+" burp", {sec:sec, type:bt2}); }
+      if(a.k==="formula"){ var fsel=(ui.fml==null?formulaVols().def:ui.fml); addEntry(a.k, fsel+"ml \u00B7 "+fmt(sec), {ml:fsel, offered:fsel, left:0, sec:sec}); } else if(a.kind==="burp"){ var bt2=wasMid?"Mid":(ui.bt||"Short"); addEntry(a.k, fmt(sec)+" \u00B7 "+bt2+" burp", {sec:sec, type:bt2}); }
       else if(a.kind==="seat"){ var sd3=seatEntryData(sec); addEntry(a.k, fmt(sec)+" in car seat"+(sd3.over?" \u00B7 over the "+fmtMin(sd3.limitMin*60)+" limit":""), sd3); }
       else addEntry(a.k, singleDetail(a.k, sec), {sec:sec});
     }
@@ -3114,7 +3146,8 @@ function vSummary(){
         '<span style="display:flex;gap:8px;flex-shrink:0;align-items:center">'+
         '<button class="circ press" data-a="heroplay" style="width:46px;height:46px;background:'+C.pink+'">'+
           ((S.sess.nursing&&S.sess.nursing.run)?ic("pause",18,"#fff"):ic("play",18,"#fff"))+'</button>'+
-        '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2)">'+ic("alarm-clock",20,"#fff")+'</button></span>'+
+        '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2)">'+ic("alarm-clock",20,"#fff")+'</button>'+
+        (hasFormula() ? '<button class="circ press" data-a="fmlQuick" title="Start a formula feed" style="width:46px;height:46px;background:'+C.orange+'">'+ic("milk",20,"#000")+'</button>' : "")+'</span>'+
       '</div></div>';
   var ot=outToday(), dol=dayOfLife(), tgt=wetTarget(dol);
   var os=outSplit(), oChip=nappyChip(), lNap=lastNappy();
@@ -3385,7 +3418,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.34</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.35</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3914,13 +3947,34 @@ function vPast(a){
 }
 
 /* ============ burp timer ============ */
+function formulaVols(){
+  var d=feedAgeDef().days;
+  if(d<7)   return {def:60,  pills:[30,60,90]};
+  if(d<30)  return {def:90,  pills:[60,90,120]};
+  if(d<60)  return {def:120, pills:[90,120,150]};
+  if(d<120) return {def:150, pills:[120,150,180]};
+  if(d<180) return {def:180, pills:[150,180,210]};
+  return {def:210, pills:[180,210,240]};
+}
+function fmlLeftOpts(sel){ var step = sel<=90?5:(sel<=150?10:15); return [0,step,step*2,step*3,step*4]; }
+function fmlConsumeHtml(sel){
+  var opts=fmlLeftOpts(sel), i, chips="";
+  for(i=0;i<opts.length;i++){ var v=opts[i]; chips+='<button class="press" data-a="fmlSave" data-x="'+v+'" style="flex:1;min-width:calc(33% - 8px);padding:13px 0;border-radius:14px;background:'+(i===0?C.orange:"var(--card2)")+';color:'+(i===0?"#000":"#fff")+';font-size:15px;font-weight:800">'+(v===0?"Full":v+"ml left")+'</button>'; }
+  return '<div style="font-size:19px;font-weight:700;margin-bottom:2px">How much was left?</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:14px">Offered '+sel+'ml. Tap what stayed in the bottle \u2014 \u201CFull\u201D auto-saves in 5s.</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>';
+}
 function vBurp(a){
   var s=ssn(a.k), sec=sE(s);
-  var status = s.run ? "Recording" : (sec>0.5 ? "Paused" : "Tap play after the feed");
-  var types=["Short","Long","Intermittent"], chips="", i;
-  for(i=0;i<types.length;i++){
-    var on=ui.bt===types[i];
-    chips+='<button class="pchip press" data-a="bt" data-x="'+types[i]+'" style="'+(on?'background:'+a.c+';color:#000':'')+'">'+types[i]+'</button>';
+  var status = s.run ? "Feeding" : (sec>0.5 ? "Paused" : (a.k==="formula"?"Tap play when the feed starts":"Tap play after the feed"));
+  var chips="", i;
+  if(a.k==="formula"){
+    var fv=formulaVols(); if(ui.fml==null) ui.fml=fv.def;
+    var pl=fv.pills;
+    for(i=0;i<pl.length;i++){ var onF=ui.fml===pl[i]; chips+='<button class="pchip press" data-a="fml" data-x="'+pl[i]+'" style="'+(onF?'background:'+a.c+';color:#000':'')+'">'+pl[i]+'ml</button>'; }
+  } else {
+    var types=["Short","Long","Intermittent"];
+    for(i=0;i<types.length;i++){ var on=ui.bt===types[i]; chips+='<button class="pchip press" data-a="bt" data-x="'+types[i]+'" style="'+(on?'background:'+a.c+';color:#000':'')+'">'+types[i]+'</button>'; }
   }
   var bd=burpDue();
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
@@ -4353,6 +4407,7 @@ function vOutput(){
 }
 
 /* ============ next-feed schedule editor ============ */
+function hasFormula(){ var i; for(i=0;i<S.entries.length;i++) if(S.entries[i].act==="formula") return true; return false; }
 function alarmPill(ts){
   var t=new Date(ts).getTime();
   return '<button class="press" data-a="falarmAt" data-x="'+t+'" title="Set iPhone alarm" style="flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--card2);color:'+C.mint+';font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px">'+ic("alarm-clock",13,C.mint)+'Set alarm</button>';
@@ -6142,7 +6197,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.34";
+var APPVER="1.35";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
