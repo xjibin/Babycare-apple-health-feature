@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.31 -->
+<!-- Baby Care v1.32 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -244,6 +244,7 @@ var ACTS = [
   {k:"burp",       t:"Burp",         icon:"wind",       c:C.brown,  kind:"burp"},
   {k:"vomit",      t:"Vomit / Spit-up", icon:"droplet",  c:C.coral,  kind:"vomit"},
   {k:"babysleep",  t:"Baby Sleep",   icon:"moon",       c:C.lav,    kind:"single"},
+  {k:"pacifier",   t:"Pacifier",     icon:"circle-dot", c:C.orange, kind:"single"},
   {k:"mothersleep",t:"Mother Sleep", icon:"bed-double", c:C.indigo, kind:"single"},
   {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.rose,   kind:"med"},
   {k:"growth",     t:"Growth",       icon:"ruler",      c:C.blue,   kind:"growth"},
@@ -415,7 +416,7 @@ function stopSleeps(byN){
 }
 function fixOrder(){
   if(!S.order || !S.order.length) return;
-  var head=["nursing","nappy","burp","vomit","babysleep","mothersleep","medicine","growth","vaccine","carseat"], out=[], i;
+  var head=["nursing","nappy","burp","vomit","babysleep","pacifier","mothersleep","medicine","growth","vaccine","carseat"], out=[], i;
   for(i=0;i<head.length;i++) if(S.order.indexOf(head[i])>=0) out.push(head[i]);
   for(i=0;i<S.order.length;i++) if(head.indexOf(S.order[i])<0) out.push(S.order[i]);
   S.order=out;
@@ -832,9 +833,9 @@ function sessActive(k){
   var sc=(a && a.kind==="dual") ? ((t.l||0)+(t.r||0)) : (t.sec||0);
   return sc>0.5;
 }
-var OKR={nursing:1, pumping:1, babysleep:1, mothersleep:1};
+var OKR={nursing:1, pumping:1, babysleep:1, mothersleep:1, pacifier:1};
 function resumeVerb(k){
-  return k==="nursing" ? "Fed" : (k==="babysleep"||k==="mothersleep") ? "Slept" : k==="pumping" ? "Pumped" : "Timed";
+  return k==="nursing" ? "Fed" : (k==="babysleep"||k==="mothersleep") ? "Slept" : k==="pumping" ? "Pumped" : k==="pacifier" ? "Soothed" : "Timed";
 }
 function resumeCand(k){
   if(!OKR[k] || sessActive(k)) return null;
@@ -880,7 +881,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -3334,7 +3335,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.31</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.32</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3393,7 +3394,7 @@ function vList(){
     '</span></div>';
   else h += bannerHtml();
   h += '<div id="cards" class="'+(edit?'wigmode':(grid?'grid':''))+'">';
-  var CORE={nursing:1,nappy:1,burp:1,vomit:1,babysleep:1,mothersleep:1,medicine:1,growth:1,vaccine:1,carseat:1};
+  var CORE={nursing:1,nappy:1,burp:1,vomit:1,babysleep:1,pacifier:1,mothersleep:1,medicine:1,growth:1,vaccine:1,carseat:1};
   function usedIn4d(kk){
     var hd9=cfgGet("hideDays");
     if(!hd9) return true;
@@ -6085,7 +6086,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.31";
+var APPVER="1.32";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
