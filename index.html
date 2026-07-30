@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.32 -->
+<!-- Baby Care v1.33 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -253,7 +253,16 @@ var ACTS = [
   {k:"expressed",  t:"Expressed",    icon:"droplets",   c:C.teal,   kind:"amount", hint:"Expressed breast milk given by bottle"},
   {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"amount", hint:"Formula feed"},
   {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
-  {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true}
+  {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
+  {k:"tummytime",  t:"Tummy Time",   icon:"activity",   c:C.green,  kind:"single"},
+  {k:"bath",       t:"Bath",         icon:"droplets",   c:C.sky,    kind:"single"},
+  {k:"play",       t:"Play Time",    icon:"sparkles",   c:C.yellow, kind:"single"},
+  {k:"walk",       t:"Walk / Fresh Air", icon:"gauge",  c:C.mint,   kind:"single"},
+  {k:"reading",    t:"Reading",      icon:"music",      c:C.blue,   kind:"single"},
+  {k:"skin",       t:"Skin-to-Skin", icon:"heart",      c:C.rose,   kind:"single"},
+  {k:"solids",     t:"Solids / Meal", icon:"cake",      c:C.orange, kind:"amount", hint:"Solid food / puree (6 months+)"},
+  {k:"water",      t:"Water",        icon:"droplet",    c:C.teal,   kind:"amount", hint:"Water intake (6 months+)"},
+  {k:"fussy",      t:"Fussy / Colic", icon:"flame",     c:C.coral,  kind:"single"}
 ];
 var SUPPS = ["Vitamin D drops","Iron","Probiotic","DHA","Gripe water","Other"];
 var NAPPIES = [
@@ -282,9 +291,21 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
    babyStash() copies the live S[field] into the active baby's record;
    babyLoad(id) does the reverse and swaps the sync config (SY) to that baby.
    mkBaby() creates a fresh record; babyGuard() is the safety net (see below). ==== */
-var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","mother","del","setUp","rsess","autoSleep","inventory"];
+var HARDCORE={nursing:1, nappy:1, pacifier:1};
+var DEFAULT_HIDDEN={expressed:1, formula:1, supplement:1, pumping:1, tummytime:1, bath:1, play:1, walk:1, reading:1, skin:1, solids:1, water:1, fussy:1};
+function coreOn(k){
+  if(HARDCORE[k]) return true;
+  if((S.shownCards||[]).indexOf(k)>=0) return true;
+  if((S.hiddenCards||[]).indexOf(k)>=0) return false;
+  return !DEFAULT_HIDDEN[k];
+}
+function singleDetail(k, sec){
+  var a=act(k), suf = (k==="pacifier") ? " with pacifier" : (k==="babysleep"||k==="mothersleep") ? " of sleep" : (a ? " \u00B7 "+a.t : "");
+  return fmt(sec)+suf;
+}
+var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","shownCards","mother","del","setUp","rsess","autoSleep","inventory"];
 function babyDef(f){
-  if(f==="entries"||f==="order"||f==="custom"||f==="hiddenCards"||f==="del") return [];
+  if(f==="entries"||f==="order"||f==="custom"||f==="hiddenCards"||f==="shownCards"||f==="del") return [];
   if(f==="sess"||f==="rsess"||f==="mother"||f==="baby") return {};
   if(f==="meds") return [{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false,n:true,ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}];
   if(f==="setUp") return 0;
@@ -910,7 +931,7 @@ function rStopSave(k){
     if(sec<1) return false;
     if(a.kind==="seat"){ var sd=seatEntryData(sec); det=fmt(sec)+" in car seat"+(sd.over?" \u00B7 over the "+fmtMin(sd.limitMin*60)+" limit":""); data=sd; }
     else if(a.kind==="burp"){ det=fmt(sec)+" \u00B7 burp"; data={sec:sec,type:"Short"}; }
-    else { det=fmt(sec)+" of sleep"; data={sec:sec}; }
+    else { det=singleDetail(k, sec); data={sec:sec}; }
     ts=new Date().toISOString();
   }
   S.entries.push({id:id, act:k, detail:det, data:data, ts:ts, by:by, up:Date.now(), bid:S.activeBaby});
@@ -1643,7 +1664,7 @@ var A = {
       if(w5.getTime()<=f5.getTime()){ toast("Woke up must be after fell asleep"); return; }
       if(w5.getTime()>Date.now()+60000){ toast("Woke up time can\u2019t be in the future"); return; }
       var sec5=Math.round((w5-f5)/1000);
-      addEntryAt(a.k, fmt(sec5)+" of sleep", {sec:sec5, start:f5.toISOString()}, w5.toISOString());
+      addEntryAt(a.k, singleDetail(a.k, sec5), {sec:sec5, start:f5.toISOString()}, w5.toISOString());
     }
     else if(a.kind==="nappy"){ if(!ui.sel){ toast("Pick a status"); return; } addEntryAt(a.k, ui.sel+" nappy", {type:ui.sel}, ts); }
   },
@@ -1653,7 +1674,7 @@ var A = {
     if(w.getTime() <= f.getTime()){ toast("Woke up must be after fell asleep"); return; }
     if(w.getTime() > Date.now()+60000){ toast("Woke up time can\u2019t be in the future"); return; }
     var sec=Math.round((w-f)/1000);
-    addEntryAt(a.k, fmt(sec)+" of sleep", {sec:sec, start:f.toISOString()}, w.toISOString());
+    addEntryAt(a.k, singleDetail(a.k, sec), {sec:sec, start:f.toISOString()}, w.toISOString());
   },
   editmode: function(){ S.editing=true; render(); },
   editdone: function(){ S.editing=false; render(); },
@@ -1754,7 +1775,7 @@ var A = {
         var sd2=seatEntryData(sec);
         addEntry(a.k, fmt(sec)+" in car seat"+(sd2.over?" \u00B7 over the "+fmtMin(sd2.limitMin*60)+" limit":""), sd2);
       }
-      else addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
+      else addEntry(a.k, singleDetail(a.k, sec), {sec:sec});
     }
   },
   ml: function(x){ ui.ml=Math.max(0, ui.ml+(+x)); render(); },
@@ -2168,11 +2189,17 @@ var A = {
     S.tab="activity"; A.open("vaccine");
   },
   togglehide: function(x){
-    var a=act(x); if(!a) return;
-    S.hiddenCards=S.hiddenCards||[];
-    var ix=S.hiddenCards.indexOf(x);
-    if(ix>=0){ S.hiddenCards.splice(ix,1); toast(a.t+" restored"); }
-    else { S.hiddenCards.push(x); toast(a.t+" hidden \u2014 find it under Show all cards"); }
+    var a=act(x); if(!a || HARDCORE[x]) return;
+    S.hiddenCards=S.hiddenCards||[]; S.shownCards=S.shownCards||[];
+    if(coreOn(x)){
+      S.shownCards=S.shownCards.filter(function(z){return z!==x;});
+      if(S.hiddenCards.indexOf(x)<0) S.hiddenCards.push(x);
+      toast(a.t+" hidden");
+    } else {
+      S.hiddenCards=S.hiddenCards.filter(function(z){return z!==x;});
+      if(S.shownCards.indexOf(x)<0) S.shownCards.push(x);
+      toast(a.t+" shown");
+    }
     save(); render();
   },
   cstart: function(x){
@@ -2453,7 +2480,7 @@ var A = {
       if(w.getTime()<=f.getTime()){ toast("Woke up must be after fell asleep"); return; }
       if(w.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
       var sec=Math.round((w.getTime()-f.getTime())/1000);
-      e.detail=fmt(sec)+" of sleep"; e.data={sec:sec, start:f.toISOString()}; e.ts=w.toISOString();
+      e.detail=singleDetail(e.act, sec); e.data={sec:sec, start:f.toISOString()}; e.ts=w.toISOString();
     } else {
       var dp=dtValue("e1");
       if(dp.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
@@ -2688,7 +2715,7 @@ var A = {
       if(sec<1){ save(); render(); return; }
       if(a.kind==="burp"){ var bt2=wasMid?"Mid":(ui.bt||"Short"); addEntry(a.k, fmt(sec)+" \u00B7 "+bt2+" burp", {sec:sec, type:bt2}); }
       else if(a.kind==="seat"){ var sd3=seatEntryData(sec); addEntry(a.k, fmt(sec)+" in car seat"+(sd3.over?" \u00B7 over the "+fmtMin(sd3.limitMin*60)+" limit":""), sd3); }
-      else addEntry(a.k, fmt(sec)+" of sleep", {sec:sec});
+      else addEntry(a.k, singleDetail(a.k, sec), {sec:sec});
     }
     if(S.entries.length>__n0 && ui._lastAdded && ui._lastAdded.id!==__aid){ ui._lastAdded.id=__aid; save(); }
   },
@@ -3222,6 +3249,22 @@ function tgUnit(){ return (S.cfg&&S.cfg.tgU)?S.cfg.tgU:"px"; }
 function titleGap(){ return tgVal()+tgUnit(); }
 function tgDraftV(){ var c=csD().cfg; return (c.tgV!=null)?c.tgV:52; }
 function tgDraftU(){ var c=csD().cfg; return c.tgU||"px"; }
+function coreCardHtml(){
+  var h='<div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--sub);margin:26px 4px 10px">CORE ACTIVITIES</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin:0 4px 12px">Choose which activity cards show on the Activity screen. Turn one off to move it under \u201CShow all cards\u201D. Essentials stay on.</div>'+
+    '<div class="card" style="padding:4px 14px">';
+  var i;
+  for(i=0;i<ACTS.length;i++){ var a=ACTS[i], on=coreOn(a.k), lock=!!HARDCORE[a.k];
+    h+='<div style="display:flex;align-items:center;gap:12px;padding:12px 0'+(i?';border-top:1px solid var(--hair)':'')+'">'+
+      '<span class="circ" style="width:30px;height:30px;flex:none;background:'+alpha(a.c,0.18)+'">'+ic(a.icon,16,a.c)+'</span>'+
+      '<span style="flex:1;min-width:0;font-size:15px;font-weight:600">'+esc(a.t)+(lock?' <span style="font-size:11px;color:var(--sub);font-weight:500">\u00B7 always on</span>':'')+'</span>'+
+      (lock
+        ? '<span style="flex:none;width:52px;height:32px;border-radius:999px;background:'+C.mint+';opacity:.45;position:relative"><span style="position:absolute;top:3px;left:23px;width:26px;height:26px;border-radius:50%;background:#fff"></span></span>'
+        : '<button class="press" data-a="togglehide" data-x="'+a.k+'" style="flex:none;width:52px;height:32px;border-radius:999px;background:'+(on?C.mint:"#48484A")+';position:relative;transition:background .2s"><span style="position:absolute;top:3px;left:'+(on?"23px":"3px")+';width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s"></span></button>')+
+    '</div>';
+  }
+  return h+'</div>';
+}
 function vCset(){
   csD();
   return '<div class="full">'+
@@ -3232,6 +3275,7 @@ function vCset(){
     '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:8px">Fine-tune how Baby Care predicts feeds, nags about sleep and medicine, and talks to your partner\u2019s phone. Nothing changes until you press Save \u2014 Exit leaves everything untouched.</div>'+
     '<div class="card" style="padding:0;margin-top:14px;margin-bottom:14px"><input id="csq" class="ninput" placeholder="Search settings \u00B7 try \u201Csleep\u201D or \u201Csync\u201D" autocomplete="off" value="'+esc(ui.csQ||"")+'"></div>'+
     '<div id="cslist">'+csListHtml()+'</div>'+
+    coreCardHtml()+
     '<div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--sub);margin:26px 4px 10px">UI CONFIGURATIONS</div>'+
     '<div class="card" style="padding:16px">'+
       '<div style="font-size:15px;font-weight:600">Summary title top spacing</div>'+
@@ -3335,7 +3379,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.32</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.33</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3408,8 +3452,8 @@ function vList(){
   var hiddenN=0, vbDone=false;
   for(i=0;i<acts.length;i++){
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
-    var manHid=(S.hiddenCards||[]).indexOf(a.k)>=0;
-    if(!edit && !ui.showAll && !S.sess[a.k] && !CORE[a.k] && (manHid || !usedIn4d(a.k))){ hiddenN++; continue; }
+    var manHid=!coreOn(a.k);
+    if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k)){ hiddenN++; continue; }
     var ch=cardChips(a, grid);
     var st="", s=S.sess[a.k];
     if(s){
@@ -3627,7 +3671,9 @@ function autoSleepCapHtml(a){
 }
 function vSingle(a){
   var s=ssn(a.k), sec=sE(s);
-  var status = s.run ? "Sleeping \u00B7 recording" : (sec>0.5?"Paused":"Tap play when sleep begins");
+  var runV = (a.k==="pacifier") ? "On pacifier" : ((a.k==="babysleep"||a.k==="mothersleep") ? "Sleeping" : a.t);
+  var startTip = (a.k==="pacifier") ? "Tap play when the pacifier goes in" : ((a.k==="babysleep"||a.k==="mothersleep") ? "Tap play when sleep begins" : "Tap play to start");
+  var status = s.run ? (runV+" \u00B7 recording") : (sec>0.5?"Paused":startTip);
   var h = '<div style="padding:0 4px">'+backBtn(a.c)+
     '<div style="display:flex;flex-direction:column;align-items:center;margin-top:16px">'+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+ic(a.icon,18,a.c)+
@@ -5848,7 +5894,7 @@ function liveOut(){
 function syDoc(){
   chPrune(); babyGuard();
   return {v:1, up:Date.now(), bid:S.activeBaby, entries:S.entries, del:S.del||[], setUp:S.setUp||0, chat:S.chat||[], reads:S.reads||{}, seen:S.seen||{}, live:liveOut(), cmd:S.cmd||{},
-    set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[], mother:S.mother||{}}};
+    set:{baby:S.baby, cfg:S.cfg||{}, meds:S.meds, order:S.order, custom:S.custom, feedIvD:S.feedIvD, feedIvN:S.feedIvN, hidden:S.hiddenCards||[], shown:S.shownCards||[], mother:S.mother||{}}};
 }
 function sySig(){
   var d=syDoc(), sum=0, i;
@@ -5996,7 +6042,7 @@ function syMerge(doc){
     if(doc.set.mother) S.mother=doc.set.mother;
     S.meds=doc.set.meds||S.meds;
     S.cfg=doc.set.cfg||S.cfg;
-    S.order=doc.set.order||S.order; S.hiddenCards=doc.set.hidden||S.hiddenCards||[]; fixOrder();
+    S.order=doc.set.order||S.order; S.hiddenCards=doc.set.hidden||S.hiddenCards||[]; S.shownCards=doc.set.shown||S.shownCards||[]; fixOrder();
     S.custom=doc.set.custom||S.custom;
     S.feedIvD=(typeof doc.set.feedIvD==="number")?doc.set.feedIvD:null;
     S.feedIvN=(typeof doc.set.feedIvN==="number")?doc.set.feedIvN:null;
@@ -6086,7 +6132,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.32";
+var APPVER="1.33";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
