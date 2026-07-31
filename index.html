@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.39 -->
+<!-- Baby Care v1.40 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -303,10 +303,10 @@ function singleDetail(k, sec){
   var a=act(k), suf = (k==="pacifier") ? " with pacifier" : (k==="babysleep"||k==="mothersleep") ? " of sleep" : (a ? " \u00B7 "+a.t : "");
   return fmt(sec)+suf;
 }
-var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","shownCards","mother","del","setUp","rsess","autoSleep","inventory"];
+var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","shownCards","mother","father","del","setUp","rsess","autoSleep","inventory"];
 function babyDef(f){
   if(f==="entries"||f==="order"||f==="custom"||f==="hiddenCards"||f==="shownCards"||f==="del") return [];
-  if(f==="sess"||f==="rsess"||f==="mother"||f==="baby") return {};
+  if(f==="sess"||f==="rsess"||f==="mother"||f==="father"||f==="baby") return {};
   if(f==="meds") return [{id:1, name:"Vitamin D3 drops", ml:1, unit:"ml", times:{m:false,n:true,ni:false}, food:"After Food", tillN:0, tillU:"sos", whom:"Baby", ts0:Date.now()}];
   if(f==="setUp") return 0;
   if(f==="inventory") return [
@@ -384,7 +384,7 @@ function load(){
       S.who = d.who || "";
       if(d.meds!==undefined) S.meds=d.meds;
       S.del=d.del||[]; S.setUp=d.setUp||0;
-      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.notifSeen=d.notifSeen||{}; S.catalogX=d.catalogX||[];
+      S.chat=d.chat||[]; S.chatSeen=d.chatSeen||0; S.reads=d.reads||{}; S.hiddenCards=d.hiddenCards||[]; S.seen=d.seen||{}; S.rsess=d.rsess||{}; S.cmd=d.cmd||{}; S.cmdAp=d.cmdAp||{}; S.cfg=d.cfg||{}; S.lang=d.lang||"en"; S.grid=!!d.grid; S.autoSleep=d.autoSleep||null; S.feedAuto=(d.feedAuto!==false); S.chatOn=!!d.chatOn; S.mother=d.mother||{}; S.father=d.father||{}; S.notifSeen=d.notifSeen||{}; S.catalogX=d.catalogX||[];
       if(d.babies && d.babies.length){ S.babies=d.babies; S.activeBaby=d.activeBaby||d.babies[0].id; for(var bz=0;bz<S.babies.length;bz++){ if(!S.babies[bz].created) S.babies[bz].created=Date.now(); if(!S.babies[bz].sync){ S.babies[bz].sync=(S.babies[bz].id===S.activeBaby && typeof SY!=="undefined")?{on:SY.on,url:SY.url,pass:SY.pass}:{on:false,url:"",pass:""}; } } babyLoad(S.activeBaby, true); }
       else { var nb=mkBaby(); var pi; for(pi=0;pi<PERBABY.length;pi++){ if(S[PERBABY[pi]]!==undefined) nb[PERBABY[pi]]=S[PERBABY[pi]]; } if(typeof SY!=="undefined") nb.sync={on:SY.on,url:SY.url,pass:SY.pass}; S.babies=[nb]; S.activeBaby=nb.id; }
       } } catch(e){}
@@ -2640,6 +2640,7 @@ var A = {
   bsex: function(x){ captureBaby(); ui.b.sex=x; render(); },
   bblood: function(x){ captureBaby(); ui.b.blood=x; render(); },
   mblood: function(x){ captureBaby(); if(!ui.m) ui.m={docs:[]}; ui.m.blood=x; render(); },
+  fblood: function(x){ captureBaby(); if(!ui.f) ui.f={docs:[]}; ui.f.blood=x; render(); },
   addDoc: function(x){ captureBaby(); var arr=((x==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs))||[]); arr.push({dept:"",name:"",phone:""}); if(x==="bdoc") ui.b.docs=arr; else { if(!ui.m)ui.m={}; ui.m.docs=arr; } render(); },
   rmDoc: function(x){ captureBaby(); var p=x.split("|"),pre=p[0],idx=+p[1]; var arr=(pre==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs)); if(arr){ arr.splice(idx,1); } render(); },
   mstT: function(x){
@@ -2722,7 +2723,8 @@ var A = {
     b.hospital=((byId("bhosp")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40);
     b.erPhone=((byId("berp")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24);
     b.docs=readDocs("bdoc"); delete b.docName; delete b.docPhone; delete b.muhid;
-    S.mother={ blood:(ui.m&&ui.m.blood)||"", uhid:((byId("muhid")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24), hospital:((byId("mhosp")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40), docs:readDocs("mdoc") };
+    S.mother={ name:((byId("mname")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40), blood:(ui.m&&ui.m.blood)||"", uhid:((byId("muhid")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24), hospital:((byId("mhosp")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40), docs:readDocs("mdoc"), id:momId() };
+    S.father={ name:((byId("fname")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40), blood:(ui.f&&ui.f.blood)||"", uhid:((byId("fuhid")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,24), hospital:((byId("fhosp")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40), docs:readDocs("fdoc"), id:dadId() };
     if(!(b.hsR||b.hsL) || byId("w_hsd_D")){ b.hsR=ui.b.hsR||""; b.hsL=ui.b.hsL||""; }
     if((b.hsR||b.hsL) && byId("w_hsd_D")) b.hsDate=dISO(dValue("hsd"));
     if(!b.hsR && !b.hsL) delete b.hsDate;
@@ -3465,7 +3467,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.39</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.40</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4959,7 +4961,7 @@ function initVax(){
 }
 
 /* ============ Baby profile ============ */
-function hsCompact(){
+function hsCompact(inline){
   var res="Right "+(S.baby.hsR||"\u2014")+" \u00B7 Left "+(S.baby.hsL||"\u2014");
   if(S.baby.hsRe2R==="REFER"||S.baby.hsRe2L==="REFER") res+=" \u00B7 repeat REFER \u00B7 ABR "+(dMed(S.baby.hsAbrDate)||"pending");
   else if(S.baby.hsRe2Date) res+=" \u00B7 repeat "+dMed(S.baby.hsRe2Date);
@@ -4980,6 +4982,7 @@ function hsCompact(){
       '<button class="circ press" data-a="hsDelAsk" style="width:34px;height:34px;background:var(--card2)" title="Re-enter screening data">'+ic("repeat",15,"#fff")+'</button></span></div>'+
       '<div style="font-size:12px;color:var(--sub);margin-top:10px">'+res+'</div>';
   }
+  if(inline) return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--hair)">'+lbl("NEONATAL HEARING SCREENING (OAE)")+inner+'</div>';
   return lbl("NEONATAL HEARING SCREENING (OAE)")+
     '<div class="card" style="margin-bottom:12px">'+inner+'</div>';
 }
@@ -5065,15 +5068,22 @@ function captureBaby(){
   if((v=g("berp"))!=null) ui.b.erPhone=v;
   if(byId("bdoc_name_0")||byId("bdoc_dept_0")||byId("bdoc_phone_0")) ui.b.docs=readDocs("bdoc");
   if(ui.m){
+    if((v=g("mname"))!=null) ui.m.name=v;
     if((v=g("muhid"))!=null) ui.m.uhid=v;
     if((v=g("mhosp"))!=null) ui.m.hospital=v;
     if(byId("mdoc_name_0")||byId("mdoc_dept_0")||byId("mdoc_phone_0")) ui.m.docs=readDocs("mdoc");
   }
+  if(ui.f){
+    if((v=g("fname"))!=null) ui.f.name=v;
+    if((v=g("fuhid"))!=null) ui.f.uhid=v;
+    if((v=g("fhosp"))!=null) ui.f.hospital=v;
+    if(byId("fdoc_name_0")||byId("fdoc_dept_0")||byId("fdoc_phone_0")) ui.f.docs=readDocs("fdoc");
+  }
 }
-function careTeamView(hospital, er, docs, title, col){
+function careTeamView(hospital, er, docs, title, col, inline){
   docs=docs||[];
   if(!hospital && !er && !docs.length) return "";
-  var h='<div class="card" style="margin-bottom:20px">'+
+  var h=(inline?'<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--hair)">':'<div class="card" style="margin-bottom:20px">')+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("cross",18,col)+'<span style="font-size:16px;font-weight:700">'+title+'</span></div>';
   if(hospital||er) h+='<div class="rowsb" style="padding:4px 0"><div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700">'+esc(hospital||"Hospital")+'</div>'+(er?'<div style="font-size:13px;color:var(--sub);margin-top:2px">ER \u00B7 '+esc(er)+'</div>':'')+'</div>'+callBtn(er,"ER","#FF6961")+'</div>';
   var i; for(i=0;i<docs.length;i++){ var d=docs[i]||{};
@@ -5081,11 +5091,16 @@ function careTeamView(hospital, er, docs, title, col){
   }
   return h+'</div>';
 }
-function motherView(){
-  var m=S.mother||{};
-  if(!m.blood && !m.uhid && !m.hospital && !(m.docs&&m.docs.length)) return "";
+function momId(){ var m=S.mother||{}; return m.id || ("M-"+(S.activeBaby||"")); }
+function dadId(){ var f=S.father||{}; return f.id || ("F-"+(S.activeBaby||"")); }
+function parentView(who){
+  var isF=(who==="father"), m=(isF?(S.father||{}):(S.mother||{}));
+  var pid=(isF?dadId():momId()), col=(isF?C.blue:C.lav), title=(isF?"Father":"Mother");
+  if(!m.name && !m.blood && !m.uhid && !m.hospital && !(m.docs&&m.docs.length)) return "";
   var h='<div class="card" style="margin-bottom:20px">'+
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("user",18,C.lav)+'<span style="font-size:16px;font-weight:700">Mother</span></div>';
+    '<div class="rowsb" style="align-items:center;margin-bottom:14px">'+
+    '<span style="display:flex;align-items:center;gap:10px;min-width:0">'+ic("user",18,col)+'<span style="font-size:16px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+(m.name?' \u00B7 '+esc(m.name):'')+'</span></span>'+
+    '<span class="num press" data-hold="copyId" data-x="'+esc(pid)+'" title="Hold to copy" style="flex:none;font-size:11px;font-weight:600;color:var(--sub);letter-spacing:.3px;cursor:pointer">ID '+esc(pid)+'</span></div>';
   var chips="";
   if(m.blood) chips+='<span style="display:inline-flex;align-items:center;gap:7px;background:var(--card2);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700">'+ic("droplet",14,"#FF7AB6")+'<span style="color:#FF7AB6">'+esc(m.blood)+'</span></span>';
   if(m.uhid) chips+='<span style="display:inline-flex;align-items:center;background:var(--card2);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;color:#fff">ID \u00B7 '+esc(m.uhid)+'</span>';
@@ -5096,6 +5111,7 @@ function motherView(){
   }
   return h+'</div>';
 }
+function motherView(){ return parentView("mother"); }
 function vBabyView(){
   var b=S.baby;
   function pchipV(icn, txt, col){
@@ -5113,28 +5129,28 @@ function vBabyView(){
     '<div class="card" style="margin-bottom:20px">'+
     '<div class="rowsb" style="align-items:baseline;gap:10px">'+'<span style="font-size:22px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(b.name||"\u2014")+'</span>'+'<span class="num press" data-hold="copyId" data-x="'+esc(S.activeBaby||"")+'" title="Hold to copy" style="flex:none;font-size:11px;font-weight:600;color:var(--sub);letter-spacing:.3px;cursor:pointer">ID '+esc(S.activeBaby||"\u2014")+'</span>'+'</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+chips+'</div>'+
+    (b.uhid ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--hair)"><div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--sub);margin-bottom:4px">HOSPITAL ID</div><div style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</div></div>' : "")+
+    ((b.hsR||b.hsL) ? hsCompact(true) : "")+
+    careTeamView(b.hospital, b.erPhone, (b.docs||(b.docName?[{dept:"",name:b.docName,phone:b.docPhone||""}]:[])), "Care team", C.rose, true)+
     '</div>'+
-    (b.uhid ? lbl("BABY HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.uhid)+'</span></div>' : "")+(b.muhid ? lbl("MOTHER HOSPITAL ID")+'<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:700;letter-spacing:.5px">'+esc(b.muhid)+'</span></div>' : "")+
     lbl(b.sex==="Boy" ? "I AM HIS" : b.sex==="Girl" ? "I AM HER" : "I AM THEIR")+
     '<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px">'+
       (S.who ? '<span style="font-size:15px;font-weight:700">'+esc(S.who)+'</span>'
              : '<span style="font-size:14px;color:var(--sub)">Not set — tap the pencil to add</span>')+'</div>'+
-    ((b.hsR||b.hsL) ? hsCompact()
-      : '<div style="font-size:12px;color:var(--sub);padding:0 4px">No hearing screening recorded \u00B7 tap '+ic("pencil",11,C.pink)+' to add.</div>')+
-    careTeamView(b.hospital, b.erPhone, (b.docs||(b.docName?[{dept:"",name:b.docName,phone:b.docPhone||""}]:[])), "Care team", C.rose)+
-    motherView()+
+    parentView("mother")+parentView("father")+
     '<div style="height:100px"></div>'+
     '</div>';
 }
 function vBaby(){
   if(!ui.bedit && S.baby && S.baby.dob) return vBabyView();
   if(!ui.b.docs) ui.b.docs=(S.baby.docs||(S.baby.docName?[{dept:"",name:S.baby.docName,phone:S.baby.docPhone||""}]:[])).slice();
-  if(!ui.m) ui.m={ blood:(S.mother&&S.mother.blood)||"", uhid:(S.mother&&S.mother.uhid)||S.baby.muhid||"", hospital:(S.mother&&S.mother.hospital)||"", docs:((S.mother&&S.mother.docs)||[]).slice() };
-  var i, sx="", bl="", mbl="";
+  if(!ui.m) ui.m={ name:(S.mother&&S.mother.name)||"", blood:(S.mother&&S.mother.blood)||"", uhid:(S.mother&&S.mother.uhid)||S.baby.muhid||"", hospital:(S.mother&&S.mother.hospital)||"", docs:((S.mother&&S.mother.docs)||[]).slice() };
+  if(!ui.f) ui.f={ name:(S.father&&S.father.name)||"", blood:(S.father&&S.father.blood)||"", uhid:(S.father&&S.father.uhid)||"", hospital:(S.father&&S.father.hospital)||"", docs:((S.father&&S.father.docs)||[]).slice() };
+  var i, sx="", bl="", mbl="", fbl="";
   var sexes=["Girl","Boy"];
   for(i=0;i<sexes.length;i++) sx+='<button class="pchip press" data-a="bsex" data-x="'+sexes[i]+'" style="'+(ui.b.sex===sexes[i]?"background:"+C.pink+";color:#000":"")+'">'+sexes[i]+'</button>';
   var bloods=["A+","A\u2212","B+","B\u2212","AB+","AB\u2212","O+","O\u2212","Unknown"];
-  for(i=0;i<bloods.length;i++){ bl+='<button class="pchip press" data-a="bblood" data-x="'+bloods[i]+'" style="'+(ui.b.blood===bloods[i]?"background:"+C.pink+";color:#000":"")+'">'+bloods[i]+'</button>'; mbl+='<button class="pchip press" data-a="mblood" data-x="'+bloods[i]+'" style="'+(ui.m.blood===bloods[i]?"background:"+C.lav+";color:#000":"")+'">'+bloods[i]+'</button>'; }
+  for(i=0;i<bloods.length;i++){ bl+='<button class="pchip press" data-a="bblood" data-x="'+bloods[i]+'" style="'+(ui.b.blood===bloods[i]?"background:"+C.pink+";color:#000":"")+'">'+bloods[i]+'</button>'; mbl+='<button class="pchip press" data-a="mblood" data-x="'+bloods[i]+'" style="'+(ui.m.blood===bloods[i]?"background:"+C.lav+";color:#000":"")+'">'+bloods[i]+'</button>'; fbl+='<button class="pchip press" data-a="fblood" data-x="'+bloods[i]+'" style="'+(ui.f.blood===bloods[i]?"background:"+C.blue+";color:#000":"")+'">'+bloods[i]+'</button>'; }
   var p2=function(n){return (n<10?"0":"")+n;};
   var dobD=(S.baby&&S.baby.dob)?new Date(S.baby.dob):new Date();
   var dobVal=ui.b.dobStr||(dobD.getFullYear()+"-"+p2(dobD.getMonth()+1)+"-"+p2(dobD.getDate())+"T"+p2(dobD.getHours())+":"+p2(dobD.getMinutes()));
@@ -5161,10 +5177,19 @@ function vBaby(){
     '</div>'+
     '<div class="card" style="margin-bottom:20px">'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'+ic("user",20,C.lav)+'<span style="font-size:18px;font-weight:700">Mother</span></div>'+
+      fld("NAME", inp("mname","Mother\u2019s name", ui.m.name))+
       fld("BLOOD GROUP", chipRow(mbl))+
       fld("MOTHER HOSPITAL ID", inp("muhid","Mother\u2019s hospital ID / UHID", ui.m.uhid))+
       fld("HOSPITAL", inp("mhosp","Hospital / clinic name", ui.m.hospital,"",4))+
       docRowsHtml("mdoc", ui.m.docs, C.lav)+
+    '</div>'+
+    '<div class="card" style="margin-bottom:20px">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'+ic("user",20,C.blue)+'<span style="font-size:18px;font-weight:700">Father</span></div>'+
+      fld("NAME", inp("fname","Father\u2019s name", ui.f.name))+
+      fld("BLOOD GROUP", chipRow(fbl))+
+      fld("FATHER HOSPITAL ID", inp("fuhid","Father\u2019s hospital ID / UHID", ui.f.uhid))+
+      fld("HOSPITAL", inp("fhosp","Hospital / clinic name", ui.f.hospital,"",4))+
+      docRowsHtml("fdoc", ui.f.docs, C.blue)+
     '</div>'+
     '<div style="height:100px"></div>'+saveBar(C.pink, true, "saveBaby", "Save Profile")+'</div>';
 }
@@ -6272,7 +6297,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.39";
+var APPVER="1.40";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
