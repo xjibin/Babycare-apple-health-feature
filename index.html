@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.35 -->
+<!-- Baby Care v1.37 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1625,6 +1625,7 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
+    if(x==="formula" && !sessActive("formula") && ui.fmlCd==null){ A.fmlCountdown(); return; }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
@@ -1729,9 +1730,23 @@ var A = {
     save(); render();
   },
   tgl: function(){
+    if(S.route==="formula"){ A.fmlTgl(); return; }
     var s=ssn(S.route);
     if(s.run){ sFold(s); s.run=false; } else { s.run=true; s.at=Date.now(); if(!s.st) s.st=Date.now(); }
     save(); render();
+  },
+  fmlTgl: function(){
+    if(ui.fmlCd!=null){ A.fmlStartNow(); return; }
+    var s=ssn("formula");
+    if(s.run){
+      sFold(s); s.run=false;
+      if(!S.sess.burp){ S.sess.burp={sec:0, run:true, at:Date.now(), st:Date.now(), mid:true}; }
+      save(); render(); toast("Feed paused \u00B7 mid burp started");
+    } else {
+      if(S.sess.burp && S.sess.burp.mid){ saveMidBurp(); }
+      s.run=true; s.at=Date.now(); if(!s.st) s.st=Date.now();
+      save(); render();
+    }
   },
   stop: function(){
     var a=act(S.route);
@@ -2454,15 +2469,39 @@ var A = {
     toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
   },
   fml: function(x){ ui.fml=parseInt(x,10)||formulaVols().def; render(); },
-  fmlQuick: function(){
+  fmlEditQ: function(x){ ui.fml=Math.max(0,(ui.fml||0)+(+x)); if(ui.fmlLeft>ui.fml) ui.fmlLeft=ui.fml; render(); },
+  fmlEditL: function(x){ ui.fmlLeft=Math.max(0, Math.min((ui.fml||0),(ui.fmlLeft||0)+(+x))); render(); },
+  fmlQuick: function(){ A.fmlCountdown(); },
+  fmlCountdown: function(){
     S.tab="activity"; S.route="formula"; S.sub=""; S.eidx=null;
-    var s=ssn("formula"); if(!s.st){ s.st=Date.now(); } s.run=true; s.at=Date.now();
     ui.fml=formulaVols().def;
+    var s=ssn("formula"); s.run=false; s.sec=0; s.st=0;
+    ui.fmlCd=5;
+    if(ui._fmlCdT) clearInterval(ui._fmlCdT);
     save(); render();
+    ui._fmlCdT=setInterval(function(){
+      if(S.route!=="formula" || ui.fmlCd==null){ clearInterval(ui._fmlCdT); ui._fmlCdT=null; return; }
+      ui.fmlCd = ui.fmlCd-1;
+      if(ui.fmlCd<=0){ clearInterval(ui._fmlCdT); ui._fmlCdT=null; ui.fmlCd=null; var ss=ssn("formula"); ss.st=Date.now(); ss.run=true; ss.at=Date.now(); save(); render(); }
+      else render();
+    }, 1000);
+  },
+  fmlStartNow: function(){
+    if(ui._fmlCdT){ clearInterval(ui._fmlCdT); ui._fmlCdT=null; }
+    ui.fmlCd=null;
+    var s=ssn("formula"); if(!s.st) s.st=Date.now(); s.run=true; s.at=Date.now();
+    save(); render();
+  },
+  fmlCancel: function(){
+    if(ui._fmlCdT){ clearInterval(ui._fmlCdT); ui._fmlCdT=null; }
+    ui.fmlCd=null; delete S.sess.formula;
+    S.route="list"; render();
   },
   fmlStop: function(){
     var s=S.sess.formula; if(!s) return;
-    sFold(s); s.run=false; save();
+    sFold(s); s.run=false;
+    if(S.sess.burp && S.sess.burp.mid){ saveMidBurp(); }
+    save();
     if(ui.fml==null) ui.fml=formulaVols().def;
     csModal(fmlConsumeHtml(ui.fml));
     if(ui._fmlTO) clearTimeout(ui._fmlTO);
@@ -2503,6 +2542,7 @@ var A = {
       else if(a.kind==="qty") ui.qty=d.qty||0;
       else if(a.kind==="supp"||a.kind==="nappy") ui.sel=d.type||null;
       else if(a.kind==="growth"){ ui.gtype=d.gtype||"weight"; ui.gv=(d.v!=null?d.v:0); }
+      else if(a.k==="formula"){ ui.fml=(d.offered||d.ml||formulaVols().def); ui.fmlLeft=Math.min(ui.fml,(d.left||0)); ui.pdur=Math.max(0,Math.round((d.sec||0)/60)); }
       else if(a.kind==="burp"){ ui.bt=d.type||"Short"; ui.pdur=Math.max(1,Math.round((d.sec||0)/60)); }
       else if(a.kind==="seat"){ ui.pdur=Math.max(1,Math.round((d.sec||0)/60)); }
     }
@@ -2548,6 +2588,12 @@ var A = {
           ? "Weight \u00B7 "+(ui.gv>=1000?(ui.gv/1000).toFixed(2)+" kg":ui.gv+" g")
           : GLBL[ui.gtype]+" \u00B7 "+ui.gv.toFixed(1)+" cm";
         e.data={gtype:ui.gtype, v:ui.gv}; e.ts=ts;
+      }
+      else if(a.k==="formula"){
+        var fq=Math.max(0, ui.fml||0), fl=Math.min(fq, Math.max(0, ui.fmlLeft||0)), fc=Math.max(0, fq-fl), fsec=(ui.pdur||0)*60;
+        if(fq<=0){ toast("Set a quantity"); return; }
+        e.detail=fc+"ml \u00B7 "+fmt(fsec)+(fl>0?" \u00B7 "+fl+"ml left":" \u00B7 finished");
+        e.data={ml:fc, offered:fq, left:fl, sec:fsec}; e.ts=ts;
       }
       else if(a.kind==="burp"){
         var bsec=ui.pdur*60;
@@ -3418,7 +3464,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.35</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.37</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3947,14 +3993,26 @@ function vPast(a){
 }
 
 /* ============ burp timer ============ */
+function fmlCountdownHtml(a){
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;flex-direction:column;align-items:center;margin-top:44px">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+ic(a.icon,18,a.c)+'<span style="color:'+a.c+';font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase">'+a.t+'</span></div>'+
+    '<div class="bigtimer num" style="color:'+a.c+'">'+(ui.fmlCd)+'</div>'+
+    '<div style="color:var(--sub);font-size:15px;margin-top:4px">Starting the '+(ui.fml||formulaVols().def)+'ml feed\u2026</div>'+
+    '<button class="circ press" data-a="fmlStartNow" title="Start now" style="width:112px;height:112px;background:'+a.c+';margin-top:34px">'+ic("play",42,"#000",{fill:true,style:"margin-left:5px"})+'</button>'+
+    '<div style="font-size:13px;color:var(--sub);margin-top:14px">Tap to start now</div>'+
+    '<button class="press" data-a="fmlCancel" style="margin-top:28px;color:'+C.red+';font-size:15px;font-weight:600">Cancel</button>'+
+    '</div></div>';
+}
 function formulaVols(){
   var d=feedAgeDef().days;
-  if(d<7)   return {def:60,  pills:[30,60,90]};
-  if(d<30)  return {def:90,  pills:[60,90,120]};
-  if(d<60)  return {def:120, pills:[90,120,150]};
-  if(d<120) return {def:150, pills:[120,150,180]};
-  if(d<180) return {def:180, pills:[150,180,210]};
-  return {def:210, pills:[180,210,240]};
+  if(d<7)    return {def:30,  pills:[30,60,90]};    /* first week */
+  if(d<21)   return {def:60,  pills:[30,60,90]};    /* by 3rd week */
+  if(d<35)   return {def:90,  pills:[60,90,120]};   /* ~1 month */
+  if(d<60)   return {def:120, pills:[90,120,150]};  /* into 2nd month */
+  if(d<120)  return {def:150, pills:[120,150,180]}; /* 2 months */
+  if(d<180)  return {def:180, pills:[150,180,210]}; /* 4 months */
+  return {def:210, pills:[180,210,240]};            /* 6 months+ */
 }
 function fmlLeftOpts(sel){ var step = sel<=90?5:(sel<=150?10:15); return [0,step,step*2,step*3,step*4]; }
 function fmlConsumeHtml(sel){
@@ -3965,6 +4023,7 @@ function fmlConsumeHtml(sel){
     '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>';
 }
 function vBurp(a){
+  if(a.k==="formula" && ui.fmlCd!=null) return fmlCountdownHtml(a);
   var s=ssn(a.k), sec=sE(s);
   var status = s.run ? "Feeding" : (sec>0.5 ? "Paused" : (a.k==="formula"?"Tap play when the feed starts":"Tap play after the feed"));
   var chips="", i;
@@ -4407,7 +4466,7 @@ function vOutput(){
 }
 
 /* ============ next-feed schedule editor ============ */
-function hasFormula(){ var i; for(i=0;i<S.entries.length;i++) if(S.entries[i].act==="formula") return true; return false; }
+function hasFormula(){ var lim=Date.now()-3*864e5, i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="formula" && new Date(e.ts).getTime()>=lim) return true; } return false; }
 function alarmPill(ts){
   var t=new Date(ts).getTime();
   return '<button class="press" data-a="falarmAt" data-x="'+t+'" title="Set iPhone alarm" style="flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--card2);color:'+C.mint+';font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px">'+ic("alarm-clock",13,C.mint)+'Set alarm</button>';
@@ -4581,6 +4640,15 @@ function vEdit(){
         ? stepRow("Weight","gv",ui.gv,"g",10,100,true)
         : stepRow(GLBL[ui.gtype],"gv",ui.gv.toFixed(1),"cm",0.1,1,true))+'</div>'+
       lbl("MEASURED ON")+dtPicker("e1");
+  } else if(a.k==="formula"){
+    var fq2=Math.max(0, ui.fml||0), fl2=Math.min(fq2, Math.max(0, ui.fmlLeft||0)), fc2=Math.max(0, fq2-fl2);
+    body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      lbl("DURATION")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
+        stepRow("Duration","pd",ui.pdur,"min",1,5,true)+'</div>'+
+      lbl("QUANTITY")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:8px">'+
+        stepRow("Offered","fmlEditQ",fq2,"ml",5,30,true)+
+        stepRow("What\u2019s left","fmlEditL",fl2,"ml",5,15)+'</div>'+
+      '<div style="font-size:14px;color:var(--sub);padding:2px 4px;margin-bottom:16px">Consumed \u00B7 <span style="color:'+a.c+';font-weight:800;font-size:16px">'+fc2+' ml</span>  <span style="opacity:.7">('+fq2+' offered \u2212 '+fl2+' left)</span></div>';
   } else if(a.kind==="burp"){
     var bch="", bts=["Short","Long","Intermittent"];
     if(ui.bt==="Mid") bts=["Mid"].concat(bts);
@@ -6197,7 +6265,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.35";
+var APPVER="1.37";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
