@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.37 -->
+<!-- Baby Care v1.38 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1625,7 +1625,6 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
-    if(x==="formula" && !sessActive("formula") && ui.fmlCd==null){ A.fmlCountdown(); return; }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
@@ -2382,6 +2381,7 @@ var A = {
   cardplay: function(x){
     if(S.pmode) return;
     var a=act(x); if(!a) return;
+    if(x==="formula"){ A.fmlCountdown(); return; }
     var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     if(!timed){ A.open(x); return; }
     var s=S.sess[x];
@@ -2469,12 +2469,13 @@ var A = {
     toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
   },
   fml: function(x){ ui.fml=parseInt(x,10)||formulaVols().def; render(); },
+  fmlChip: function(x){ A.fmlCountdown(x); },
   fmlEditQ: function(x){ ui.fml=Math.max(0,(ui.fml||0)+(+x)); if(ui.fmlLeft>ui.fml) ui.fmlLeft=ui.fml; render(); },
   fmlEditL: function(x){ ui.fmlLeft=Math.max(0, Math.min((ui.fml||0),(ui.fmlLeft||0)+(+x))); render(); },
   fmlQuick: function(){ A.fmlCountdown(); },
-  fmlCountdown: function(){
+  fmlCountdown: function(x){
     S.tab="activity"; S.route="formula"; S.sub=""; S.eidx=null;
-    ui.fml=formulaVols().def;
+    ui.fml=(x?parseInt(x,10):0)||formulaVols().def;
     var s=ssn("formula"); s.run=false; s.sec=0; s.st=0;
     ui.fmlCd=5;
     if(ui._fmlCdT) clearInterval(ui._fmlCdT);
@@ -3464,7 +3465,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.37</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.38</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3506,7 +3507,7 @@ function vbPairHtml(){
     vbMiniCard(ba,"Burp",bInfo,bCol)+vbMiniCard(va,"Vomit",vInfo,vCol)+'</div>';
 }
 function vList(){
-  var acts=allActs(), i, edit=S.editing, grid=(S.grid && !edit);
+  var acts=allActs(), i, edit=S.editing, grid=S.grid;
   var h = '<div class="rowsb" style="padding-top:16px;margin-bottom:'+(edit?'8':'20')+'px">'+
     '<span style="display:flex;align-items:center;gap:10px"><span style="font-size:34px;font-weight:700;letter-spacing:-.5px">Activity</span>'+syChipHtml()+'</span>'+
     (edit
@@ -3522,7 +3523,7 @@ function vList(){
     '<button class="press" data-a="setGrid" data-x="1" style="width:40px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+(S.grid?C.blue:"var(--card2)")+'">'+ic("grid",17,S.grid?"#000":"#fff")+'</button>'+
     '</span></div>';
   else h += bannerHtml();
-  h += '<div id="cards" class="'+(edit?'wigmode':(grid?'grid':''))+'">';
+  h += '<div id="cards" class="'+(edit?'wigmode ':'')+(grid?'grid':'')+'">';
   var CORE={nursing:1,nappy:1,burp:1,vomit:1,babysleep:1,pacifier:1,mothersleep:1,medicine:1,growth:1,vaccine:1,carseat:1};
   function usedIn4d(kk){
     var hd9=cfgGet("hideDays");
@@ -3591,6 +3592,11 @@ function cardChips(a, compact){
   function tb(label, actn, x, hl, iconHtml){
     return '<button class="chip press" data-a="'+actn+'" data-x="'+x+'" style="font-size:12px;font-weight:700;color:#fff;padding:0 6px'+
       (hl ? ';border:1.5px solid '+a.c : ';border:1.5px solid transparent')+'">'+(iconHtml||"")+label+'</button>';
+  }
+  if(k==="formula"){
+    var fv9=formulaVols(), pl9=fv9.pills, n9=compact?2:3, out9="", z9;
+    for(z9=0; z9<n9 && z9<pl9.length; z9++){ out9+=tb(pl9[z9]+"ml","fmlChip",pl9[z9], pl9[z9]===fv9.def); }
+    return out9;
   }
   if(compact){
     if(k==="nursing"){ var sg9=suggSide(); return tb("Left","cstart","L",sg9==="Left")+tb("Right","cstart","R",sg9==="Right"); }
@@ -4610,7 +4616,7 @@ function vEdit(){
       '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>';
   } else if(a.kind==="amount"){
     body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
-      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",10,30,true)+'</div>';
+      '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",5,20,true)+'</div>';
   } else if(a.kind==="qty"){
     body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
       '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","q",ui.qty,a.unit,1,10,true)+'</div>';
@@ -6265,7 +6271,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.37";
+var APPVER="1.38";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
