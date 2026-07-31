@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.40 -->
+<!-- Baby Care v1.41 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1532,7 +1532,7 @@ var A = {
     if(x==="chat") setTimeout(chFit, 40); if(x==="chat"||x==="sharing"){ try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(_n){} } },
   sub: function(x){
     S.sub=x;
-    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); ui.m=null; ui.b.docs=null; }
+    if(x==="baby"){ ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); ui.m=null; ui.f=null; ui.b.docs=null; }
     if(x==="dash"){ var dn0=new Date(); ui.dday=new Date(dn0.getFullYear(), dn0.getMonth(), dn0.getDate()).getTime(); }
     if(x==="feed"){
       var fm9=feedModel(), auto9=(S.feedAuto!==false);
@@ -2671,7 +2671,7 @@ var A = {
     render();
   },
   bedit: function(){
-    ui.bedit=true; ui.hsDel=false; ui.m=null; ui.b.docs=null;
+    ui.bedit=true; ui.hsDel=false; ui.m=null; ui.f=null; ui.b.docs=null;
     ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""};
     ui.dob=null;
     render();
@@ -2750,7 +2750,7 @@ var A = {
     if(wasNew) S.sub="";
     render(); toast("Profile saved");
   },
-  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); ui.m=null; ui.b.docs=null; render(); },
+  gotoBaby: function(){ S.tab="summary"; S.sub="baby"; ui.b={name:S.baby.name||"", sex:S.baby.sex||"", blood:S.baby.blood||"", uhid:S.baby.uhid||"", muhid:S.baby.muhid||"", hsR:S.baby.hsR||"", hsL:S.baby.hsL||"", hsRe2R:S.baby.hsRe2R||"", hsRe2L:S.baby.hsRe2L||"", hsCon:!!S.baby.hsCon, hospital:S.baby.hospital||"", erPhone:S.baby.erPhone||"", docName:S.baby.docName||"", docPhone:S.baby.docPhone||""}; ui.dob=null; ui.hsDel=false; ui.bedit=!(S.baby && S.baby.dob); ui.m=null; ui.f=null; ui.b.docs=null; render(); },
   cnight: function(){
     S.cnight=true; render(); nsWakeReq();
   },
@@ -2855,8 +2855,36 @@ var A = {
   },
   babyAdd: function(){
     if(anyRunning()){ csModalHide(); toast("Activity is running, can\u2019t add a profile now"); return; }
-    var nb=mkBaby(); S.babies.push(nb); babyLoad(nb.id); save();
-    csModalHide(); A.gotoBaby(); ui.bedit=true; render(); toast("New baby profile \u2014 add their details");
+    var m=S.mother||{}, f=S.father||{};
+    var haveP = !!(m.name||m.uhid||m.blood||m.hospital||(m.docs&&m.docs.length)||f.name||f.uhid||f.blood||f.hospital||(f.docs&&f.docs.length));
+    if(!haveP){ A.babyAddDo("new"); return; }
+    var mn=m.name||"Mother", fn=f.name||"Father";
+    csModal(
+      '<div style="font-size:19px;font-weight:800;margin-bottom:6px">Add a baby</div>'+
+      '<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:16px">Use the same parents as '+esc(activeBabyName())+', or set up new ones?</div>'+
+      '<button class="press" data-a="babyAddReuse" style="width:100%;text-align:left;background:var(--card2);border-radius:16px;padding:14px 16px;margin-bottom:10px">'+
+        '<div style="font-size:15px;font-weight:700;color:'+C.lav+'">Same parents</div>'+
+        '<div style="font-size:13px;color:var(--sub);margin-top:4px;line-height:1.5">'+esc(mn)+' \u00B7 '+esc(momId())+'<br>'+esc(fn)+' \u00B7 '+esc(dadId())+'</div>'+
+      '</button>'+
+      '<button class="press" data-a="babyAddFresh" style="width:100%;text-align:left;background:var(--card2);border-radius:16px;padding:14px 16px">'+
+        '<div style="font-size:15px;font-weight:700">New parents</div>'+
+        '<div style="font-size:13px;color:var(--sub);margin-top:4px">Start with blank mother & father profiles</div>'+
+      '</button>'
+    );
+  },
+  babyAddReuse: function(){ A.babyAddDo("reuse"); },
+  babyAddFresh: function(){ A.babyAddDo("new"); },
+  babyAddDo: function(mode){
+    var pm=null, pf=null;
+    if(mode==="reuse"){
+      pm=JSON.parse(JSON.stringify(S.mother||{})); if(!pm.id) pm.id=momId();
+      pf=JSON.parse(JSON.stringify(S.father||{})); if(!pf.id) pf.id=dadId();
+    }
+    var nb=mkBaby(); S.babies.push(nb); babyLoad(nb.id);
+    if(mode==="reuse"){ S.mother=pm; S.father=pf; babyStash(); }
+    save();
+    csModalHide(); A.gotoBaby(); ui.bedit=true; render();
+    toast(mode==="reuse" ? "New baby \u2014 same parents linked" : "New baby profile \u2014 add their details");
   },
   babyDelAsk: function(x){
     csModal('<div style="font-size:18px;font-weight:800;margin-bottom:8px">Delete baby profile?</div>'+
@@ -3467,7 +3495,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.40</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.41</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6297,7 +6325,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.40";
+var APPVER="1.41";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
