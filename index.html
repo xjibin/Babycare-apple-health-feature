@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.42 -->
+<!-- Baby Care v1.43 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3512,7 +3512,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.42</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.43</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5316,20 +5316,12 @@ function nightBits(){
   var np = lastNap ? "Last nappy \u00B7 "+agoStr(new Date(lastNap.ts).getTime()) : "";
   return {lss:liveSessions(), lf:lf, lfd:lfd, np:np};
 }
-function nightRemote(nc){
+function nightRemote(nc, skipFirst){
   var rms=remoteSessions(), h="", i;
-  var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
-  for(i=0;i<rms.length;i++){
+  for(i=(skipFirst?1:0);i<rms.length;i++){
     var it=rms[i];
-    h+='<div style="margin-top:30px;width:100%">'+
-      '<div style="font-size:14px;font-weight:700;color:'+alpha(nc,0.65)+'">'+esc(it.by)+' \u00B7 '+it.a.t+'</div>'+
-      '<div id="nrm-'+it.k+'" class="bigtimer num" style="color:'+nc+';font-size:64px;margin-top:6px">'+fmt(it.secs)+(it.run?"":" \u00B7 paused")+'</div>'+
-      '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;font-size:16px;font-weight:600;color:'+nc+'">'+
-        '<span class="pulse" style="font-size:11px;'+(it.run?"":"opacity:.35")+'">\u25CF</span><span>'+it.a.t+'</span></div>'+
-      '<div style="display:flex;gap:14px;margin-top:20px;justify-content:center">'+
-        '<button class="press" data-a="rpause" data-x="'+it.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+(it.run?ic("pause",15,nc,{fill:true})+'Pause':ic("play",15,nc,{fill:true})+'Resume')+'</button>'+
-        '<button class="press" data-a="rstop" data-x="'+it.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+ic("square",13,nc,{fill:true})+'Stop &amp; save</button>'+
-      '</div></div>';
+    h+='<div id="nrm-'+it.k+'" class="num" style="margin-top:14px;font-size:15px;font-weight:700;color:'+alpha(nc,0.85)+'">'+
+      esc(it.by)+' \u00B7 '+it.a.t+' \u00B7 '+fmt(it.secs)+(it.run?'<span class="pulse" style="margin-left:7px;font-size:11px;color:'+nc+'">\u25B6</span>':' \u00B7 paused')+'</div>';
   }
   return h;
 }
@@ -5472,14 +5464,28 @@ function nightHtml(){
       nCol(b.lss[0], nc, pill)+
       '<span style="width:1px;flex:none;background:'+alpha(nc,0.22)+'"></span>'+
       nCol(b.lss[b.lss.length-1], nc, pill)+'</div>';
+  } else if(remoteSessions().length){
+    var rr=remoteSessions()[0];
+    var rSide = rr.k==="nursing" ? ((rr.s&&rr.s.side)==="L"?"Left":(rr.s&&rr.s.side)==="R"?"Right":"") : "";
+    h += '<div id="nacts" data-k="'+rr.k+'" style="margin-top:64px;width:100%">'+
+      '<div id="nrm-'+rr.k+'" data-bare="1" class="bigtimer num" style="color:'+nc+'">'+fmt(rr.secs)+'</div>'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;'+
+      'font-size:17px;font-weight:600;color:'+nc+'">'+
+      '<span class="pulse" style="font-size:11px;'+(rr.run?"":"opacity:.35")+'">\u25CF</span>'+
+      '<span>'+rr.a.t+(rSide?' \u00B7 '+rSide+' side':'')+' \u00B7 '+esc(rr.by)+'</span></div>'+
+      '<div style="display:flex;gap:14px;margin-top:24px;justify-content:center">'+
+      '<button class="press" data-a="rpause" data-x="'+rr.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
+      (rr.run ? ic("pause",15,nc,{fill:true})+'Pause' : ic("play",15,nc,{fill:true})+'Resume')+'</button>'+
+      '<button class="press" data-a="rstop" data-x="'+rr.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
+      ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div></div>';
   }
   h += '<div style="margin-top:'+(b.lss.length?'44':'64')+'px;font-size:17px;line-height:2.1;color:'+alpha(nc,0.8)+'">'+
     '<div id="nlf">'+b.lf+'</div>'+
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
     nightNF(nc)+
-    nightRemote(nc)+
-    ((b.lss.length===1 && b.lss[0] && !b.lss[0].run)
+    nightRemote(nc, (b.lss.length===0 && remoteSessions().length>0))+
+    (((b.lss.length===1 && b.lss[0] && !b.lss[0].run) || (b.lss.length===0 && remoteSessions().length && !remoteSessions()[0].run))
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
     '</div>';
   h += '<div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:64px"><div style="text-align:center;font-size:12px;color:'+alpha(nc,0.6)+'">Tap anywhere to exit \u00B7 screen stays awake</div></div>';
@@ -6350,7 +6356,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.42";
+var APPVER="1.43";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
