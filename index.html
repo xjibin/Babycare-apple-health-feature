@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.48 -->
+<!-- Baby Care v1.49 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1605,6 +1605,7 @@ var A = {
   },
   noteOpen: function(x){ ui.noteId=+x; ui.noteFrom="hist"; S.tab="summary"; S.sub=""; S.route="note"; S.eidx=null; render(); },
   noteType: function(v){ var e=noteById(ui.noteId); if(e){ e.data.text=v; e.up=Date.now(); save(); } },
+  notePill: function(x){ var e=noteById(ui.noteId); if(!e) return; var cur=(e.data.text||""); e.data.text = cur ? (cur.replace(/\s*$/,"")+"\n"+x) : x; e.up=Date.now(); save(); render(); },
   noteBack: function(){
     var e=noteById(ui.noteId);
     if(e && !(e.data.text||"").trim()){ S.entries=S.entries.filter(function(x){return x.id!==e.id;}); syTomb(e.id); save(); }
@@ -3147,10 +3148,10 @@ function liveNowHtml(){
     '<div class="card" style="margin-bottom:24px;padding:0;overflow:hidden">'+rows+'</div>';
 }
 function entryRow(e, first, idx){
-  var a = e.act==="note" ? {t:"Note added for next visit", icon:"pencil", c:C.blue} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"});
+  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"});
   var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
-    '<span style="display:block;font-size:13px;color:var(--sub)">'+(e.detail?esc(e.detail):'')+(e.by?((e.detail?' \u00B7 ':'')+esc(e.by)):'')+'</span></span>'+
+    '<span style="display:block;font-size:13px;color:var(--sub)">'+(e.act==="note" ? ('Next visit '+((S.baby&&S.baby.nextVisit)?(dayLabel(new Date(S.baby.nextVisit).toISOString())+' '+tClock(S.baby.nextVisit)):'not set')+(e.by?'. '+esc(e.by):'')) : ((e.detail?esc(e.detail):'')+(e.by?((e.detail?' \u00B7 ':'')+esc(e.by)):'')))+'</span></span>'+
     '<span class="num" style="font-size:13px;color:var(--sub)">'+tClock(e.ts)+'</span>'+
     (idx==null ? "" : ic("chevron-right",15,"#5c5c61"));
   var sty = 'display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;text-align:left;'+
@@ -3271,16 +3272,22 @@ function noteCardHtml(){
   return '<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px 16px">'+
     '<button class="press" data-a="notesHist" style="flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0;background:none;border:none;padding:0">'+
       '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(C.blue,0.16)+'">'+ic("pencil",21,C.blue)+'</span>'+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">Add a note</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">Add a quick note</span>'+
       '<span style="display:block;font-size:13px;color:var(--sub)">for Next Doctor visit</span></span></button>'+
     '<button class="circ press" data-a="noteNew" title="Add a note" style="width:40px;height:40px;flex:none;background:'+C.blue+'">'+ic("plus",20,"#000",{sw:2.6})+'</button>'+
   '</div>';
 }
+function notePillsHtml(){
+  var pills=["Feeding well","Fussy after feeds","Spitting up more than usual","Sleeping less than usual","Mild fever","Rash noticed","Cough / congestion","Fewer wet nappies","Unusual (green) stool","Straining to poop","More gassy than usual","Cluster feeding","Question about vaccines","Growth / weight check"], i;
+  var h='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 2px 8px">TAP TO ADD \u00B7 COMMON NOTES</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
+  for(i=0;i<pills.length;i++){ h+='<button class="press" data-a="notePill" data-x="'+esc(pills[i])+'" style="background:var(--card2);border:1px solid '+alpha(C.blue,0.4)+';color:'+C.blue+';font-size:13px;font-weight:600;padding:8px 13px;border-radius:999px">'+esc(pills[i])+'</button>'; }
+  return h+'</div>';
+}
 function vNote(){
   var e=noteById(ui.noteId), txt=(e&&e.data&&e.data.text)||"";
   return '<div class="full" style="padding:0 4px">'+backBtn(C.blue, "Back", "noteBack")+
-    '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">Note for next visit</div>'+
-    '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">Auto-saves as you type'+(e&&e.by?' \u00B7 '+esc(e.by):'')+'</div>'+
+    '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">Add a new quick note</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">Auto-saves as you type'+(e&&e.by?' \u00B7 '+esc(e.by):'')+'</div>'+notePillsHtml()+
     '<textarea id="notetext" oninput="try{A.noteType(this.value)}catch(e){}" placeholder="Type anything to mention at the next doctor visit\u2026 (auto-saved)" style="width:100%;min-height:52vh;resize:none;font-size:16px;line-height:1.6;background:var(--card);border-radius:16px;padding:16px;border:none;outline:none;color:#fff;-webkit-appearance:none">'+esc(txt)+'</textarea>'+
     (e ? '<button class="press" data-a="noteDelete" style="display:block;margin:20px auto 0;color:'+C.red+';font-size:15px;font-weight:700">Delete note</button>' : '')+
     '<div style="height:120px"></div>';
@@ -3592,7 +3599,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.48</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.49</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6445,7 +6452,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.48";
+var APPVER="1.49";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
