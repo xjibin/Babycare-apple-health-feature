@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.46 -->
+<!-- Baby Care v1.47 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1433,6 +1433,14 @@ function docHtml(sD, eD){
     for(i=0;i<sk.length;i++) h+=row(esc(sk[i]), supps[sk[i]]+'\u00D7');
     h+='</table>';
   } else h+='<div class="g">None in range.</div>';
+  var notesR=list.filter(function(en){return en.act==="note" && en.data && (en.data.text||"").trim();});
+  if(notesR.length){
+    notesR.sort(function(a2,b2){return new Date(a2.ts)-new Date(b2.ts);});
+    h+='<h2>Notes for this visit</h2>';
+    var ni2; for(ni2=0;ni2<notesR.length;ni2++){ var nn2=notesR[ni2];
+      h+='<p style="margin:6px 0;line-height:1.5"><b>'+new Date(nn2.ts).toLocaleDateString([],{day:"numeric",month:"short"})+(nn2.by?' \u00B7 '+String(nn2.by).replace(/[<>]/g,""):"")+':</b> '+String(nn2.data.text).replace(/[<>]/g,"")+'</p>';
+    }
+  }
   h+='</div></div>';
   h+='<div class="g" style="margin-top:18px;font-size:11px">Times device-local. Entered manually by caregivers; not a medical record. WHO values approximate.</div>';
   h+='</body></html>';
@@ -1584,6 +1592,12 @@ var A = {
   logFilt: function(x){ if(!ui.logFilter) ui.logFilter=[]; var i=ui.logFilter.indexOf(x); if(i>=0) ui.logFilter.splice(i,1); else ui.logFilter.push(x); render(); },
   logFiltClear: function(){ ui.logFilter=[]; render(); },
   subback: function(){ S.sub=""; ui.logFilter=[]; ui.logExpand={}; ui.affDel=null; ui.invPick=false; render(); },
+  setNextVisit: function(v){
+    var d=new Date(v).getTime(); if(!isFinite(d) || !S.baby) return;
+    var old=S.baby.nextVisit||0;
+    if(old && old<Date.now() && old!==d){ S.baby.lastVisit=old; }
+    S.baby.nextVisit=d; save(); render();
+  },
   noteNew: function(){
     var id=Date.now();
     S.entries.push({id:id, act:"note", detail:"", data:{text:""}, ts:new Date().toISOString(), by:(S.who||""), up:Date.now()});
@@ -3571,14 +3585,14 @@ function vHistory(){
     if(logActive() && !shownG) h += '<div class="card" style="color:var(--sub);font-size:15px;margin-top:14px">No matching entries for this filter \u2014 tap the refresh icon to clear.</div>';
   }
   var base=location.origin+location.pathname;
-  h += onePagerHtml();
+  /* Pediatrician Summary now lives on the Baby Profile */
   h += '<div style="font-size:22px;font-weight:700;margin:28px 0 12px">Manage Data</div>'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">'+
     '<button class="listopt press" data-a="expCsv" style="color:var(--blue);font-size:16px">Export as CSV</button>'+
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.46</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.47</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5249,7 +5263,7 @@ function vBabyView(){
     '<div class="card" style="margin-bottom:20px;display:flex;align-items:center;gap:10px">'+
       (S.who ? '<span style="font-size:15px;font-weight:700">'+esc(S.who)+'</span>'
              : '<span style="font-size:14px;color:var(--sub)">Not set — tap the pencil to add</span>')+'</div>'+
-    parentView("mother")+parentView("father")+
+    parentView("mother")+parentView("father")+onePagerHtml()+
     '<div style="height:100px"></div>'+
     '</div>';
 }
@@ -5707,13 +5721,19 @@ function syncCardsHtml(){
     ic("download",17,"#fff")+'Merge from partner\u2026</button></div>';
 }
 function onePagerHtml(){
-  return ''+'<div class="card" style="padding:20px;margin-top:12px">'+ic("line-chart",28,C.blue)+
-    '<div style="font-size:20px;font-weight:700;margin-top:12px">Pediatrician one-pager</div>'+
-    '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">A print-ready summary of feeding, output, sleep, growth and vaccines for the dates you pick.</div>'+
-    '<div style="margin-top:16px">'+lbl("FROM")+'<div class="card" style="padding:0;margin-bottom:12px"><input id="docFrom" type="datetime-local" class="ninput" value="'+dtLocal(new Date(Date.now()-7*864e5))+'"></div>'+lbl("TO")+'<div class="card" style="padding:0"><input id="docTo" type="datetime-local" class="ninput" value="'+dtLocal(new Date())+'"></div></div>'+
+  var nv=(S.baby&&S.baby.nextVisit)||0, lv=(S.baby&&S.baby.lastVisit)||0;
+  var fromDef = lv ? dtLocal(new Date(lv)) : dtLocal(new Date(Date.now()-7*864e5));
+  var toDef   = nv ? dtLocal(new Date(nv)) : dtLocal(new Date());
+  return '<div class="card" style="padding:20px;margin-bottom:20px">'+ic("line-chart",28,C.blue)+
+    '<div style="font-size:20px;font-weight:700;margin-top:12px">Pediatrician Summary</div>'+
+    '<div style="margin-top:6px;color:var(--sub);font-size:14px;line-height:1.5">A print-ready summary of feeding, output, sleep, growth, vaccines and your notes for the dates you pick.</div>'+
+    '<div style="margin-top:16px">'+lbl("NEXT DOCTOR VISIT")+
+      '<div class="card" style="padding:0;margin-bottom:6px;border:1.5px solid '+alpha(C.blue,0.6)+';background:'+alpha(C.blue,0.10)+'"><input id="docNext" type="datetime-local" class="ninput" value="'+(nv?dtLocal(new Date(nv)):"")+'" onchange="try{A.setNextVisit(this.value)}catch(e){}" style="color:'+C.blue+';font-weight:700"></div>'+
+      '<div style="font-size:12px;color:var(--sub);margin-bottom:16px">Last visit \u00B7 '+(lv?(dayLabel(new Date(lv).toISOString())+' '+tClock(lv)):'\u2014 (updates when you set a new next visit after each appointment)')+'</div></div>'+
+    '<div>'+lbl("FROM")+'<div class="card" style="padding:0;margin-bottom:12px"><input id="docFrom" type="datetime-local" class="ninput" value="'+fromDef+'"></div>'+lbl("TO")+'<div class="card" style="padding:0"><input id="docTo" type="datetime-local" class="ninput" value="'+toDef+'"></div></div>'+
     '<button class="press" data-a="docGen" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;'+
-    'border-radius:16px;margin-top:16px;background:'+C.blue+';color:#000;font-size:16px;font-weight:700">Generate one-pager</button>'+
-    '<div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">Opens in the browser \u2014 use the share sheet there to print or save as PDF.</div></div>';
+    'border-radius:16px;margin-top:16px;background:'+C.blue+';color:#000;font-size:16px;font-weight:700">Generate summary</button>'+
+    '<div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.5">Defaults to your last-visit \u2192 next-visit range (editable). Opens in the browser \u2014 share to print or save as PDF.</div></div>';
 }
 function dtLocal(d){ function p(n){return (n<10?"0":"")+n;} return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
 /* ===== INVENTORY: auto-depleting baby-supply tracker =========================
@@ -6425,7 +6445,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.46";
+var APPVER="1.47";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
