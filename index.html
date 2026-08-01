@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.44 -->
+<!-- Baby Care v1.45 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -84,7 +84,7 @@
   .tab.on{background:#3A3A3C;}
   .tab .tl{font-size:11px; font-weight:600;}
   .backbtn{display:flex; align-items:center; gap:2px; font-size:17px; font-weight:500; margin:0 0 8px -4px;}
-  .bigtimer{font-size:68px; font-weight:700; letter-spacing:-1px;}
+  .bigtimer{font-size:clamp(46px, 17vw, 74px); font-weight:700; letter-spacing:-1px;}
   .savebar{width:100%; height:56px; border-radius:16px; font-size:17px; font-weight:700;
     display:flex; align-items:center; justify-content:center;}
   .listopt{width:100%; display:flex; align-items:center; justify-content:space-between; padding:16px;}
@@ -3527,7 +3527,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.44</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.45</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5378,7 +5378,7 @@ function nightCol(){
   return "#FFB27E";
 }
 function nightNavHtml(nc){
-  var items=[["summary","Summary","heart"],["activity","Activity","baby"],["sharing","Sharing","users"],["chat","Chat","message-circle"]];
+  var items=[["summary","Summary","heart"],["activity","Activity","baby"],["inventory","Inventory","package"],["chat","Chat","message-circle"]];
   function b(it){
     return '<button class="press" data-a="nnav" data-x="'+it[0]+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:'+alpha(nc,0.85)+'">'+
       ic(it[2],22,alpha(nc,0.85),{sw:2.2})+'<span style="font-size:11px;font-weight:600">'+it[1]+'</span></button>';
@@ -5449,9 +5449,9 @@ function nightHtml(){
   var b=nightBits(), nc=nightCol();
   var h = '<div class="press" data-a="nightoff" style="position:absolute;inset:0;z-index:50;background:#0A0A0C;'+
     'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;'+
-    'padding:96px 24px 100px;cursor:pointer">'+
+    'padding:clamp(56px, 13vh, 104px) clamp(16px, 6vw, 28px) clamp(76px, 13vh, 108px);cursor:pointer">'+
     '<div id="ndate" class="num" style="font-size:16px;font-weight:600;letter-spacing:.5px;color:'+alpha(nc,0.8)+';margin-bottom:8px">'+nsDate()+'</div>'+
-    '<div id="nclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
+    '<div id="nclk" class="num" style="font-size:clamp(52px, 21vw, 90px);font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>';
   var pill='display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;'+
     'font-weight:600;color:'+nc+';background:'+alpha(nc,0.12)+';border:1px solid '+alpha(nc,0.35);
@@ -5463,7 +5463,7 @@ function nightHtml(){
     var sideTxt = ls.k==="nursing"
       ? ((ls.s&&ls.s.side)==="L" ? "Left" : (ls.s&&ls.s.side)==="R" ? "Right" : (un9?un9.side:""))
       : "";
-    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:64px;width:100%">'+
+    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:clamp(28px, 7vh, 64px);width:100%">'+
       '<div id="nact-'+ls.k+'" data-bare="1" class="bigtimer num" style="color:'+nc+'">'+nTimeBare(ls)+'</div>'+
       '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;'+
       'font-size:17px;font-weight:600;color:'+nc+'">'+
@@ -5475,7 +5475,7 @@ function nightHtml(){
       '<button class="press" data-a="nstop" data-x="'+ls.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
       ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div></div>';
   } else if(b.lss.length>=2){
-    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:44px;width:100%;'+
+    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:clamp(24px, 6vh, 44px);width:100%;'+
       'display:flex;gap:12px;align-items:stretch">'+
       nCol(b.lss[0], nc, pill)+
       '<span style="width:1px;flex:none;background:'+alpha(nc,0.22)+'"></span>'+
@@ -5483,7 +5483,7 @@ function nightHtml(){
   } else if(remoteSessions().length){
     var rr=remoteSessions()[0];
     var rSide = rr.k==="nursing" ? ((rr.s&&rr.s.side)==="L"?"Left":(rr.s&&rr.s.side)==="R"?"Right":"") : "";
-    h += '<div id="nacts" data-k="'+rr.k+'" style="margin-top:64px;width:100%">'+
+    h += '<div id="nacts" data-k="'+rr.k+'" style="margin-top:clamp(28px, 7vh, 64px);width:100%">'+
       '<div id="nrm-'+rr.k+'" data-bare="1" class="bigtimer num" style="color:'+nc+'">'+fmt(rr.secs)+'</div>'+
       '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;'+
       'font-size:17px;font-weight:600;color:'+nc+'">'+
@@ -6372,7 +6372,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.44";
+var APPVER="1.45";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7154,13 +7154,13 @@ function cnightHtml(){
   if(!se) return "";
   var nc=cCol(), sec=sE(se), wt=cWarnText();
   return '<div id="cwrap" style="position:absolute;inset:0;z-index:50;background:#000;'+
-    'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;padding:96px 24px 40px">'+
-    '<div id="cclk" class="num" style="font-size:84px;font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
+    'display:flex;flex-direction:column;align-items:center;text-align:center;width:100%;padding:clamp(48px, 11vh, 96px) clamp(16px, 6vw, 28px) clamp(28px, 5vh, 44px)">'+
+    '<div id="cclk" class="num" style="font-size:clamp(52px, 21vw, 90px);font-weight:700;letter-spacing:-2px;line-height:1;color:'+nc+'">'+
     new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}).replace(/\s?[AP]M/i,"")+'</div>'+
-    '<div id="cttl" style="margin-top:48px;display:flex;align-items:center;gap:10px;justify-content:center;color:'+nc+'">'+
+    '<div id="cttl" style="margin-top:clamp(24px, 5vh, 48px);display:flex;align-items:center;gap:10px;justify-content:center;color:'+nc+'">'+
     '<span id="cico">'+ic("car",22,nc)+'</span>'+
     '<span style="font-size:20px;font-weight:700">Car Seat</span></div>'+
-    '<div id="cst" class="num" style="margin-top:10px;font-size:44px;font-weight:700;color:'+nc+'">'+
+    '<div id="cst" class="num" style="margin-top:10px;font-size:clamp(32px, 10vw, 46px);font-weight:700;color:'+nc+'">'+
     fmt(Math.round(sec))+(se.run?"":" \u00B7 paused")+'</div>'+
     '<div id="cstat" style="margin-top:8px;font-size:15px;font-weight:600;color:'+alpha(nc,0.8)+'">'+cStatText()+'</div>'+
     '<div style="margin-top:30px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px">'+
