@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.50 -->
+<!-- Baby Care v1.51 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1929,7 +1929,10 @@ var A = {
   medW: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mwho=x; render(); },
   medU: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtU=x; if(x!=="sos" && !(ui.mtN>0)) ui.mtN=2; render(); },
   medTd: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtN=Math.max(1, Math.min(52, (ui.mtN||2)+(+x))); render(); },
-  medAdd: function(){
+  medAddGo: function(){ ui.medAddScreen=true; render(); },
+  medAddBack: function(){ ui.medAddScreen=false; render(); },
+  medAdd: function(x){
+    var stay=(x==="stay");
     var n=byId("medname"), nm=((n&&n.value)||"").replace(/[<>]/g,"").trim().slice(0,24);
     if(!nm){ toast("Name the medication"); return; }
     if(!ui.mt.m && !ui.mt.n && !ui.mt.ni){ toast("Pick at least one time of day"); return; }
@@ -1940,7 +1943,8 @@ var A = {
       whom:(ui.mwho||"Baby"), ts0:startAgoTs(ui.mstartD||0)});
     ui.mname=""; ui.mml=1; ui.mt={m:false,n:true,ni:false};
     ui.mfood="After Food"; ui.mtN=2; ui.mtU="w"; ui.mwho="Baby"; ui.munit="ml"; ui.mstartD=0;
-    save(); render(); toast("Added "+nm);
+    ui.medAddScreen = stay ? true : false;
+    save(); render(); toast(stay ? "Added "+nm+" \u2014 add another" : "Added "+nm);
   },
   medDel: function(x){
     var id=+x, i;
@@ -3599,7 +3603,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.50</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.51</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4307,6 +4311,7 @@ function medAddCardHtml(a, mtc){
         '<button class="circ press" data-a="medStart" data-x="1" style="width:30px;height:30px;background:var(--card2)">'+ic("plus",14,"#fff")+'</button>'+
       '</div>'+
       '<button class="press" data-a="medAdd" style="display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-radius:16px;margin-top:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">Add medication</button>'+
+      '<button class="press" data-a="medAdd" data-x="stay" style="display:flex;align-items:center;justify-content:center;width:100%;height:46px;border-radius:16px;margin-top:10px;background:var(--card2);color:'+a.c+';font-size:15px;font-weight:700">Add another medication</button>'+
     '</div>';
 }
 function emBtn(idx, delta){
@@ -4376,6 +4381,20 @@ function medEditSync(){
     var uEl=byId("emunit_"+i); if(uEl) ui.medDraft[i].unit=uEl.value;
   }
 }
+function medStreakCardHtml(a){
+  medMigrate();
+  var rows="", i, any=false;
+  for(i=0;i<S.meds.length;i++){ var m=S.meds[i]; if(!medSched(m)) continue;
+    var st=medStreak(m.id), col=(st>0?C.orange:"var(--sub)");
+    rows+='<div style="display:flex;align-items:center;gap:8px;padding:9px 0'+(any?';border-top:1px solid var(--hair)':'')+'">'+
+      '<span style="flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
+      '<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+col+'">'+ic("flame",14,col)+st+' day'+(st===1?'':'s')+'</span></div>';
+    any=true;
+  }
+  if(!any) return "";
+  return '<div class="card" style="padding:12px 16px;margin-bottom:16px">'+
+    '<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin-bottom:2px">STREAKS \u00B7 CONSECUTIVE DAYS</div>'+rows+'</div>';
+}
 function vMed(a){
   if(ui.medPast){
     medMigrate();
@@ -4406,19 +4425,20 @@ function vMed(a){
   }
   var todayH="", n=0, i, j;
   medMigrate();
-  for(i=0;i<S.meds.length;i++){
-    var m=S.meds[i];
-    if(!medSched(m)) continue;
-    for(j=0;j<SLOTS.length;j++){
-      if(!m.times[SLOTS[j][0]]) continue;
-      var dn=done(m.id, SLOTS[j][0]);
-      todayH+='<button class="press" data-a="medDone" data-x="'+m.id+'|'+SLOTS[j][0]+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left'+(n?';border-top:1px solid var(--hair)':'')+'">'+
+  var slotKeys=["m","n","ni"], curK=curSlot(), curIdx=slotKeys.indexOf(curK); if(curIdx<0) curIdx=0;
+  for(j=curIdx;j<SLOTS.length;j++){
+    var sk=SLOTS[j][0], sName=SLOTS[j][1], slotRows="", cnt=0;
+    for(i=0;i<S.meds.length;i++){ var m=S.meds[i]; if(!medSched(m) || !m.times[sk]) continue;
+      var dn=done(m.id, sk);
+      slotRows+='<button class="press" data-a="medDone" data-x="'+m.id+'|'+sk+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left'+(cnt?';border-top:1px solid var(--hair)':'')+'">'+
         '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600'+(dn?';opacity:.55':'')+'">'+esc(m.name)+'</span>'+
-        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' '+(m.unit||'ml')+' \u00B7 '+SLOTS[j][1]+'</span></span>'+
+        '<span style="display:block;font-size:13px;color:var(--sub)">'+m.ml+' '+(m.unit||'ml')+'</span></span>'+
         '<span class="circ" style="width:28px;height:28px;background:'+(dn?C.green:'transparent')+';border:1.5px solid '+(dn?C.green:'rgba(255,255,255,.25)')+'">'+
         (dn?ic("check",15,"#000",{sw:3}):"")+'</span></button>';
-      n++;
+      cnt++; n++;
     }
+    if(cnt) todayH+='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:'+a.c+';margin:'+(j===curIdx?"0":"16px")+' 2px 8px">'+sName.toUpperCase()+'</div>'+
+      '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+slotRows+'</div>';
   }
   var list="", mSrc=(ui.medEdit?(ui.medDraft||[]):S.meds);
   for(i=0;i<mSrc.length;i++){
@@ -4438,19 +4458,26 @@ function vMed(a){
     var on3=ui.mt[SLOTS[i][0]];
     mtc+='<button class="pchip press" data-a="medT" data-x="'+SLOTS[i][0]+'" style="'+(on3?'background:'+a.c+';color:#000':'')+'">'+SLOTS[i][1]+'</button>';
   }
+  if(ui.medAddScreen){
+    return '<div class="full" style="padding:0 4px">'+backBtn(a.c, "Medicine", "medAddBack")+
+      '<div style="font-size:26px;font-weight:700;margin:8px 0 2px">Add new medication</div>'+
+      '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Set up a daily medication schedule</div>'+
+      medAddCardHtml(a, mtc)+
+      '<div style="height:200px"></div></div>';
+  }
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">'+ic(a.icon,30,a.c)+
     '<span style="font-size:28px;font-weight:700">Medicine</span></div>'+
     '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Daily doses \u00B7 tap to log, tap again to undo</div>'+
+    medStreakCardHtml(a)+
     '<div class="card" style="padding:16px;margin-bottom:18px">'+
       '<div style="font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub);margin-bottom:10px">TODAY</div>'+
-      (n ? '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+todayH+'</div>'
-         : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication below.</div>')+'</div>'+
+      (n ? todayH : '<div style="color:var(--sub);font-size:14px">No scheduled doses \u2014 add a medication.</div>')+'</div>'+
     '<button class="press" data-a="medPastGo" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:44px;border-radius:14px;margin-bottom:18px;background:var(--card);color:'+a.c+';font-size:15px;font-weight:700">'+ic("plus",16,a.c,{sw:2.6})+'Add past medication</button>'+
     (S.meds.length ? '<div class="card" style="padding:16px;margin-bottom:18px">'+
       '<div style="display:flex;align-items:center;margin-bottom:10px"><span style="flex:1;font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--sub)">MY MEDICATIONS</span>'+(ui.medEdit?'':'<button class="press" data-a="medEditGo" style="font-size:13px;font-weight:800;color:'+a.c+'">Edit</button>')+'</div>'+
       '<div style="background:var(--card2);border-radius:16px;overflow:hidden">'+list+'</div></div>' : "")+
-    (ui.medEdit ? medEditFormsHtml(a) : medAddCardHtml(a, mtc))+
+    (ui.medEdit ? medEditFormsHtml(a) : '<button class="press" data-a="medAddGo" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;border-radius:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:700">'+ic("plus",18,"#000",{sw:2.6})+'Add New medication</button>')+
     '<div style="height:280px"></div></div>';
 }
 
@@ -6452,7 +6479,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.50";
+var APPVER="1.51";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
