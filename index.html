@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.58 -->
+<!-- Baby Care v1.59 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1656,6 +1656,23 @@ var A = {
     ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null; ui.pumpModal=false;
     save(); csModalHide(); render(); toast("Pumped \u00B7 "+ml+"ml logged");
   },
+  exprContinue: function(){ ui.exprGo=true; render(); },
+  exprSkipToggle: function(){ if(exprSkipActive()) S.exprSkipUntil=0; else S.exprSkipUntil=Date.now()+15*864e5; save(); render(); },
+  exprBagOpen: function(x){ ui.exprBag=(""+x); ui.exprMl=0; render(); },
+  exprBagBack: function(){ ui.exprBag=null; ui.exprMl=0; render(); },
+  exprStep: function(x){ var b=exprBagById(ui.exprBag), rem=b?exprRemain(b):9999; ui.exprMl=Math.max(0, Math.min(rem, (ui.exprMl||0)+(+x))); render(); },
+  exprFeed: function(x){
+    var b=exprBagById(ui.exprBag); if(!b) return;
+    var rem=exprRemain(b), ml=(x!=null && x!=="") ? (+x) : (ui.exprMl||0);
+    if(ml<=0) return; if(ml>rem) ml=rem;
+    b.data.remaining=Math.max(0, rem-ml);
+    if(!b.data.thawUsed){ b.data.thawUsed=Date.now(); var w24=Date.now()+24*36e5; if(!b.data.expires || w24<b.data.expires) b.data.expires=w24; }
+    b.up=Date.now();
+    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"expressed", detail:ml+" ml \u00B7 from "+(b.data.label||"bag"), data:{ml:ml, fromBag:(""+b.id)}, ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+    S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
+    ui.exprMl=0; ui.exprBag=null;
+    save(); render(); toast("Fed "+ml+"ml from "+(b.data.label||"bag"));
+  },
   vomitOpen: function(){ ui.vom={type:"Spit-up", vol:5, look:"Fresh", exit:"Mouth", after:"Content", ts:Date.now(), past:false}; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); },
   vomSet: function(x){ var p=x.split("|"); if(!ui.vom) ui.vom={}; ui.vom[p[0]]=(p[0]==="vol"? +p[1] : p[1]); render(); },
   vomCancel: function(){ S.route="list"; ui.vom=null; render(); },
@@ -1709,6 +1726,7 @@ var A = {
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
     if(x==="pumping"){ ui.pumpGo=false; ui.pumpSel=null; ui.pumpStored=false; ui.pumpWake=!S.pumpInfoSkip; nsWakeReq(); }
+    if(x==="expressed"){ ui.exprGo=false; ui.exprBag=null; ui.exprMl=0; }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
@@ -3663,7 +3681,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.58</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.59</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4106,6 +4124,72 @@ function setSheet(a, rows, extra){
 }
 
 /* ============ quick-log screens (mirror JSX) ============ */
+function exprRemain(e){ var d=e.data||{}; return (d.remaining!=null?d.remaining:(d.ml||0)); }
+function exprBagById(id){ var i; for(i=0;i<S.entries.length;i++) if(S.entries[i].act==="pumping" && (""+S.entries[i].id)===(""+id)) return S.entries[i]; return null; }
+function exprSkipActive(){ return Date.now() < (S.exprSkipUntil||0); }
+function vExpr(a){
+  if(S.pmode) return vAmount(a);
+  if(ui.exprBag) return vExprFeed(a);
+  if(!exprSkipActive() && !ui.exprGo) return vExprInfo(a);
+  return vExprList(a);
+}
+function vExprInfo(a){
+  var secs=[
+    {t:"1. The Golden Rule: Only Warm What You Need", b:"Never heat the entire 240ml bag if your baby only drinks 60\u201390ml. Once breast milk is warmed or touches your baby\u2019s mouth, a strict countdown timer begins. Instead, follow the sub-bottling method below."},
+    {t:"2. Step-by-Step Plan for Your 240ml Supply", subs:[["Thaw the full bag in the fridge","Place the frozen 240ml bag in the refrigerator overnight. Do not heat it \u2014 let it transition slowly from solid ice to cold liquid."],["Swirl and mix","Once completely liquid, gently swirl the cold bag to redistribute the fat layer that separates during storage."],["Pour out a single serving","Pour exactly 60\u201390ml of the cold milk into a separate, clean baby bottle."],["Warm only that bottle","Warm only that smaller bottle for the current feeding session."],["Put the remaining portion back","Immediately reseal the storage bag with the remaining 150\u2013180ml of cold milk and place it right back into the back of the refrigerator."]]},
+    {t:"3. Timeline for the Remaining Portions", subs:[["The 24-Hour Fridge Window","The remaining cold milk is safe in the fridge for up to 24 hours from the moment it fully thawed. Repeat the pouring process for the next few feedings within that day."],["The 2-Hour Used-Bottle Rule","The 60\u201390ml portion you fed the baby must be consumed within 2 hours. If baby doesn\u2019t finish it, throw away the leftovers \u2014 bacteria from saliva multiply rapidly."],["Never Refreeze","You cannot refreeze any part of the remaining milk once it has thawed, even if it stayed cold the whole time."]]}
+  ];
+  var body="", i, j;
+  for(i=0;i<secs.length;i++){ var s=secs[i];
+    body+='<div style="margin-bottom:16px"><div style="font-size:15px;font-weight:700;color:'+a.c+'">'+s.t+'</div>';
+    if(s.b) body+='<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-top:3px">'+s.b+'</div>';
+    if(s.subs) for(j=0;j<s.subs.length;j++){ body+='<div style="margin-top:8px"><span style="font-size:14px;font-weight:600">'+s.subs[j][0]+':</span> <span style="font-size:14px;color:var(--sub);line-height:1.5">'+s.subs[j][1]+'</span></div>'; }
+    body+='</div>';
+  }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="font-size:24px;font-weight:700;margin:8px 0 8px">Feeding thawed breast milk safely</div>'+
+    '<div style="padding-bottom:210px">'+body+'</div>'+
+    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:16px 20px calc(26px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
+      '<button class="press" data-a="exprContinue" style="width:100%;height:50px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
+      '<button class="press" data-a="exprSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;color:#EBEBF5;font-size:14px;font-weight:600">'+
+      '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(exprSkipActive()?a.c:"var(--sub)")+';background:'+(exprSkipActive()?a.c:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(exprSkipActive()?ic("check",12,"#000",{sw:3}):"")+'</span>Skip this screen next time</button>'+
+    '</div></div>';
+}
+function vExprList(a){
+  var bags=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage && exprRemain(e)>0;}).sort(function(x,y){return new Date(y.ts)-new Date(x.ts);});
+  var h='<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">Expressed</span></div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Feed from a stored bag</div>'+
+    '<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 4px 10px">STORED MILK LOG</div>';
+  if(!bags.length) h+='<div class="card" style="color:var(--sub);font-size:15px;margin-bottom:14px">No stored bags \u2014 log a pumping session to add one.</div>';
+  var i; for(i=0;i<bags.length;i++){ var e=bags[i], d=e.data, rem=exprRemain(e), soon=(((d.expires||0)-Date.now())<4*864e5), meta=storageMeta(d.storage);
+    h+='<button class="card press" data-a="exprBagOpen" data-x="'+e.id+'" style="width:100%;text-align:left;margin-bottom:10px;padding:14px 16px;display:block">'+
+      '<div style="display:flex;align-items:center;gap:8px"><span class="num" style="flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.label||"")+'</span>'+
+      '<span style="flex:none;font-size:13px;font-weight:800;color:'+a.c+'">'+rem+'ml left</span></div>'+
+      '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+meta.label+' \u00B7 Use till <span style="color:'+(soon?C.red:"var(--sub)")+';font-weight:'+(soon?"800":"600")+'">'+dayLabel(new Date(d.expires||0).toISOString())+'</span></div></button>';
+  }
+  h+='<button class="press" data-a="past" style="display:block;width:100%;text-align:center;color:'+a.c+';font-size:14px;font-weight:700;padding:12px;margin-top:4px">+ Add a past expressed</button>';
+  return h+'<div style="height:120px"></div></div>';
+}
+function vExprFeed(a){
+  var b=exprBagById(ui.exprBag); if(!b){ ui.exprBag=null; return vExprList(a); }
+  var d=b.data, rem=exprRemain(b), mls=[30,60,90,120,150,180,210,240], cur=ui.exprMl||0, chips="", i;
+  for(i=0;i<mls.length;i++){ var on=(cur===mls[i]), dis=(mls[i]>rem);
+    chips+='<button class="press" data-a="exprFeed" data-x="'+mls[i]+'"'+(dis?' disabled':'')+' style="flex:1 0 21%;height:44px;border-radius:12px;text-align:center;background:'+(on?a.c:"var(--card2)")+';color:'+(dis?"var(--sub)":(on?"#000":"#fff"))+';font-size:14px;font-weight:700;opacity:'+(dis?".4":"1")+'">'+mls[i]+'</button>'; }
+  var okAmt=(cur>0 && cur<=rem);
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c,"Expressed","exprBagBack")+
+    '<div style="font-size:24px;font-weight:700;margin:8px 0 8px">Feeding '+esc(d.label||"bag")+'</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:10px">Immediately reseal the storage bag containing the remaining cold milk and place it right back into the fridge \u2014 it is safe in the fridge for up to 24 hours from the exact moment it fully thawed.</div>'+
+    '<div style="font-size:13px;color:'+C.red+';font-weight:700;line-height:1.5;margin-bottom:16px">The 60\u201390ml portion you poured out and fed to the baby must be consumed within 2 hours. If your baby does not finish that specific bottle, you must trash the leftovers.</div>'+
+    '<div class="card" style="padding:16px;margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
+      '<button class="press" data-a="exprStep" data-x="-30" style="width:44px;height:44px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">\u2212</button>'+
+      '<span class="num" style="font-size:34px;font-weight:800">'+cur+' <span style="font-size:16px;color:var(--sub)">ml</span></span>'+
+      '<button class="press" data-a="exprStep" data-x="30" style="width:44px;height:44px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">+</button></div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div></div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">'+rem+'ml remaining in this bag</div>'+
+    '<button class="press" data-a="exprFeed"'+(okAmt?"":" disabled")+' style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+(okAmt?a.c:"var(--card2)")+';color:'+(okAmt?"#000":"var(--sub)")+';font-size:16px;font-weight:800">Fed '+cur+'ml from this bag</button>'+
+    '<div style="height:120px"></div></div>';
+}
 function vAmount(a){
   var qs=[30,60,90,120], qh="";
   for(var i=0;i<qs.length;i++){
@@ -6230,6 +6314,7 @@ function render(){
     else if(a.k==="pumping") h=vPump(a);
     else if(a.kind==="dual") h=vDual(a);
     else if(a.kind==="single") h=vSingle(a);
+    else if(a.k==="expressed") h=vExpr(a);
     else if(a.kind==="amount") h=vAmount(a);
     else if(a.kind==="supp") h=vSupp(a);
     else if(a.kind==="nappy") h=vNappy(a);
@@ -6700,7 +6785,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.58";
+var APPVER="1.59";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
