@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.51 -->
+<!-- Baby Care v1.52 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1280,8 +1280,8 @@ function medMilestoneHtml(){
     }
   }
   return '<div class="card press" data-a="openmed" style="margin-bottom:12px">'+
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,C.green)+
-    '<span style="font-size:15px;font-weight:700">Medicine Milestone</span>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,(act("medicine")||{}).c||C.green)+
+    '<span style="font-size:15px;font-weight:700;color:'+((act("medicine")||{}).c||C.green)+'">Medicine Milestone</span>'+
     '<span style="margin-left:auto">'+ic("chevron-right",18,C.sub)+'</span></div>'+inner+'</div>';
 }
 function vitDStreak(){
@@ -1929,6 +1929,11 @@ var A = {
   medW: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mwho=x; render(); },
   medU: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtU=x; if(x!=="sos" && !(ui.mtN>0)) ui.mtN=2; render(); },
   medTd: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtN=Math.max(1, Math.min(52, (ui.mtN||2)+(+x))); render(); },
+  streakClose: function(){ if(mbStreakT){ clearTimeout(mbStreakT); mbStreakT=null; } var e=byId("streakmodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); },
+  streakNoop: function(){},
+  medStreakShow: function(x){ showStreakModal(+x, true, false); },
+  medDueYes: function(x){ var e=byId("duemodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); A.medDone(x); },
+  medDueLater: function(x){ var e=byId("duemodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); S.medSnooze=S.medSnooze||{}; S.medSnooze[+x]=Date.now()+3600000; save(); },
   medAddGo: function(){ ui.medAddScreen=true; render(); },
   medAddBack: function(){ ui.medAddScreen=false; render(); },
   medAdd: function(x){
@@ -1981,6 +1986,7 @@ var A = {
       ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
     save(); render(); toast("Logged");
+    if(medStreak(id)>1) showStreakModal(id, false, true);
   },
   mbgo: function(){
     if(mbT){ clearTimeout(mbT); mbT=null; }
@@ -3603,7 +3609,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.51</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.52</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4381,14 +4387,73 @@ function medEditSync(){
     var uEl=byId("emunit_"+i); if(uEl) ui.medDraft[i].unit=uEl.value;
   }
 }
+var mbStreakT=null;
+function medDotsHtml(streak){
+  var now=new Date(), dim=new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  var total = streak<11 ? 11 : (streak<22 ? 22 : dim);
+  var green = Math.min(streak, total), rows="", done=0, per=11;
+  while(done<total){
+    var thisRow=Math.min(per, total-done), cells="", k;
+    for(k=0;k<thisRow;k++){ var on=((done+k)<green); cells+='<span style="width:14px;height:14px;border-radius:50%;flex:none;background:'+(on?C.green:alpha(C.green,0.22))+'"></span>'; }
+    rows+='<div style="display:flex;gap:5px'+(done?';margin-top:6px':'')+'">'+cells+'</div>';
+    done+=thisRow;
+  }
+  return rows;
+}
+function medStreakModalHtml(mid, withX){
+  var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===mid) m=S.meds[i]; if(!m) return "";
+  var st=medStreak(mid), mcol=(act("medicine")||{}).c||C.green;
+  return '<div data-a="streakNoop" style="position:relative;background:#0b0b0c;border-radius:22px;padding:22px 22px 24px">'+
+    (withX?'<button class="press" data-a="streakClose" style="position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:15px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center">'+ic("x",14,"#fff")+'</button>':'')+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+ic("pill",18,mcol)+'<span style="font-size:15px;font-weight:600;color:#fff">'+esc(m.name)+'</span></div>'+
+    '<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:20px"><span class="num" style="font-size:64px;font-weight:800;line-height:.85;color:'+C.green+'">'+st+'</span>'+
+    '<span style="font-size:16px;font-weight:600;color:#fff;padding-bottom:6px;line-height:1.2">days<br>in a row</span></div>'+
+    medDotsHtml(st)+'</div>';
+}
+function showStreakModal(mid, withX, autoClose){
+  var ex=byId("streakmodal"); if(ex && ex.parentNode) ex.parentNode.removeChild(ex);
+  var d=document.createElement("div"); d.id="streakmodal";
+  d.innerHTML='<div data-a="streakClose" style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:420;display:flex;align-items:center;justify-content:center;padding:32px">'+
+    '<div style="max-width:320px;width:100%">'+medStreakModalHtml(mid, withX)+'</div></div>';
+  document.body.appendChild(d);
+  if(mbStreakT){ clearTimeout(mbStreakT); mbStreakT=null; }
+  if(autoClose){ mbStreakT=setTimeout(function(){ if(A&&A.streakClose) A.streakClose(); }, 5000); }
+}
+function showDueModal(mid, slot){
+  var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===mid) m=S.meds[i]; if(!m || byId("duemodal")) return;
+  var d=document.createElement("div"); d.id="duemodal";
+  d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:410;display:flex;align-items:center;justify-content:center;padding:32px">'+
+    '<div class="card" style="max-width:320px;width:100%;padding:24px 25px;text-align:center">'+
+    '<span class="circ" style="width:52px;height:52px;margin:0 auto;background:'+alpha(C.green,0.2)+'">'+ic("pill",24,C.green)+'</span>'+
+    '<div style="font-size:18px;font-weight:800;margin:12px 0 4px;line-height:1.3">Your '+esc(m.name)+' is due now</div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Log it before you lose the streak</div>'+
+    '<button class="press" data-a="medDueYes" data-x="'+m.id+'|'+slot+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:1.5px solid '+C.green+';color:'+C.green+';font-size:15px;font-weight:700;margin-bottom:10px">Yes, I had</button>'+
+    '<button class="press" data-a="medDueLater" data-x="'+m.id+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Remind me later</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+}
+function medDueModalCheck(){
+  if(byId("duemodal")||byId("streakmodal")) return;
+  if(S.tab!=="summary"||S.sub||S.eidx!=null) return;
+  medMigrate();
+  var slot=curSlot(); if(!slot) return;
+  var sn=S.medSnooze||{}, i;
+  for(i=0;i<(S.meds||[]).length;i++){ var m=S.meds[i];
+    if(!medSched(m) || !(m.times&&m.times[slot])) continue;
+    if(medSlotDone(m.id, slot)) continue;
+    if(medStreak(m.id) <= 2) continue;
+    if(sn[m.id] && Date.now()<sn[m.id]) continue;
+    showDueModal(m.id, slot); return;
+  }
+}
 function medStreakCardHtml(a){
   medMigrate();
   var rows="", i, any=false;
   for(i=0;i<S.meds.length;i++){ var m=S.meds[i]; if(!medSched(m)) continue;
     var st=medStreak(m.id), col=(st>0?C.orange:"var(--sub)");
-    rows+='<div style="display:flex;align-items:center;gap:8px;padding:9px 0'+(any?';border-top:1px solid var(--hair)':'')+'">'+
+    rows+='<button class="press" data-a="medStreakShow" data-x="'+m.id+'" style="width:100%;display:flex;align-items:center;gap:8px;padding:9px 0;text-align:left'+(any?';border-top:1px solid var(--hair)':'')+'">'+
       '<span style="flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
-      '<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+col+'">'+ic("flame",14,col)+st+' day'+(st===1?'':'s')+'</span></div>';
+      '<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+col+'">'+ic("flame",14,col)+st+' day'+(st===1?'':'s')+'</span></button>';
     any=true;
   }
   if(!any) return "";
@@ -6479,7 +6544,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.51";
+var APPVER="1.52";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7618,7 +7683,7 @@ setInterval(function(){
     tt.textContent=fmt(sE(s2));
   }
 },1000);
-document.addEventListener("visibilitychange", function(){ if(!document.hidden) render(); });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); medDueModalCheck(); } });
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
 
 /* boot: static status bar icons + first paint */
@@ -7861,6 +7926,7 @@ document.addEventListener("focusin", function(e){
   }, true);
 })();
 render();
+medDueModalCheck();
 </script>
 </body>
 </html>
