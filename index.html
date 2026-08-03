@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.62 -->
+<!-- Baby Care v1.63 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1635,6 +1635,7 @@ var A = {
   },
   pumpSave: function(){ if(!ui.pumpSel || !ui.pumpSel.ml) return; ui.pumpLabel=pumpLabel(); ui.pumpStore=null; ui.pumpCd=null; ui.pumpModal=true; if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} csModal(pumpModalHtml()); },
   pumpModalX: function(){ if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} ui.pumpStore=null; ui.pumpCd=null; ui.pumpModal=false; csModalHide(); },
+  pumpEditStore: function(x){ ui.pumpEditStore=x; render(); },
   pumpStore: function(x){
     ui.pumpStore=x; ui.pumpCd=10; csModal(pumpModalHtml());
     if(ui.pumpCdT) clearInterval(ui.pumpCdT);
@@ -2652,6 +2653,7 @@ var A = {
       ui.vom={ type:d.type||"Spit-up", vol:(d.vol!=null?d.vol:5), look:d.look||"Fresh", exit:d.exit||"Mouth", after:d.after||"Content", ts:new Date(e.ts).getTime(), past:false, editId:e.id };
       S.eidx=null; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); return;
     }
+    if(e.act==="pumping"){ ui.pumpEditStore=(d.storage||"fridge"); ui.ml=(d.ml!=null?d.ml:(d.remaining||0)); render(); return; }
     if(a){
       if(a.kind==="dual"){
         if(a.pump){ ui.pdur=Math.max(1,Math.round((d.total||0)/60)); ui.pml=(d.ml!=null?d.ml:60); }
@@ -2683,6 +2685,15 @@ var A = {
       if(dp.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; }
       var ts=dp.toISOString();
       if(!a){ e.ts=ts; }
+      else if(e.act==="pumping"){
+        if(ui.ml<=0){ toast("Set an amount"); return; }
+        var _lab=byId("pumplbl"), _st=ui.pumpEditStore||d.storage||"fridge", _meta=storageMeta(_st);
+        e.data.ml=ui.ml; e.data.storage=_st;
+        e.data.label=(_lab&&_lab.value?_lab.value.trim():(d.label||pumpLabel(new Date(ts).getTime())));
+        e.data.expires=new Date(ts).getTime()+_meta.ms;
+        e.data.remaining=(d.remaining!=null?Math.min(d.remaining,ui.ml):ui.ml);
+        e.detail=ui.ml+"ml \u00B7 "+_meta.label; e.ts=ts; e.up=Date.now();
+      }
       else if(a.kind==="dual"){
         if(a.pump){
           var tot=ui.pdur*60;
@@ -3697,7 +3708,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.62</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.63</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5114,7 +5125,14 @@ function vEdit(){
   var e=S.entries[S.eidx];
   var a=act(e.act) || {t:"Entry", icon:"circle-dot", c:"#98989F", kind:"none", k:e.act};
   var body="", i;
-  if(a.kind==="dual"){
+  if(e.act==="pumping"){
+    var _pst=ui.pumpEditStore||(e.data&&e.data.storage)||"fridge";
+    var _sB=function(k,label){ var on=(_pst===k); return '<button class="press" data-a="pumpEditStore" data-x="'+k+'" style="flex:1;height:46px;border-radius:12px;text-align:center;background:'+(on?a.c:"var(--card2)")+';color:'+(on?"#000":"#fff")+';font-size:14px;font-weight:700;border:1.5px solid '+(on?a.c:"transparent")+'">'+label+'</button>'; };
+    body = lbl("BAG LABEL")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px"><input id="pumplbl" class="ninput" value="'+esc((e.data&&e.data.label)||"")+'" placeholder="IZA ddmmyyyy hhmm" style="width:100%;background:none;border:none;padding:14px 16px;font-size:15px;color:#fff;letter-spacing:.5px"></div>'+
+      lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
+      lbl("AMOUNT")+'<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+stepRow("Amount","ml",ui.ml,"ml",10,30,true)+'</div>'+
+      lbl("STORAGE")+'<div style="display:flex;gap:8px;padding:0 4px">'+_sB("fridge","Fridge")+_sB("freezer","Freezer")+'</div>';
+  } else if(a.kind==="dual"){
     body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
       '<div class="card" style="padding:0;overflow:hidden">'+
       (a.pump
@@ -5241,7 +5259,7 @@ function vEdit(){
     body+
     ((function(){
       var ee9=S.entries[S.eidx];
-      return (ee9 && OKR[ee9.act] && dayKey(ee9.ts)===dayKey(Date.now()) && !sessActive(ee9.act))
+      return (ee9 && OKR[ee9.act] && ee9.act!=="pumping" && dayKey(ee9.ts)===dayKey(Date.now()) && !sessActive(ee9.act))
         ? '<button class="press" data-a="resume" data-x="'+ee9.id+'" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:48px;border-radius:16px;margin-top:14px;background:var(--card);font-size:15px;font-weight:700;color:#fff">'+ic("play",15,"#fff",{fill:true})+'Resume this session</button>'
         : "";
     })())+
@@ -6831,7 +6849,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.62";
+var APPVER="1.63";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
