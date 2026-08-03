@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.57 -->
+<!-- Baby Care v1.58 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1632,8 +1632,8 @@ var A = {
     if(p[0]!==sug && ui._pumpLastSide!==p[0]){ toast("Suggested: "+(sug==="L"?"Left":"Right")+" side \u2014 switch if you can"); }
     ui._pumpLastSide=p[0]; ui.pumpSel={side:p[0], ml:+p[1]}; render();
   },
-  pumpSave: function(){ if(!ui.pumpSel || !ui.pumpSel.ml) return; ui.pumpLabel=pumpLabel(); ui.pumpStore=null; ui.pumpCd=null; if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} csModal(pumpModalHtml()); },
-  pumpModalX: function(){ if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} ui.pumpStore=null; ui.pumpCd=null; csModalHide(); },
+  pumpSave: function(){ if(!ui.pumpSel || !ui.pumpSel.ml) return; ui.pumpLabel=pumpLabel(); ui.pumpStore=null; ui.pumpCd=null; ui.pumpModal=true; if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} csModal(pumpModalHtml()); },
+  pumpModalX: function(){ if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} ui.pumpStore=null; ui.pumpCd=null; ui.pumpModal=false; csModalHide(); },
   pumpStore: function(x){
     ui.pumpStore=x; ui.pumpCd=10; csModal(pumpModalHtml());
     if(ui.pumpCdT) clearInterval(ui.pumpCdT);
@@ -1653,7 +1653,7 @@ var A = {
       data:{ml:ml, side:sel.side||"", storage:store, label:(ui.pumpLabel||pumpLabel()), expires:now+meta.ms},
       ts:new Date(now).toISOString(), by:(S.who||undefined), up:now, bid:S.activeBaby});
     S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
-    ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null;
+    ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null; ui.pumpModal=false;
     save(); csModalHide(); render(); toast("Pumped \u00B7 "+ml+"ml logged");
   },
   vomitOpen: function(){ ui.vom={type:"Spit-up", vol:5, look:"Fresh", exit:"Mouth", after:"Content", ts:Date.now(), past:false}; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); },
@@ -3663,7 +3663,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.57</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.58</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5998,7 +5998,7 @@ function invUsedRange(it, from){
   var u=0,i,e,per=it.per||{};
   for(i=0;i<S.entries.length;i++){ e=S.entries[i]; var t=new Date(e.ts).getTime(); if(t<from) continue;
     if(e.act==="nappy"){ var ty=(((e.data&&e.data.type)||e.detail||"")+"").toLowerCase(); u+=(ty.indexOf("mix")>=0?(+per.mix||0):(+per.wet||0)); }
-    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping"){ u+=(+per.pump||0); } }
+    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping" && e.data && (e.data.storage==="fridge"||e.data.storage==="freezer")){ u+=(+per.pump||0); } }
   return u;
 }
 function invLeft(it){ return Math.max(0,(+it.qty||0)-invUsedRange(it,it.since||0)); }
@@ -6329,7 +6329,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
-  document.getElementById("ov").innerHTML = (ui.land && !ui.landX) ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
+  document.getElementById("ov").innerHTML = (ui.land && !ui.landX && !ui.pumpModal) ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
@@ -6700,7 +6700,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.57";
+var APPVER="1.58";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
