@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.60 -->
+<!-- Baby Care v1.61 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -344,6 +344,7 @@ function babyStash(){
 function babyLoad(id, skipStash){
   if(!skipStash) babyStash();
   var b=babyRec(id); if(!b) return;
+  /* pumpMigrate runs after load below */
   var i; for(i=0;i<PERBABY.length;i++) S[PERBABY[i]]=(b[PERBABY[i]]!==undefined? b[PERBABY[i]] : babyDef(PERBABY[i]));
   S.activeBaby=id;
   if(typeof SY!=="undefined"){
@@ -3568,6 +3569,20 @@ function coreCardHtml(){
   }
   return h+'</div>';
 }
+function infoSettingsCardHtml(){
+  var mc1=(act("pumping")||{}).c||C.mint, mc2=(act("expressed")||{}).c||C.teal;
+  function row(label, on, action, col, first){
+    return '<button class="press" data-a="'+action+'" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 0'+(first?'':';border-top:1px solid var(--hair)')+'">'+
+      '<span style="width:20px;height:20px;border-radius:5px;flex:none;border:1.5px solid '+(on?col:"var(--sub)")+';background:'+(on?col:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(on?ic("check",13,"#000",{sw:3}):"")+'</span>'+
+      '<span style="flex:1;font-size:14px;font-weight:600">'+label+'</span></button>';
+  }
+  return '<div class="card" style="margin-top:14px;margin-bottom:14px;padding:16px">'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:2px">Info screen settings</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:6px">Skip the one-time safety guides. Untick to see them again next time.</div>'+
+    row("Skip \u201CHow to Pump &amp; Store\u201D next time", !!S.pumpInfoSkip, "pumpSkipToggle", mc1, true)+
+    row("Skip \u201CFeeding thawed milk\u201D next time", exprSkipActive(), "exprSkipToggle", mc2, false)+
+    '</div>';
+}
 function vCset(){
   csD();
   return '<div class="full">'+
@@ -3579,6 +3594,7 @@ function vCset(){
     '<div class="card" style="padding:0;margin-top:14px;margin-bottom:14px"><input id="csq" class="ninput" placeholder="Search settings \u00B7 try \u201Csleep\u201D or \u201Csync\u201D" autocomplete="off" value="'+esc(ui.csQ||"")+'"></div>'+
     '<div id="cslist">'+csListHtml()+'</div>'+
     coreCardHtml()+
+    infoSettingsCardHtml()+
     '<div style="font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--sub);margin:26px 4px 10px">UI CONFIGURATIONS</div>'+
     '<div class="card" style="padding:16px">'+
       '<div style="font-size:15px;font-weight:600">Summary title top spacing</div>'+
@@ -3682,7 +3698,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.60</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.61</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3887,9 +3903,9 @@ function stopBtn(enabled){
     '<span class="circ" style="width:64px;height:64px;background:var(--card2)">'+ic("square",22,C.red,{fill:true})+'</span>'+
     '<span style="color:var(--sub);font-size:13px;font-weight:600">Stop</span></button></div>';
 }
-function pumpLabel(){
+function pumpLabel(ts){
   var b=((S.baby&&S.baby.name)||"Baby").replace(/[^A-Za-z]/g,"").slice(0,3).toUpperCase()||"BBY";
-  var d=new Date(); function p(n){return (n<10?"0":"")+n;}
+  var d=(ts?new Date(ts):new Date()); function p(n){return (n<10?"0":"")+n;}
   return b+" "+p(d.getDate())+p(d.getMonth()+1)+d.getFullYear()+" "+p(d.getHours())+p(d.getMinutes());
 }
 function storageMeta(x){
@@ -3928,12 +3944,11 @@ function vPumpInfo(a){
   var body="", i; for(i=0;i<items.length;i++){ body+='<div style="margin-bottom:14px"><div style="font-size:15px;font-weight:700;color:'+a.c+'">'+(i+1)+'. '+items[i][0]+'</div><div style="font-size:14px;color:var(--sub);line-height:1.5;margin-top:2px">'+items[i][1]+'</div></div>'; }
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="font-size:26px;font-weight:700;margin:8px 0 6px">How to Pump &amp; Store Safely</div>'+
-    '<div style="padding-bottom:210px">'+body+'</div>'+
-    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:16px 20px calc(26px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
+    body+'<div style="margin-top:8px">'+
       '<button class="press" data-a="pumpContinue" style="width:100%;height:50px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
       '<button class="press" data-a="pumpSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;color:#EBEBF5;font-size:14px;font-weight:600">'+
       '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(S.pumpInfoSkip?a.c:'var(--sub)')+';background:'+(S.pumpInfoSkip?a.c:'transparent')+';display:inline-flex;align-items:center;justify-content:center">'+(S.pumpInfoSkip?ic("check",12,"#000",{sw:3}):'')+'</span>Skip this screen next time</button>'+
-    '</div></div>';
+    '</div>'+'<div style="height:100px"></div></div>';
 }
 function vPumpLog(a){
   var mls=[30,60,90,120,150,180,210,240], sel=ui.pumpSel||{};
@@ -4159,12 +4174,11 @@ function vExprInfo(a){
   }
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="font-size:24px;font-weight:700;margin:8px 0 8px">Feeding thawed breast milk safely</div>'+
-    '<div style="padding-bottom:210px">'+body+'</div>'+
-    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:16px 20px calc(26px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
+    body+'<div style="margin-top:8px">'+
       '<button class="press" data-a="exprContinue" style="width:100%;height:50px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
       '<button class="press" data-a="exprSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;color:#EBEBF5;font-size:14px;font-weight:600">'+
       '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(exprSkipActive()?a.c:"var(--sub)")+';background:'+(exprSkipActive()?a.c:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(exprSkipActive()?ic("check",12,"#000",{sw:3}):"")+'</span>Skip this screen next time</button>'+
-    '</div></div>';
+    '</div>'+'<div style="height:100px"></div></div>';
 }
 function vExprList(a){
   var bags=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage && exprRemain(e)>0 && !bagExpired(e);}).sort(function(x,y){return new Date(y.ts)-new Date(x.ts);});
@@ -4680,6 +4694,21 @@ function showDueModal(mid, slot){
     '<button class="press" data-a="medDueLater" data-x="'+m.id+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:none;color:'+C.red+';font-size:15px;font-weight:700">Remind me later</button>'+
     '</div></div>';
   document.body.appendChild(d);
+}
+function pumpMigrate(){
+  if(S.sess && S.sess.pumping) delete S.sess.pumping;
+  var i, changed=false;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i];
+    if(e.act!=="pumping" || !e.data || e.data.storage) continue;
+    var ml=e.data.ml||e.data.total||((e.data.l||0)+(e.data.r||0))||0;
+    var ts=new Date(e.ts).getTime()||Date.now();
+    e.data.ml=ml; e.data.storage="fridge"; e.data.remaining=(e.data.remaining!=null?e.data.remaining:ml);
+    if(!e.data.label) e.data.label=pumpLabel(ts);
+    if(!e.data.expires) e.data.expires=ts+4*864e5;
+    e.detail=ml+"ml \u00B7 Fridge"; e.up=Date.now();
+    changed=true;
+  }
+  if(changed) save();
 }
 function bagSweep(){
   var now=Date.now(), removed=0, i;
@@ -6803,7 +6832,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.60";
+var APPVER="1.61";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8191,6 +8220,7 @@ document.addEventListener("focusin", function(e){
   }, true);
 })();
 render();
+pumpMigrate();
 bagSweep();
 medDueModalCheck();
 </script>
