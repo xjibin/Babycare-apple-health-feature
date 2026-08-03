@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.53 -->
+<!-- Baby Care v1.54 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1574,7 +1574,7 @@ var A = {
     var i, ex=false; for(i=0;i<S.inventory.length;i++) if((S.inventory[i].name||"").toLowerCase()===(x||"").toLowerCase()) ex=true;
     if(ex){ ui.invPick=false; render(); toast(x+" is already in your inventory"); return; }
     var cat=invCatFind(x);
-    S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:x, cat:(cat?cat.cat:"other"), unit:(cat?cat.unit:""), qty:0, since:Date.now(), per:(cat?{mix:+cat.per.mix||0,wet:+cat.per.wet||0,nurse:+cat.per.nurse||0}:{mix:0,wet:0,nurse:0}), affs:(cat&&cat.affs?cat.affs.slice():[])});
+    S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:x, cat:(cat?cat.cat:"other"), unit:(cat?cat.unit:""), qty:0, since:Date.now(), per:(cat?{mix:+cat.per.mix||0,wet:+cat.per.wet||0,nurse:+cat.per.nurse||0,pump:+cat.per.pump||0}:{mix:0,wet:0,nurse:0,pump:0}), affs:(cat&&cat.affs?cat.affs.slice():[])});
     ui.invPick=false; save(); render(); toast(x+" added \u2014 tap + to set stock");
   },
   invAffAdd: function(x){ csModal(affForm(x)); },
@@ -1619,6 +1619,35 @@ var A = {
     S.route="list"; ui.noteId=null; S.sub="notes"; render(); toast("Note deleted");
   },
   notesHist: function(){ S.tab="summary"; S.sub="notes"; S.route="list"; S.eidx=null; ui.sheet=false; render(); },
+  pumpContinue: function(){ ui.pumpGo=true; render(); },
+  pumpSkipToggle: function(){ S.pumpInfoSkip=!S.pumpInfoSkip; save(); render(); },
+  pumpStored: function(){ ui.pumpStored=true; render(); },
+  pumpStoredBack: function(){ ui.pumpStored=false; render(); },
+  pumpPick: function(x){ var p=x.split("|"); ui.pumpSel={side:p[0], ml:+p[1]}; render(); },
+  pumpSave: function(){ if(!ui.pumpSel || !ui.pumpSel.ml) return; ui.pumpLabel=pumpLabel(); ui.pumpStore=null; ui.pumpCd=null; if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} csModal(pumpModalHtml()); },
+  pumpModalX: function(){ if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;} ui.pumpStore=null; ui.pumpCd=null; csModalHide(); },
+  pumpStore: function(x){
+    ui.pumpStore=x; ui.pumpCd=10; csModal(pumpModalHtml());
+    if(ui.pumpCdT) clearInterval(ui.pumpCdT);
+    ui.pumpCdT=setInterval(function(){
+      if(!byId("csmodal") || byId("csmodal").style.display==="none"){ clearInterval(ui.pumpCdT); ui.pumpCdT=null; return; }
+      ui.pumpCd--;
+      if(ui.pumpCd<=0){ clearInterval(ui.pumpCdT); ui.pumpCdT=null; A.pumpSaveNow(); }
+      else csModal(pumpModalHtml());
+    }, 1000);
+  },
+  pumpSaveNow: function(){
+    if(ui.pumpCdT){clearInterval(ui.pumpCdT); ui.pumpCdT=null;}
+    var sel=ui.pumpSel||{}, store=ui.pumpStore||"fridge", meta=storageMeta(store), ml=sel.ml||0;
+    if(!ml){ csModalHide(); return; }
+    var now=Date.now();
+    S.entries.push({id:now+Math.floor(Math.random()*1e4), act:"pumping", detail:ml+"ml \u00B7 "+meta.label,
+      data:{ml:ml, side:sel.side||"", storage:store, label:(ui.pumpLabel||pumpLabel()), expires:now+meta.ms},
+      ts:new Date(now).toISOString(), by:(S.who||undefined), up:now, bid:S.activeBaby});
+    S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+    ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null;
+    save(); csModalHide(); render(); toast("Pumped \u00B7 "+ml+"ml logged");
+  },
   vomitOpen: function(){ ui.vom={type:"Spit-up", vol:5, look:"Fresh", exit:"Mouth", after:"Content", ts:Date.now(), past:false}; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); },
   vomSet: function(x){ var p=x.split("|"); if(!ui.vom) ui.vom={}; ui.vom[p[0]]=(p[0]==="vol"? +p[1] : p[1]); render(); },
   vomCancel: function(){ S.route="list"; ui.vom=null; render(); },
@@ -1671,6 +1700,7 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
+    if(x==="pumping"){ ui.pumpGo=false; ui.pumpSel=null; ui.pumpStored=false; }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
@@ -2438,6 +2468,7 @@ var A = {
     if(S.pmode) return;
     var a=act(x); if(!a) return;
     if(x==="formula"){ A.fmlCountdown(); return; }
+    if(x==="pumping"){ A.open("pumping"); return; }
     var timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     if(!timed){ A.open(x); return; }
     var s=S.sess[x];
@@ -3159,7 +3190,7 @@ function liveNowHtml(){
     '<div class="card" style="margin-bottom:24px;padding:0;overflow:hidden">'+rows+'</div>';
 }
 function entryRow(e, first, idx){
-  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"});
+  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : ((e.act==="pumping" && e.data && e.data.storage) ? {t:"Pumped", icon:"zap", c:(act("pumping")||{}).c} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"}));
   var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
     '<span style="display:block;font-size:13px;color:var(--sub)">'+(e.act==="note" ? ('Next visit '+((S.baby&&S.baby.nextVisit)?(dayLabel(new Date(S.baby.nextVisit).toISOString())+' '+tClock(S.baby.nextVisit)):'not set')+(e.by?'. '+esc(e.by):'')) : ((e.detail?esc(e.detail):'')+(e.by?((e.detail?' \u00B7 ':'')+esc(e.by)):'')))+'</span></span>'+
@@ -3610,7 +3641,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.53</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.54</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3814,6 +3845,79 @@ function stopBtn(enabled){
     ' style="margin-top:48px;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:'+(enabled?1:0.3)+'">'+
     '<span class="circ" style="width:64px;height:64px;background:var(--card2)">'+ic("square",22,C.red,{fill:true})+'</span>'+
     '<span style="color:var(--sub);font-size:13px;font-weight:600">Stop</span></button></div>';
+}
+function pumpLabel(){
+  var b=((S.baby&&S.baby.name)||"Baby").replace(/[^A-Za-z]/g,"").slice(0,3).toUpperCase()||"BBY";
+  var d=new Date(); function p(n){return (n<10?"0":"")+n;}
+  return b+" "+p(d.getDate())+p(d.getMonth()+1)+d.getFullYear()+" "+p(d.getHours())+p(d.getMinutes());
+}
+function storageMeta(x){
+  if(x==="feeding") return {label:"Feeding now", life:"Fresh milk lasts up to 4 hours at room temperature", ms:4*36e5};
+  if(x==="fridge")  return {label:"Fridge", life:"Fresh milk lasts up to 4 days in the fridge", ms:4*864e5};
+  return {label:"Freezer", life:"Fresh milk lasts up to 6 to 12 months in the freezer", ms:180*864e5};
+}
+function vPump(a){
+  if(ui.pumpStored) return vPumpStored(a);
+  if(!S.pumpInfoSkip && !ui.pumpGo) return vPumpInfo(a);
+  return vPumpLog(a);
+}
+function vPumpInfo(a){
+  var items=[["Wash hands","Clean hands with soap and water before touching your pump or storage bags."],["Use right bags","Only use clean plastic bags made specifically for breast milk storage."],["Label clearly","Write the date and time pumped on the outside of the bag with a marker."],["Leave space","Fill the bag but leave about one inch of space at the top because milk expands as it freezes."],["Remove air","Press out as much extra air as you can before sealing the bag tight."],["Store cold","Put bags in the back of the fridge or freezer where it is coldest."],["Storage limits","Fresh milk lasts up to 4 hours at room temperature, 4 days in the fridge, or 6 to 12 months in the freezer."]];
+  var body="", i; for(i=0;i<items.length;i++){ body+='<div style="margin-bottom:14px"><div style="font-size:15px;font-weight:700;color:'+a.c+'">'+items[i][0]+'</div><div style="font-size:14px;color:var(--sub);line-height:1.5;margin-top:2px">'+items[i][1]+'</div></div>'; }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="font-size:26px;font-weight:700;margin:8px 0 6px">How to Pump &amp; Store Safely</div>'+
+    '<div style="padding-bottom:150px">'+body+'</div>'+
+    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:60">'+
+      '<button class="press" data-a="pumpContinue" style="width:100%;height:50px;border-radius:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
+      '<button class="press" data-a="pumpSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;color:var(--sub);font-size:13px;font-weight:600">'+
+      '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(S.pumpInfoSkip?a.c:'var(--sub)')+';background:'+(S.pumpInfoSkip?a.c:'transparent')+';display:inline-flex;align-items:center;justify-content:center">'+(S.pumpInfoSkip?ic("check",12,"#000",{sw:3}):'')+'</span>Skip this screen next time</button>'+
+    '</div></div>';
+}
+function vPumpLog(a){
+  var mls=[30,60,90,120,150,180,210,240], sel=ui.pumpSel||{};
+  function col(side){
+    var h='<div style="flex:1"><div style="text-align:center;font-size:15px;font-weight:800;color:'+a.c+';margin-bottom:10px">'+side+'</div>', i;
+    for(i=0;i<mls.length;i++){ var on=(sel.side===side && sel.ml===mls[i]);
+      h+='<button class="press" data-a="pumpPick" data-x="'+side+'|'+mls[i]+'" style="width:100%;height:44px;border-radius:12px;margin-bottom:8px;background:'+(on?a.c:'var(--card2)')+';color:'+(on?'#000':'#fff')+';font-size:15px;font-weight:700;border:1.5px solid '+(on?a.c:'transparent')+'">'+mls[i]+'ml</button>'; }
+    return h+'</div>';
+  }
+  return '<div class="full" style="padding:0 4px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+backBtn(a.c)+
+    '<button class="press" data-a="pumpStored" style="display:flex;align-items:center;gap:6px;color:'+a.c+';font-size:14px;font-weight:700">'+ic("package",16,a.c)+'View Stored</button></div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">Pumping</span></div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:18px">Tap the amount you expressed</div>'+
+    '<div style="display:flex;gap:14px">'+col("L")+col("R")+'</div>'+
+    '<button class="press" data-a="pumpSave" style="width:100%;height:52px;border-radius:16px;margin-top:16px;background:'+(sel.ml?a.c:'var(--card2)')+';color:'+(sel.ml?'#000':'var(--sub)')+';font-size:16px;font-weight:800">Save</button>'+
+    '<div style="height:120px"></div></div>';
+}
+function stBtn(k,label,sel,mc){ var on=(sel===k); return '<button class="press" data-a="pumpStore" data-x="'+k+'" style="flex:1;height:44px;border-radius:12px;background:'+(on?mc:'var(--card2)')+';color:'+(on?'#000':'#fff')+';font-size:13px;font-weight:700;border:1.5px solid '+(on?mc:'transparent')+'">'+label+'</button>'; }
+function pumpModalHtml(){
+  var mc=(act("pumping")||{}).c||C.mint, sel=ui.pumpStore;
+  var h='<div style="position:relative">'+
+    '<button class="press" data-a="pumpModalX" style="position:absolute;top:-6px;right:-6px;width:32px;height:32px;border-radius:16px;background:var(--card2);display:flex;align-items:center;justify-content:center">'+ic("x",15,"#fff")+'</button>'+
+    '<div style="font-size:14px;color:var(--sub);text-align:center;margin-top:6px">Mark the bag label as</div>'+
+    '<div class="num" style="font-size:19px;font-weight:800;text-align:center;margin:6px 0 18px;letter-spacing:.5px">'+esc(ui.pumpLabel||pumpLabel())+'</div>'+
+    '<div style="font-size:14px;font-weight:600;text-align:center;margin-bottom:12px">How are you planning to store this?</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:14px">'+stBtn("feeding","Feeding now",sel,mc)+stBtn("fridge","Fridge",sel,mc)+stBtn("freezer","Freezer",sel,mc)+'</div>';
+  if(sel){ var meta=storageMeta(sel);
+    h+='<div style="background:'+alpha(mc,0.16)+';border-radius:12px;padding:12px;text-align:center;font-size:14px;font-weight:800;color:'+mc+';margin-bottom:14px">'+meta.life+'</div>'+
+      '<button class="press" data-a="pumpSaveNow" style="width:100%;height:48px;border-radius:14px;background:'+mc+';color:#000;font-size:16px;font-weight:800">Save'+(ui.pumpCd!=null?' ('+ui.pumpCd+')':'')+'</button>';
+  }
+  return h+'</div>';
+}
+function vPumpStored(a){
+  var list=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage;}).sort(function(x,y){return new Date(y.ts)-new Date(x.ts);});
+  var h='<div class="full" style="padding:0 4px">'+backBtn(a.c, "Pumping", "pumpStoredBack")+
+    '<div style="font-size:30px;font-weight:700;margin:4px 0 4px">Stored milk</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">'+list.length+' bag'+(list.length===1?'':'s')+'</div>';
+  if(!list.length) h+='<div class="card" style="color:var(--sub);font-size:15px">No stored bags yet \u2014 log a pumping session to add one.</div>';
+  var i; for(i=0;i<list.length;i++){ var e=list[i], d=e.data, exp=d.expires||0, soon=((exp-Date.now())<4*864e5), meta=storageMeta(d.storage);
+    h+='<div class="card" style="margin-bottom:10px;padding:14px 16px">'+
+      '<div style="display:flex;align-items:center;gap:8px"><span class="num" style="flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.label||"")+'</span>'+
+      (soon?'<span style="display:inline-flex;align-items:center;gap:4px;flex:none;color:'+C.red+';font-size:12px;font-weight:800">'+ic("alert-triangle",13,C.red)+'Alert</span>':'')+'</div>'+
+      '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+d.ml+'ml \u00B7 '+meta.label+' \u00B7 Use till <span style="color:'+(soon?C.red:'var(--sub)')+';font-weight:'+(soon?'800':'600')+'">'+dayLabel(new Date(exp).toISOString())+'</span></div></div>';
+  }
+  return h+'<div style="height:100px"></div></div>';
 }
 function vDual(a){
   var s=ds(a.k), e=dsE(s), tot=e.l+e.r;
@@ -5845,7 +5949,7 @@ function invUsedRange(it, from){
   var u=0,i,e,per=it.per||{};
   for(i=0;i<S.entries.length;i++){ e=S.entries[i]; var t=new Date(e.ts).getTime(); if(t<from) continue;
     if(e.act==="nappy"){ var ty=(((e.data&&e.data.type)||e.detail||"")+"").toLowerCase(); u+=(ty.indexOf("mix")>=0?(+per.mix||0):(+per.wet||0)); }
-    else if(e.act==="nursing"){ u+=(+per.nurse||0); } }
+    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping"){ u+=(+per.pump||0); } }
   return u;
 }
 function invLeft(it){ return Math.max(0,(+it.qty||0)-invUsedRange(it,it.since||0)); }
@@ -5873,6 +5977,7 @@ var INVCAT=[
   {name:"Bottle sterilizer",cat:"feeding",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Breast pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:1}},
   {name:"Breast pump",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
+  {name:"Baby Breast Milk Storage Bags",cat:"feeding",unit:"pcs",per:{mix:0,wet:0,nurse:0,pump:1},affs:[{img:"https://m.media-amazon.com/images/I/71DPjaDuU6L._AC_UF894,1000_QL80_.jpg",name:"Breast Milk Storage Bags (25 pcs)",price:"349",link:"https://amzn.in/d/0iMIyrPX"}]},
   {name:"Burp cloths",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:1}},
   {name:"Car seat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Changing mat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
@@ -6073,6 +6178,7 @@ function render(){
     var a=act(S.route);
     if(!a) h=vList();
     else if(S.pmode) h=vPast(a);
+    else if(a.k==="pumping") h=vPump(a);
     else if(a.kind==="dual") h=vDual(a);
     else if(a.kind==="single") h=vSingle(a);
     else if(a.kind==="amount") h=vAmount(a);
@@ -6545,7 +6651,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.53";
+var APPVER="1.54";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
