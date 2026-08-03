@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.56 -->
+<!-- Baby Care v1.57 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -578,7 +578,7 @@ function vomitCardHtml(){
       '<span style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700;color:'+C.coral+'">Vomit / Spit-up</span>'+
       (cnt?'<span style="font-size:12px;font-weight:700;color:var(--sub)">'+cnt+' today</span>':'')+
       (flagToday?'<span style="font-size:11px;font-weight:800;color:'+C.coral+'">\u26A0\uFE0F flag</span>':'')+'</span>'+
-      '<span style="display:flex;align-items:center;gap:5px;font-size:13px;color:'+(good?"#34C77B":"var(--sub)")+(good?";font-weight:600":"")+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(good?ic("check",13,"#34C77B"):"")+sub+'</span>'+
+      '<span style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--sub)'+(good?";font-weight:600":"")+';margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(good?ic("check",13,"#34C77B"):"")+sub+'</span>'+
     '</span>'+ic("plus",20,C.coral)+'</button>';
 }
 function feedFactorStats(){
@@ -1257,8 +1257,7 @@ function medColHtml(m){
   var done=(cs9 && m.times && m.times[cs9]) ? medSlotDone(m.id, cs9) : medTodayDone(m.id);
   return '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
-    '<span style="display:block;height:14px"></span>'+
-    '<span style="display:block;font-size:12px;color:var(--sub)">'+(st ? st+'-day streak' : 'No doses yet')+' \u00B7 '+esc(m.whom||'Baby')+'</span></span>'+
+    '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+' \u00B7 '+esc(m.whom||'Baby')+'</span></span>'+
     '<button class="circ press" data-a="medMi" data-x="'+m.id+'" style="width:26px;height:26px;flex:none;background:'+(done?C.green:'var(--card2)')+'">'+
     (done?ic("check",14,"#000"):'')+'</button></div>';
 }
@@ -1284,7 +1283,7 @@ function medMilestoneHtml(){
   return '<div class="card press" data-a="openmed" style="margin-bottom:12px">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+ic("pill",20,(act("medicine")||{}).c||C.green)+
     '<span style="font-size:15px;font-weight:700;color:'+((act("medicine")||{}).c||C.green)+'">Medicine Milestone</span>'+
-    '<span style="margin-left:auto">'+ic("chevron-right",18,C.sub)+'</span></div>'+inner+'</div>';
+    '<span style="margin-left:auto">'+ic("chevron-right",18,C.sub)+'</span></div>'+'<div style="height:10px"></div>'+inner+'</div>';
 }
 function vitDStreak(){
   function has(k){
@@ -3328,7 +3327,7 @@ function pumpStoredCardHtml(){
   return '<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px 16px">'+
     '<button class="press" data-a="pumpStoredGo" style="flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0;background:none;border:none;padding:0">'+
       '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(mc,0.16)+'">'+ic("droplet",21,mc)+'</span>'+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">View Stored Milk Log</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:'+mc+'">View stored milk log</span>'+
       '<span style="display:block;font-size:13px;margin-top:2px">'+subHtml+'</span></span></button>'+
     '<button class="circ press" data-a="pumpGoNew" title="Pump" style="width:40px;height:40px;flex:none;background:'+mc+'">'+ic("plus",20,"#000",{sw:2.6})+'</button>'+
   '</div>';
@@ -3664,7 +3663,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.56</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.57</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3911,9 +3910,9 @@ function vPumpInfo(a){
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="font-size:26px;font-weight:700;margin:8px 0 6px">How to Pump &amp; Store Safely</div>'+
     '<div style="padding-bottom:210px">'+body+'</div>'+
-    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
+    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:16px 20px calc(26px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
       '<button class="press" data-a="pumpContinue" style="width:100%;height:50px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
-      '<button class="press" data-a="pumpSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;color:var(--sub);font-size:13px;font-weight:600">'+
+      '<button class="press" data-a="pumpSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;color:#EBEBF5;font-size:14px;font-weight:600">'+
       '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(S.pumpInfoSkip?a.c:'var(--sub)')+';background:'+(S.pumpInfoSkip?a.c:'transparent')+';display:inline-flex;align-items:center;justify-content:center">'+(S.pumpInfoSkip?ic("check",12,"#000",{sw:3}):'')+'</span>Skip this screen next time</button>'+
     '</div></div>';
 }
@@ -6701,7 +6700,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.56";
+var APPVER="1.57";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
