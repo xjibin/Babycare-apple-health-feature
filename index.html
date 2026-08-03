@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.55 -->
+<!-- Baby Care v1.56 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1057,9 +1057,10 @@ function dobValue(){
   return S.baby&&S.baby.dob?new Date(S.baby.dob):new Date();
 }
 var nsWake=null;
+function nsWakeMaybeRel(){ try{ if(nsWake && !(S.night||S.cnight||(ui.land && !ui.landX)||ui.pumpWake)){ nsWake.release(); nsWake=null; } }catch(e){} }
 function nsWakeReq(){
   try{
-    if(("wakeLock" in navigator) && (S.night||S.cnight||(ui.land && !ui.landX)) && !nsWake){
+    if(("wakeLock" in navigator) && (S.night||S.cnight||(ui.land && !ui.landX)||ui.pumpWake) && !nsWake){
       navigator.wakeLock.request("screen").then(function(w){
         nsWake=w;
         try{ w.addEventListener("release", function(){ nsWake=null; }); }catch(e){}
@@ -1619,9 +1620,11 @@ var A = {
     S.route="list"; ui.noteId=null; S.sub="notes"; render(); toast("Note deleted");
   },
   notesHist: function(){ S.tab="summary"; S.sub="notes"; S.route="list"; S.eidx=null; ui.sheet=false; render(); },
-  pumpContinue: function(){ ui.pumpGo=true; render(); },
+  pumpContinue: function(){ ui.pumpGo=true; ui.pumpWake=false; nsWakeMaybeRel(); render(); },
   pumpSkipToggle: function(){ S.pumpInfoSkip=!S.pumpInfoSkip; save(); render(); },
   pumpStored: function(){ ui.pumpStored=true; ui.pumpDelId=null; render(); },
+  pumpStoredGo: function(){ ui.pumpGo=true; ui.pumpStored=true; ui.pumpWake=false; ui.pumpDelId=null; S.tab="activity"; S.route="pumping"; S.sub=""; S.eidx=null; render(); },
+  pumpGoNew: function(){ ui.pumpStored=false; ui.pumpGo=false; ui.pumpSel=null; ui.pumpWake=!S.pumpInfoSkip; S.tab="activity"; S.route="pumping"; S.sub=""; S.eidx=null; nsWakeReq(); render(); },
   pumpDelArm: function(x){ ui.pumpDelId=(""+x); render(); },
   pumpDelClear: function(){ if(ui.pumpDelId){ ui.pumpDelId=null; render(); } },
   pumpDel: function(x){ S.entries=S.entries.filter(function(z){return (""+z.id)!==(""+x);}); syTomb(x); ui.pumpDelId=null; save(); render(); toast("Bag deleted"); },
@@ -1706,14 +1709,14 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
-    if(x==="pumping"){ ui.pumpGo=false; ui.pumpSel=null; ui.pumpStored=false; }
+    if(x==="pumping"){ ui.pumpGo=false; ui.pumpSel=null; ui.pumpStored=false; ui.pumpWake=!S.pumpInfoSkip; nsWakeReq(); }
     if(S.editing) return;
     if(x==="growth"){ gg.x0=0; gg.x1=null; }
     S.route=x; S.pmode=false; ui.sheet=false; ui.sel=null;
     ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
     render();
   },
-  back: function(){ S.route="list"; S.pmode=false; ui.sheet=false; render(); },
+  back: function(){ S.route="list"; S.pmode=false; ui.sheet=false; ui.pumpWake=false; nsWakeMaybeRel(); render(); },
   past: function(){
     S.pmode=true; ui.sel=null; ui.ml=0; ui.pml=60; ui.qty=0; ui.pl=0; ui.pr=0; ui.pdur=0; ui.dts={};
     render();
@@ -3316,11 +3319,25 @@ function vSettings(){
 }
 /* vSummary(): the home dashboard — hero smartstack, next-feed card, today totals, quick cards. */
 function noteById(id){ var i; for(i=0;i<S.entries.length;i++) if(S.entries[i].act==="note" && S.entries[i].id===id) return S.entries[i]; return null; }
+function pumpStoredCardHtml(){
+  var bags=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage;});
+  var mc=(act("pumping")||{}).c||C.mint, soon=null, i;
+  for(i=0;i<bags.length;i++){ var ex=bags[i].data.expires||0; if((ex-Date.now())<4*864e5){ if(!soon || ex<(soon.data.expires||0)) soon=bags[i]; } }
+  var subHtml = !bags.length ? '<span style="color:var(--sub)">No stored bags yet</span>'
+    : '<span style="color:var(--sub)">'+bags.length+' bag'+(bags.length===1?'':'s')+'</span>'+(soon?' <span style="color:'+C.red+';font-weight:700">\u00B7 '+esc(soon.data.label||"bag")+' nearing expiry</span>':'');
+  return '<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px 16px">'+
+    '<button class="press" data-a="pumpStoredGo" style="flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0;background:none;border:none;padding:0">'+
+      '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(mc,0.16)+'">'+ic("droplet",21,mc)+'</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">View Stored Milk Log</span>'+
+      '<span style="display:block;font-size:13px;margin-top:2px">'+subHtml+'</span></span></button>'+
+    '<button class="circ press" data-a="pumpGoNew" title="Pump" style="width:40px;height:40px;flex:none;background:'+mc+'">'+ic("plus",20,"#000",{sw:2.6})+'</button>'+
+  '</div>';
+}
 function noteCardHtml(){
   return '<div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding:14px 16px">'+
     '<button class="press" data-a="notesHist" style="flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0;background:none;border:none;padding:0">'+
       '<span class="circ" style="width:44px;height:44px;flex:none;background:'+alpha(C.blue,0.16)+'">'+ic("pencil",21,C.blue)+'</span>'+
-      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">Add a quick note</span>'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:'+C.blue+'">Add a quick note</span>'+
       '<span style="display:block;font-size:13px;color:var(--sub)">for Next Doctor visit</span></span></button>'+
     '<button class="circ press" data-a="noteNew" title="Add a note" style="width:40px;height:40px;flex:none;background:'+C.blue+'">'+ic("plus",20,"#000",{sw:2.6})+'</button>'+
   '</div>';
@@ -3423,7 +3440,7 @@ function vSummary(){
       ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>' : "")+
 
-    (medPin()?medMilestoneHtml():"")+holdCardHtml()+upHtml+outHtml+vomitCardHtml()+noteCardHtml()+
+    (medPin()?medMilestoneHtml():"")+holdCardHtml()+upHtml+outHtml+vomitCardHtml()+noteCardHtml()+pumpStoredCardHtml()+
 
     (medPin()?"":medMilestoneHtml())+
 
@@ -3647,7 +3664,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.55</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.56</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3894,8 +3911,8 @@ function vPumpInfo(a){
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="font-size:26px;font-weight:700;margin:8px 0 6px">How to Pump &amp; Store Safely</div>'+
     '<div style="padding-bottom:210px">'+body+'</div>'+
-    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:600;box-shadow:0 -8px 24px rgba(0,0,0,.6)">'+
-      '<button class="press" data-a="pumpContinue" style="width:100%;height:50px;border-radius:16px;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
+    '<div style="position:fixed;left:0;right:0;bottom:0;background:var(--bg);padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--hair);z-index:900;box-shadow:0 -8px 24px rgba(0,0,0,.75)">'+
+      '<button class="press" data-a="pumpContinue" style="width:100%;height:50px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Understood and continue</button>'+
       '<button class="press" data-a="pumpSkipToggle" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;color:var(--sub);font-size:13px;font-weight:600">'+
       '<span style="width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid '+(S.pumpInfoSkip?a.c:'var(--sub)')+';background:'+(S.pumpInfoSkip?a.c:'transparent')+';display:inline-flex;align-items:center;justify-content:center">'+(S.pumpInfoSkip?ic("check",12,"#000",{sw:3}):'')+'</span>Skip this screen next time</button>'+
     '</div></div>';
@@ -6684,7 +6701,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.55";
+var APPVER="1.56";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7585,6 +7602,7 @@ function idleNightTick(){
 function autoNightTick(){
   if(byId("streakmodal")||byId("duemodal")){ anT=0; return; }
   var _cm=byId("csmodal"); if(_cm && _cm.style.display && _cm.style.display!=="none"){ anT=0; return; }
+  if(S.route==="pumping"){ anT=0; return; }
   if(S.night || S.cnight){ anT=0; return; }
   var a=act(S.route), s=a?S.sess[a.k]:null;
   var timed=a && (a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
