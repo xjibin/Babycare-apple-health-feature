@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.59 -->
+<!-- Baby Care v1.60 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -902,7 +902,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -1625,6 +1625,7 @@ var A = {
   pumpStoredGo: function(){ ui.pumpGo=true; ui.pumpStored=true; ui.pumpWake=false; ui.pumpDelId=null; S.tab="activity"; S.route="pumping"; S.sub=""; S.eidx=null; render(); },
   pumpGoNew: function(){ ui.pumpStored=false; ui.pumpGo=false; ui.pumpSel=null; ui.pumpWake=!S.pumpInfoSkip; S.tab="activity"; S.route="pumping"; S.sub=""; S.eidx=null; nsWakeReq(); render(); },
   pumpDelArm: function(x){ ui.pumpDelId=(""+x); render(); },
+  pumpFeedBag: function(x){ ui.exprBag=(""+x); ui.exprMl=0; ui.exprGo=false; ui.pumpStored=false; ui.pumpDelId=null; S.tab="activity"; S.route="expressed"; S.sub=""; S.eidx=null; render(); },
   pumpDelClear: function(){ if(ui.pumpDelId){ ui.pumpDelId=null; render(); } },
   pumpDel: function(x){ S.entries=S.entries.filter(function(z){return (""+z.id)!==(""+x);}); syTomb(x); ui.pumpDelId=null; save(); render(); toast("Bag deleted"); },
   pumpStoredBack: function(){ ui.pumpStored=false; render(); },
@@ -1649,7 +1650,7 @@ var A = {
     var sel=ui.pumpSel||{}, store=ui.pumpStore||"fridge", meta=storageMeta(store), ml=sel.ml||0;
     if(!ml){ csModalHide(); return; }
     var now=Date.now();
-    S.entries.push({id:now+Math.floor(Math.random()*1e4), act:"pumping", detail:ml+"ml \u00B7 "+meta.label,
+    S.entries.push({id:aidUnique(aidFrom((S.who||""), now, "pumping")), act:"pumping", detail:ml+"ml \u00B7 "+meta.label,
       data:{ml:ml, side:sel.side||"", storage:store, label:(ui.pumpLabel||pumpLabel()), expires:now+meta.ms},
       ts:new Date(now).toISOString(), by:(S.who||undefined), up:now, bid:S.activeBaby});
     S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
@@ -1668,7 +1669,7 @@ var A = {
     b.data.remaining=Math.max(0, rem-ml);
     if(!b.data.thawUsed){ b.data.thawUsed=Date.now(); var w24=Date.now()+24*36e5; if(!b.data.expires || w24<b.data.expires) b.data.expires=w24; }
     b.up=Date.now();
-    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"expressed", detail:ml+" ml \u00B7 from "+(b.data.label||"bag"), data:{ml:ml, fromBag:(""+b.id)}, ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+    S.entries.push({id:aidUnique(aidFrom((S.who||""), Date.now(), "expressed")), act:"expressed", detail:ml+" ml \u00B7 from "+(b.data.label||"bag"), data:{ml:ml, fromBag:(""+b.id)}, ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
     S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
     ui.exprMl=0; ui.exprBag=null;
     save(); render(); toast("Fed "+ml+"ml from "+(b.data.label||"bag"));
@@ -3681,7 +3682,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.59</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.60</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3976,13 +3977,22 @@ function vPumpStored(a){
     '<div style="font-size:30px;font-weight:700;margin:4px 0 4px">Stored milk</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">'+list.length+' bag'+(list.length===1?'':'s')+'</div>';
   if(!list.length) h+='<div class="card" style="color:var(--sub);font-size:15px">No stored bags yet \u2014 log a pumping session to add one.</div>';
-  var i; for(i=0;i<list.length;i++){ var e=list[i], d=e.data, exp=d.expires||0, soon=((exp-Date.now())<4*864e5), meta=storageMeta(d.storage);
+  var i; for(i=0;i<list.length;i++){ var e=list[i], d=e.data, exp=d.expires||0, expired=bagExpired(e), soon=(!expired && (exp-Date.now())<4*864e5), meta=storageMeta(d.storage), rem=exprRemain(e);
     var armed=(ui.pumpDelId===(""+e.id));
-    h+='<div class="card press" data-hold="pumpDelArm" data-a="pumpDelClear" data-x="'+e.id+'" style="margin-bottom:10px;padding:14px 16px'+(armed?';border:1px solid '+C.red:'')+'">'+
-      '<div style="display:flex;align-items:center;gap:8px"><span class="num" style="flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.label||"")+'</span>'+
-      (soon?'<span style="display:inline-flex;align-items:center;gap:4px;flex:none;color:'+C.red+';font-size:12px;font-weight:800">'+ic("alert-triangle",13,C.red)+'Alert</span>':'')+'</div>'+
-      '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+d.ml+'ml \u00B7 '+meta.label+' \u00B7 Use till <span style="color:'+(soon?C.red:'var(--sub)')+';font-weight:'+(soon?'800':'600')+'">'+dayLabel(new Date(exp).toISOString())+'</span></div>'+
-      (armed?'<button class="press" data-a="pumpDel" data-x="'+e.id+'" style="width:100%;height:42px;border-radius:12px;margin-top:12px;text-align:center;background:'+alpha(C.red,0.16)+';color:'+C.red+';font-size:14px;font-weight:800">Delete this bag</button>':'')+'</div>';
+    if(expired){
+      h+='<div class="card" style="margin-bottom:10px;padding:14px 16px;opacity:.5">'+
+        '<div style="display:flex;align-items:center;gap:8px"><span class="num" style="flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.label||"")+'</span>'+
+        '<span style="flex:none;color:'+C.red+';font-size:12px;font-weight:800">Expired</span></div>'+
+        '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+rem+'ml \u00B7 '+meta.label+' \u00B7 Expired '+dayLabel(new Date(exp).toISOString())+'</div>'+
+        '<button class="press" data-a="pumpDel" data-x="'+e.id+'" style="width:100%;height:40px;border-radius:12px;margin-top:12px;text-align:center;background:'+alpha(C.red,0.16)+';color:'+C.red+';font-size:14px;font-weight:800">Remove</button></div>';
+    } else {
+      h+='<div class="card press" data-hold="pumpDelArm" data-a="'+(armed?"pumpDelClear":"pumpFeedBag")+'" data-x="'+e.id+'" style="margin-bottom:10px;padding:14px 16px'+(armed?';border:1px solid '+C.red:'')+'">'+
+        '<div style="display:flex;align-items:center;gap:8px"><span class="num" style="flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.label||"")+'</span>'+
+        '<span style="flex:none;font-size:13px;font-weight:800;color:'+a.c+'">'+rem+'ml left</span>'+
+        (soon?'<span style="display:inline-flex;align-items:center;gap:4px;flex:none;color:'+C.red+';font-size:12px;font-weight:800">'+ic("alert-triangle",13,C.red)+'</span>':'')+'</div>'+
+        '<div style="font-size:13px;color:var(--sub);margin-top:6px">'+meta.label+' \u00B7 Use till <span style="color:'+(soon?C.red:'var(--sub)')+';font-weight:'+(soon?'800':'600')+'">'+dayLabel(new Date(exp).toISOString())+'</span></div>'+
+        (armed?'<button class="press" data-a="pumpDel" data-x="'+e.id+'" style="width:100%;height:42px;border-radius:12px;margin-top:12px;text-align:center;background:'+alpha(C.red,0.16)+';color:'+C.red+';font-size:14px;font-weight:800">Delete this bag</button>':'')+'</div>';
+    }
   }
   return h+'<div style="height:100px"></div></div>';
 }
@@ -4124,20 +4134,21 @@ function setSheet(a, rows, extra){
 }
 
 /* ============ quick-log screens (mirror JSX) ============ */
+function bagExpired(e){ return !!(e && e.data && e.data.expires && e.data.expires < Date.now()); }
 function exprRemain(e){ var d=e.data||{}; return (d.remaining!=null?d.remaining:(d.ml||0)); }
 function exprBagById(id){ var i; for(i=0;i<S.entries.length;i++) if(S.entries[i].act==="pumping" && (""+S.entries[i].id)===(""+id)) return S.entries[i]; return null; }
 function exprSkipActive(){ return Date.now() < (S.exprSkipUntil||0); }
 function vExpr(a){
   if(S.pmode) return vAmount(a);
-  if(ui.exprBag) return vExprFeed(a);
   if(!exprSkipActive() && !ui.exprGo) return vExprInfo(a);
+  if(ui.exprBag) return vExprFeed(a);
   return vExprList(a);
 }
 function vExprInfo(a){
   var secs=[
-    {t:"1. The Golden Rule: Only Warm What You Need", b:"Never heat the entire 240ml bag if your baby only drinks 60\u201390ml. Once breast milk is warmed or touches your baby\u2019s mouth, a strict countdown timer begins. Instead, follow the sub-bottling method below."},
-    {t:"2. Step-by-Step Plan for Your 240ml Supply", subs:[["Thaw the full bag in the fridge","Place the frozen 240ml bag in the refrigerator overnight. Do not heat it \u2014 let it transition slowly from solid ice to cold liquid."],["Swirl and mix","Once completely liquid, gently swirl the cold bag to redistribute the fat layer that separates during storage."],["Pour out a single serving","Pour exactly 60\u201390ml of the cold milk into a separate, clean baby bottle."],["Warm only that bottle","Warm only that smaller bottle for the current feeding session."],["Put the remaining portion back","Immediately reseal the storage bag with the remaining 150\u2013180ml of cold milk and place it right back into the back of the refrigerator."]]},
-    {t:"3. Timeline for the Remaining Portions", subs:[["The 24-Hour Fridge Window","The remaining cold milk is safe in the fridge for up to 24 hours from the moment it fully thawed. Repeat the pouring process for the next few feedings within that day."],["The 2-Hour Used-Bottle Rule","The 60\u201390ml portion you fed the baby must be consumed within 2 hours. If baby doesn\u2019t finish it, throw away the leftovers \u2014 bacteria from saliva multiply rapidly."],["Never Refreeze","You cannot refreeze any part of the remaining milk once it has thawed, even if it stayed cold the whole time."]]}
+    {t:"1. Only warm what you need", b:"Don\u2019t heat the whole 240ml bag if baby takes 60\u201390ml. Once milk is warmed or touches baby\u2019s mouth a countdown starts \u2014 use the sub-bottling method below."},
+    {t:"2. Sub-bottling a 240ml bag", subs:[["Thaw in the fridge","Thaw the frozen bag overnight in the fridge \u2014 never heat it."],["Swirl","Once liquid, gently swirl to remix the fat layer."],["Pour one serving","Pour 60\u201390ml of the cold milk into a clean bottle."],["Warm just that bottle","Warm only that smaller bottle for this feed."],["Reseal the rest","Reseal the bag and put it straight back in the fridge."]]},
+    {t:"3. Timeline (CDC)", subs:[["24-hour fridge window","Thawed milk keeps in the fridge up to 24h from when it fully thawed."],["2-hour used-bottle rule","A fed bottle must be used within 2h \u2014 discard leftovers (saliva breeds bacteria)."],["Never refreeze","Once thawed, never refreeze \u2014 even if it stayed cold."]]}
   ];
   var body="", i, j;
   for(i=0;i<secs.length;i++){ var s=secs[i];
@@ -4156,7 +4167,7 @@ function vExprInfo(a){
     '</div></div>';
 }
 function vExprList(a){
-  var bags=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage && exprRemain(e)>0;}).sort(function(x,y){return new Date(y.ts)-new Date(x.ts);});
+  var bags=S.entries.filter(function(e){return e.act==="pumping" && e.data && e.data.storage && exprRemain(e)>0 && !bagExpired(e);}).sort(function(x,y){return new Date(y.ts)-new Date(x.ts);});
   var h='<div class="full" style="padding:0 4px">'+backBtn(a.c)+
     '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">Expressed</span></div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Feed from a stored bag</div>'+
@@ -4669,6 +4680,13 @@ function showDueModal(mid, slot){
     '<button class="press" data-a="medDueLater" data-x="'+m.id+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:none;color:'+C.red+';font-size:15px;font-weight:700">Remind me later</button>'+
     '</div></div>';
   document.body.appendChild(d);
+}
+function bagSweep(){
+  var now=Date.now(), removed=0, i;
+  for(i=S.entries.length-1;i>=0;i--){ var e=S.entries[i];
+    if(e.act==="pumping" && e.data && e.data.storage && e.data.expires && now > (e.data.expires + 3*864e5)){ syTomb(e.id); S.entries.splice(i,1); removed++; }
+  }
+  if(removed){ S.bagSweepNote={n:removed, ts:now}; save(); if(typeof notif==="function") notif(removed+" expired milk bag"+(removed>1?"s":"")+" removed from your stored log."); }
 }
 function medDueModalCheck(){
   if(byId("duemodal")||byId("streakmodal")) return;
@@ -6785,7 +6803,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.59";
+var APPVER="1.60";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -6976,6 +6994,9 @@ function hsCards(){
   if(ui.upVer && ui.upDismissed)
     cs.push({id:"up", icon:"repeat", col:"#FF9F0A", title:"Don\u2019t miss out on new features",
       sub:"We have made the app even better for you", right:"repeat", a:"uprefresh", x:""});
+  if(S.bagSweepNote && (Date.now()-S.bagSweepNote.ts)<3*864e5)
+    cs.push({id:"bagx", icon:"alert-triangle", col:C.red, title:S.bagSweepNote.n+" expired milk bag"+(S.bagSweepNote.n>1?"s":"")+" removed",
+      sub:"Cleared from your stored milk log \u00B7 3 days past expiry", right:"chevron-right", a:"hsopen", x:"pumping"});
   var md=medDueNow();
   if(md)
     cs.push({id:"med", icon:"pill", col:"#5AC8FA", title:"Medicine \u00B7 "+md.name,
@@ -8170,6 +8191,7 @@ document.addEventListener("focusin", function(e){
   }, true);
 })();
 render();
+bagSweep();
 medDueModalCheck();
 </script>
 </body>
