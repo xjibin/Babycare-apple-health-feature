@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.52 -->
+<!-- Baby Care v1.53 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -246,7 +246,7 @@ var ACTS = [
   {k:"babysleep",  t:"Baby Sleep",   icon:"moon",       c:C.lav,    kind:"single"},
   {k:"pacifier",   t:"Pacifier",     icon:"circle-dot", c:C.orange, kind:"single"},
   {k:"mothersleep",t:"Mother Sleep", icon:"bed-double", c:C.indigo, kind:"single"},
-  {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.rose,   kind:"med"},
+  {k:"medicine",   t:"Medicine",     icon:"cross",      c:C.green,  kind:"med"},
   {k:"growth",     t:"Growth",       icon:"ruler",      c:C.blue,   kind:"growth"},
   {k:"vaccine",    t:"Vaccines",     icon:"syringe",    c:C.coral,  kind:"vax"},
   {k:"carseat",    t:"Car Seat",     icon:"car",        c:C.sky,    kind:"seat"},
@@ -254,7 +254,7 @@ var ACTS = [
   {k:"formula",    t:"Formula",      icon:"milk",       c:C.orange, kind:"burp", hint:"Formula feed"},
   {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
   {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
-  {k:"tummytime",  t:"Tummy Time",   icon:"activity",   c:C.green,  kind:"single"},
+  {k:"tummytime",  t:"Tummy Time",   icon:"activity",   c:"#C084FC", kind:"single"},
   {k:"bath",       t:"Bath",         icon:"droplets",   c:C.sky,    kind:"single"},
   {k:"play",       t:"Play Time",    icon:"sparkles",   c:C.yellow, kind:"single"},
   {k:"walk",       t:"Walk / Fresh Air", icon:"gauge",  c:C.mint,   kind:"single"},
@@ -1256,7 +1256,8 @@ function medColHtml(m){
   var done=(cs9 && m.times && m.times[cs9]) ? medSlotDone(m.id, cs9) : medTodayDone(m.id);
   return '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px">'+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name)+'</span>'+
-    '<span style="display:block;font-size:12px;color:var(--sub);margin-top:2px">'+(st ? st+'-day streak' : 'No doses yet')+' \u00B7 '+esc(m.whom||'Baby')+'</span></span>'+
+    '<span style="display:block;height:14px"></span>'+
+    '<span style="display:block;font-size:12px;color:var(--sub)">'+(st ? st+'-day streak' : 'No doses yet')+' \u00B7 '+esc(m.whom||'Baby')+'</span></span>'+
     '<button class="circ press" data-a="medMi" data-x="'+m.id+'" style="width:26px;height:26px;flex:none;background:'+(done?C.green:'var(--card2)')+'">'+
     (done?ic("check",14,"#000"):'')+'</button></div>';
 }
@@ -1931,7 +1932,7 @@ var A = {
   medTd: function(x){ var n=byId("medname"); if(n) ui.mname=n.value; var mu9=byId("munit"); if(mu9) ui.munit=mu9.value; ui.mtN=Math.max(1, Math.min(52, (ui.mtN||2)+(+x))); render(); },
   streakClose: function(){ if(mbStreakT){ clearTimeout(mbStreakT); mbStreakT=null; } var e=byId("streakmodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); },
   streakNoop: function(){},
-  medStreakShow: function(x){ showStreakModal(+x, true, false); },
+  medStreakShow: function(x){ showStreakModal(+x, true, 12000); },
   medDueYes: function(x){ var e=byId("duemodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); A.medDone(x); },
   medDueLater: function(x){ var e=byId("duemodal"); if(e&&e.parentNode) e.parentNode.removeChild(e); S.medSnooze=S.medSnooze||{}; S.medSnooze[+x]=Date.now()+3600000; save(); },
   medAddGo: function(){ ui.medAddScreen=true; render(); },
@@ -3609,7 +3610,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.52</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.53</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4403,7 +4404,7 @@ function medDotsHtml(streak){
 function medStreakModalHtml(mid, withX){
   var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===mid) m=S.meds[i]; if(!m) return "";
   var st=medStreak(mid), mcol=(act("medicine")||{}).c||C.green;
-  return '<div data-a="streakNoop" style="position:relative;background:#0b0b0c;border-radius:22px;padding:22px 22px 24px">'+
+  return '<div data-a="streakNoop" style="position:relative;background:#0b0b0c;border-radius:22px;padding:22px 22px 24px;box-shadow:0 0 80px 8px '+alpha(C.green,0.4)+', 0 0 160px 20px '+alpha(C.green,0.22)+'">'+
     (withX?'<button class="press" data-a="streakClose" style="position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:15px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center">'+ic("x",14,"#fff")+'</button>':'')+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+ic("pill",18,mcol)+'<span style="font-size:15px;font-weight:600;color:#fff">'+esc(m.name)+'</span></div>'+
     '<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:20px"><span class="num" style="font-size:64px;font-weight:800;line-height:.85;color:'+C.green+'">'+st+'</span>'+
@@ -4417,7 +4418,7 @@ function showStreakModal(mid, withX, autoClose){
     '<div style="max-width:320px;width:100%">'+medStreakModalHtml(mid, withX)+'</div></div>';
   document.body.appendChild(d);
   if(mbStreakT){ clearTimeout(mbStreakT); mbStreakT=null; }
-  if(autoClose){ mbStreakT=setTimeout(function(){ if(A&&A.streakClose) A.streakClose(); }, 5000); }
+  if(autoClose){ mbStreakT=setTimeout(function(){ if(A&&A.streakClose) A.streakClose(); }, (autoClose===true?5000:autoClose)); }
 }
 function showDueModal(mid, slot){
   var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===mid) m=S.meds[i]; if(!m || byId("duemodal")) return;
@@ -4428,7 +4429,7 @@ function showDueModal(mid, slot){
     '<div style="font-size:18px;font-weight:800;margin:12px 0 4px;line-height:1.3">Your '+esc(m.name)+' is due now</div>'+
     '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Log it before you lose the streak</div>'+
     '<button class="press" data-a="medDueYes" data-x="'+m.id+'|'+slot+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:1.5px solid '+C.green+';color:'+C.green+';font-size:15px;font-weight:700;margin-bottom:10px">Yes, I had</button>'+
-    '<button class="press" data-a="medDueLater" data-x="'+m.id+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Remind me later</button>'+
+    '<button class="press" data-a="medDueLater" data-x="'+m.id+'" style="width:100%;height:48px;border-radius:14px;background:transparent;border:none;color:'+C.red+';font-size:15px;font-weight:700">Remind me later</button>'+
     '</div></div>';
   document.body.appendChild(d);
 }
@@ -6544,7 +6545,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.52";
+var APPVER="1.53";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7443,6 +7444,7 @@ function idleNightTick(){
   render();
 }
 function autoNightTick(){
+  if(byId("streakmodal")||byId("duemodal")){ anT=0; return; }
   if(S.night || S.cnight){ anT=0; return; }
   var a=act(S.route), s=a?S.sess[a.k]:null;
   var timed=a && (a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
