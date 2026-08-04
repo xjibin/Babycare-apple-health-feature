@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.63 -->
+<!-- Baby Care v1.64 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1574,7 +1574,7 @@ var A = {
     var i, ex=false; for(i=0;i<S.inventory.length;i++) if((S.inventory[i].name||"").toLowerCase()===(x||"").toLowerCase()) ex=true;
     if(ex){ ui.invPick=false; render(); toast(x+" is already in your inventory"); return; }
     var cat=invCatFind(x);
-    S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:x, cat:(cat?cat.cat:"other"), unit:(cat?cat.unit:""), qty:0, since:Date.now(), per:(cat?{mix:+cat.per.mix||0,wet:+cat.per.wet||0,nurse:+cat.per.nurse||0,pump:+cat.per.pump||0}:{mix:0,wet:0,nurse:0,pump:0}), affs:(cat&&cat.affs?cat.affs.slice():[])});
+    S.inventory.push({id:"i"+Date.now()+Math.floor(Math.random()*1000), name:x, cat:(cat?cat.cat:"other"), unit:(cat?cat.unit:""), qty:0, since:Date.now(), per:(cat?{mix:+cat.per.mix||0,wet:+cat.per.wet||0,nurse:+cat.per.nurse||0,pump:+cat.per.pump||0,medName:cat.per.medName||"",medMl:+cat.per.medMl||0}:{mix:0,wet:0,nurse:0,pump:0,medName:"",medMl:0}), affs:(cat&&cat.affs?cat.affs.slice():[])});
     ui.invPick=false; save(); render(); toast(x+" added \u2014 tap + to set stock");
   },
   invAffAdd: function(x){ csModal(affForm(x)); },
@@ -2045,7 +2045,7 @@ var A = {
       ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
     save(); render(); toast("Logged");
-    if(medStreak(id)>1) showStreakModal(id, false, true);
+    if(medStreak(id)>2) showStreakModal(id, false, 4000);
   },
   mbgo: function(){
     if(mbT){ clearTimeout(mbT); mbT=null; }
@@ -2269,6 +2269,7 @@ var A = {
       ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now()});
     S.entries.sort(function(x2,y2){ return x2.ts<y2.ts?1:(x2.ts>y2.ts?-1:0); });
     save(); render(); toast("Logged");
+    if(medStreak(m.id)>2) showStreakModal(m.id, false, 4000);
   },
   resume: function(x){
     var i, e=null;
@@ -3708,7 +3709,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.63</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.64</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6146,7 +6147,7 @@ function invUsedRange(it, from){
   var u=0,i,e,per=it.per||{};
   for(i=0;i<S.entries.length;i++){ e=S.entries[i]; var t=new Date(e.ts).getTime(); if(t<from) continue;
     if(e.act==="nappy"){ var ty=(((e.data&&e.data.type)||e.detail||"")+"").toLowerCase(); u+=(ty.indexOf("mix")>=0?(+per.mix||0):(+per.wet||0)); }
-    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping" && e.data && (e.data.storage==="fridge"||e.data.storage==="freezer")){ u+=(+per.pump||0); } }
+    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping" && e.data && (e.data.storage==="fridge"||e.data.storage==="freezer")){ u+=(+per.pump||0); } else if(e.act==="medicine" && per.medMl && per.medName && e.data && e.data.name && e.data.name.toLowerCase().indexOf(per.medName)>=0){ u+=(+per.medMl||0); } }
   return u;
 }
 function invLeft(it){ return Math.max(0,(+it.qty||0)-invUsedRange(it,it.since||0)); }
@@ -6175,6 +6176,7 @@ var INVCAT=[
   {name:"Breast pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:1}},
   {name:"Breast pump",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Baby Breast Milk Storage Bags",cat:"feeding",unit:"pcs",per:{mix:0,wet:0,nurse:0,pump:1},affs:[{img:"https://m.media-amazon.com/images/I/71DPjaDuU6L._AC_UF894,1000_QL80_.jpg",name:"Breast Milk Storage Bags (25 pcs)",price:"349",link:"https://amzn.in/d/0iMIyrPX"}]},
+  {name:"Vitamin D3 800IU drops 30ml",cat:"health",unit:"ml",per:{mix:0,wet:0,nurse:0,pump:0,medName:"vitamin d",medMl:0.5},affs:[{img:"https://m.media-amazon.com/images/I/61vKtg06XbL._AC_UF1000,1000_QL80_.jpg",name:"Little Sunshine Vitamin D3 Drops (30ml)",price:"495",link:"https://www.amazon.in/Little-Sunshine-Vitamin-D-Drops-Infants/dp/B0GS8669CG"}]},
   {name:"Burp cloths",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:1}},
   {name:"Car seat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Changing mat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
@@ -6849,7 +6851,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.63";
+var APPVER="1.64";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
