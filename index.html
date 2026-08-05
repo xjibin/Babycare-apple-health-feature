@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.64 -->
+<!-- Baby Care v1.65 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1180,7 +1180,7 @@ var CFG_DEF=[
  {k:"sleepPre", g:"Sleep", l:"Suggest before feed", s:"Show the sleep suggestion this many minutes before the predicted feed.", def:45, min:10, max:90, st:5, u:"min"},
  {k:"sleepPost", g:"Sleep", l:"Suggest after feed", s:"Keep suggesting for this long after a feed ends.", def:30, min:10, max:90, st:5, u:"min"},
  {k:"sleepSup", g:"Sleep", l:"Suggestion cooldown", s:"Hours to stay quiet after a baby sleep was logged.", def:3, min:1, max:8, st:1, u:"h"},
- {k:"morA", g:"Medicine windows", l:"Morning opens", s:"Morning doses become due from this hour.", def:7, min:5, max:10, st:1, u:"h"},
+ {k:"morA", g:"Medicine windows", l:"Morning opens", s:"Morning doses become due from this hour.", def:8, min:5, max:10, st:1, u:"h"},
  {k:"morB", g:"Medicine windows", l:"Morning closes", s:"Morning window ends at this hour.", def:11, min:8, max:12, st:1, u:"h"},
  {k:"noonA", g:"Medicine windows", l:"Noon opens", s:"Noon doses become due from this hour.", def:12, min:11, max:14, st:1, u:"h"},
  {k:"noonB", g:"Medicine windows", l:"Noon closes", s:"Noon window ends at this hour.", def:14, min:13, max:17, st:1, u:"h"},
@@ -3709,7 +3709,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.64</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.65</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3779,11 +3779,17 @@ function vList(){
     }
     return false;
   }
+  function recent2d(kk){ var _c2=Date.now()-2*864e5, i5; for(i5=0;i5<S.entries.length;i5++){ if(S.entries[i5].act===kk && new Date(S.entries[i5].ts).getTime()>=_c2) return true; } return false; }
+  if(!edit && !ui.showAll){
+    var _norm=[], _res=[], _ri;
+    for(_ri=0;_ri<acts.length;_ri++){ var _ra=acts[_ri]; if(!coreOn(_ra.k) && !S.sess[_ra.k] && recent2d(_ra.k)) _res.push(_ra); else _norm.push(_ra); }
+    acts=_norm.concat(_res);
+  }
   var hiddenN=0, vbDone=false;
   for(i=0;i<acts.length;i++){
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     var manHid=!coreOn(a.k);
-    if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k)){ hiddenN++; continue; }
+    if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k) && !recent2d(a.k)){ hiddenN++; continue; }
     var ch=cardChips(a, grid);
     var st="", s=S.sess[a.k];
     if(s){
@@ -6147,7 +6153,7 @@ function invUsedRange(it, from){
   var u=0,i,e,per=it.per||{};
   for(i=0;i<S.entries.length;i++){ e=S.entries[i]; var t=new Date(e.ts).getTime(); if(t<from) continue;
     if(e.act==="nappy"){ var ty=(((e.data&&e.data.type)||e.detail||"")+"").toLowerCase(); u+=(ty.indexOf("mix")>=0?(+per.mix||0):(+per.wet||0)); }
-    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping" && e.data && (e.data.storage==="fridge"||e.data.storage==="freezer")){ u+=(+per.pump||0); } else if(e.act==="medicine" && per.medMl && per.medName && e.data && e.data.name && e.data.name.toLowerCase().indexOf(per.medName)>=0){ u+=(+per.medMl||0); } }
+    else if(e.act==="nursing"){ u+=(+per.nurse||0); } else if(e.act==="pumping" && e.data && (e.data.storage==="fridge"||e.data.storage==="freezer")){ u+=(+per.pump||0); } else if(e.act==="medicine" && per.medName && e.data && e.data.name && e.data.name.toLowerCase().indexOf(per.medName)>=0){ u+=(+e.data.ml||+per.medMl||0); } }
   return u;
 }
 function invLeft(it){ return Math.max(0,(+it.qty||0)-invUsedRange(it,it.since||0)); }
@@ -6176,7 +6182,7 @@ var INVCAT=[
   {name:"Breast pads",cat:"mom",unit:"pads",per:{mix:0,wet:0,nurse:1}},
   {name:"Breast pump",cat:"mom",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Baby Breast Milk Storage Bags",cat:"feeding",unit:"pcs",per:{mix:0,wet:0,nurse:0,pump:1},affs:[{img:"https://m.media-amazon.com/images/I/71DPjaDuU6L._AC_UF894,1000_QL80_.jpg",name:"Breast Milk Storage Bags (25 pcs)",price:"349",link:"https://amzn.in/d/0iMIyrPX"}]},
-  {name:"Vitamin D3 800IU drops 30ml",cat:"health",unit:"ml",per:{mix:0,wet:0,nurse:0,pump:0,medName:"vitamin d",medMl:0.5},affs:[{img:"https://m.media-amazon.com/images/I/61vKtg06XbL._AC_UF1000,1000_QL80_.jpg",name:"Little Sunshine Vitamin D3 Drops (30ml)",price:"495",link:"https://www.amazon.in/Little-Sunshine-Vitamin-D-Drops-Infants/dp/B0GS8669CG"}]},
+  {name:"Vitamin D3 800IU drops 30ml",cat:"health",unit:"ml",per:{mix:0,wet:0,nurse:0,pump:0,medName:"vitamin d3",medMl:0.5},affs:[{img:"https://m.media-amazon.com/images/I/61vKtg06XbL._AC_UF1000,1000_QL80_.jpg",name:"Little Sunshine Vitamin D3 Drops (30ml)",price:"495",link:"https://www.amazon.in/Little-Sunshine-Vitamin-D-Drops-Infants/dp/B0GS8669CG"}]},
   {name:"Burp cloths",cat:"clothing",unit:"count",per:{mix:0,wet:0,nurse:1}},
   {name:"Car seat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
   {name:"Changing mat",cat:"gear",unit:"count",per:{mix:0,wet:0,nurse:0}},
@@ -6851,7 +6857,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.64";
+var APPVER="1.65";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
