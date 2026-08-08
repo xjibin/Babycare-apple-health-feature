@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.65 -->
+<!-- Baby Care v1.66 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -261,6 +261,8 @@ var ACTS = [
   {k:"skin",       t:"Skin-to-Skin", icon:"heart",      c:C.rose,   kind:"single"},
   {k:"solids",     t:"Solids / Meal", icon:"cake",      c:C.orange, kind:"amount", hint:"Solid food / puree (6 months+)"},
   {k:"water",      t:"Water",        icon:"droplet",    c:C.teal,   kind:"amount", hint:"Water intake (6 months+)"},
+  {k:"motherhydration", t:"Mother Hydration", icon:"droplet", c:C.sky, kind:"amount", hint:"Water intake for mum (ml)"},
+  {k:"fever",      t:"Baby Fever",   icon:"flame",      c:C.rose,   kind:"temp",   hint:"Body temperature"},
   {k:"fussy",      t:"Fussy / Colic", icon:"flame",     c:C.coral,  kind:"single"}
 ];
 var SUPPS = ["Vitamin D drops","Iron","Probiotic","DHA","Gripe water","Other"];
@@ -902,7 +904,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -1658,6 +1660,13 @@ var A = {
     ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null; ui.pumpModal=false;
     save(); csModalHide(); render(); toast("Pumped \u00B7 "+ml+"ml logged");
   },
+  feverStep: function(x){ var t=(ui.ft!=null?ui.ft:37); ui.ft=Math.round((t+(+x))*10)/10; render(); },
+  feverSet: function(x){ ui.ft=+x; render(); },
+  feverUnit: function(x){ if((ui.fu||"C")===x) return; var t=(ui.ft!=null?ui.ft:37); ui.ft=(x==="F")?Math.round((t*9/5+32)*10)/10:Math.round(((t-32)*5/9)*10)/10; ui.fu=x; render(); },
+  feverSave: function(){ feverLog(Date.now()); },
+  feverPast: function(){ ui.feverPastM=true; render(); },
+  feverPastBack: function(){ ui.feverPastM=false; render(); },
+  feverSaveAt: function(){ var d=dtValue("fdt"); if(d.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; } feverLog(d.getTime()); },
   exprContinue: function(){ ui.exprGo=true; render(); },
   exprSkipToggle: function(){ if(exprSkipActive()) S.exprSkipUntil=0; else S.exprSkipUntil=Date.now()+15*864e5; save(); render(); },
   exprBagOpen: function(x){ ui.exprBag=(""+x); ui.exprMl=0; render(); },
@@ -2661,6 +2670,7 @@ var A = {
         else { ui.pl=Math.round((d.l||0)/60); ui.pr=Math.round((d.r||0)/60); }
       }
       else if(a.kind==="amount") ui.ml=d.ml||0;
+      else if(a.kind==="temp"){ ui.ft=(d.temp!=null?d.temp:37); ui.fu=d.unit||"C"; }
       else if(a.kind==="qty") ui.qty=d.qty||0;
       else if(a.kind==="supp"||a.kind==="nappy") ui.sel=d.type||null;
       else if(a.kind==="growth"){ ui.gtype=d.gtype||"weight"; ui.gv=(d.v!=null?d.v:0); }
@@ -2710,6 +2720,7 @@ var A = {
         e.ts=ts;
       }
       else if(a.kind==="amount"){ if(ui.ml<=0){ toast("Set an amount"); return; } e.detail=ui.ml+" ml"; e.data={ml:ui.ml}; e.ts=ts; }
+      else if(a.kind==="temp"){ var _u=ui.fu||"C", _t=(ui.ft!=null?ui.ft:37); e.detail=_t.toFixed(1)+"\u00B0"+_u; e.data={temp:_t, unit:_u}; e.ts=ts; }
       else if(a.kind==="qty"){ if(ui.qty<=0){ toast("Set an amount"); return; } e.detail=ui.qty+" "+a.unit; e.data={qty:ui.qty, unit:a.unit}; e.ts=ts; }
       else if(a.kind==="supp"){ if(!ui.sel){ toast("Pick a type"); return; } e.detail=ui.sel; e.data={type:ui.sel}; e.ts=ts; }
       else if(a.kind==="nappy"){ if(!ui.sel){ toast("Pick a status"); return; } e.detail=ui.sel+" nappy"; e.data={type:ui.sel}; e.ts=ts; }
@@ -3709,7 +3720,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.65</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.66</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4231,6 +4242,41 @@ function vExprFeed(a){
     '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">'+rem+'ml remaining in this bag</div>'+
     '<button class="press" data-a="exprFeed"'+(okAmt?"":" disabled")+' style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+(okAmt?a.c:"var(--card2)")+';color:'+(okAmt?"#000":"var(--sub)")+';font-size:16px;font-weight:800">Fed '+cur+'ml from this bag</button>'+
     '<div style="height:120px"></div></div>';
+}
+function feverInner(a){
+  var t=(ui.ft!=null?ui.ft:37.0), u=ui.fu||"C";
+  var presets = (u==="C") ? [37,37.5,38,38.5,39,39.5,40] : [98.6,99.5,100.4,101.3,102.2,103.1,104];
+  var chips="", i; for(i=0;i<presets.length;i++){ var on=(Math.abs(t-presets[i])<0.05);
+    chips+='<button class="press" data-a="feverSet" data-x="'+presets[i]+'" style="flex:1 0 30%;height:38px;border-radius:10px;text-align:center;background:'+(on?a.c:"var(--card2)")+';color:'+(on?"#000":"#fff")+';font-size:13px;font-weight:700">'+presets[i]+'\u00B0</button>'; }
+  var fev=(u==="C")?t>=38:t>=100.4;
+  return '<div class="card" style="padding:18px 16px;margin-bottom:14px;text-align:center">'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px">'+
+    '<button class="press" data-a="feverStep" data-x="-0.1" style="width:46px;height:46px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">\u2212</button>'+
+    '<span class="num" style="font-size:40px;font-weight:800;color:'+(fev?C.red:"#fff")+'">'+t.toFixed(1)+'<span style="font-size:20px;color:var(--sub)">\u00B0'+u+'</span></span>'+
+    '<button class="press" data-a="feverStep" data-x="0.1" style="width:46px;height:46px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">+</button></div>'+
+    '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px">'+
+      '<button class="press" data-a="feverUnit" data-x="C" style="padding:8px 22px;border-radius:10px;background:'+(u==="C"?a.c:"var(--card2)")+';color:'+(u==="C"?"#000":"#fff")+';font-size:14px;font-weight:700">\u00B0C</button>'+
+      '<button class="press" data-a="feverUnit" data-x="F" style="padding:8px 22px;border-radius:10px;background:'+(u==="F"?a.c:"var(--card2)")+';color:'+(u==="F"?"#000":"#fff")+';font-size:14px;font-weight:700">\u00B0F</button></div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>'+
+    (fev?'<div style="font-size:12px;color:'+C.red+';font-weight:700;margin-top:12px">Fever range \u2014 monitor and consult your pediatrician if it persists.</div>':'')+'</div>';
+}
+function vFever(a){
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">'+a.t+'</span></div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Record body temperature</div>'+
+    (ui.feverPastM ? lbl("DATE & TIME")+dtPicker("fdt")+'<div style="height:16px"></div>' : '')+
+    feverInner(a)+
+    '<button class="press" data-a="'+(ui.feverPastM?"feverSaveAt":"feverSave")+'" style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Save temperature</button>'+
+    (ui.feverPastM
+      ? '<button class="press" data-a="feverPastBack" style="display:block;width:100%;text-align:center;color:var(--sub);font-size:14px;font-weight:600;padding:14px;margin-top:4px">Cancel</button>'
+      : '<button class="press" data-a="feverPast" style="display:block;width:100%;text-align:center;color:'+a.c+';font-size:14px;font-weight:700;padding:14px;margin-top:4px">+ Add a past fever</button>')+
+    '<div style="height:100px"></div></div>';
+}
+function feverLog(ts){
+  var t=(ui.ft!=null?ui.ft:37.0), u=ui.fu||"C";
+  S.entries.push({id:aidUnique(aidFrom((S.who||""), ts, "fever")), act:"fever", detail:t.toFixed(1)+"\u00B0"+u, data:{temp:t, unit:u}, ts:new Date(ts).toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+  S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+  ui.ft=null; ui.feverPastM=false; S.route="list"; save(); render(); toast("Fever "+t.toFixed(1)+"\u00B0"+u+" logged");
 }
 function vAmount(a){
   var qs=[30,60,90,120], qh="";
@@ -5150,6 +5196,8 @@ function vEdit(){
     body = lbl("FELL ASLEEP")+dtPicker("sf")+'<div style="height:16px"></div>'+
       lbl("WOKE UP")+dtPicker("sw")+
       '<div id="sleeplen" style="text-align:center;font-size:13px;font-weight:600;color:var(--sub);margin-top:14px"></div>';
+  } else if(a.kind==="temp"){
+    body = lbl("DATE & TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+lbl("TEMPERATURE")+feverInner(a);
   } else if(a.kind==="amount"){
     body = lbl("TIME")+dtPicker("e1")+'<div style="height:16px"></div>'+
       '<div class="card" style="padding:0;overflow:hidden">'+stepRow("Amount","ml",ui.ml,"ml",5,20,true)+'</div>';
@@ -6387,6 +6435,7 @@ function render(){
     else if(a.kind==="dual") h=vDual(a);
     else if(a.kind==="single") h=vSingle(a);
     else if(a.k==="expressed") h=vExpr(a);
+    else if(a.kind==="temp") h=vFever(a);
     else if(a.kind==="amount") h=vAmount(a);
     else if(a.kind==="supp") h=vSupp(a);
     else if(a.kind==="nappy") h=vNappy(a);
@@ -6857,7 +6906,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.65";
+var APPVER="1.66";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
