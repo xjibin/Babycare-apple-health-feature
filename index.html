@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.66 -->
+<!-- Baby Care v1.67 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -262,7 +262,8 @@ var ACTS = [
   {k:"solids",     t:"Solids / Meal", icon:"cake",      c:C.orange, kind:"amount", hint:"Solid food / puree (6 months+)"},
   {k:"water",      t:"Water",        icon:"droplet",    c:C.teal,   kind:"amount", hint:"Water intake (6 months+)"},
   {k:"motherhydration", t:"Mother Hydration", icon:"droplet", c:C.sky, kind:"amount", hint:"Water intake for mum (ml)"},
-  {k:"fever",      t:"Baby Fever",   icon:"flame",      c:C.rose,   kind:"temp",   hint:"Body temperature"},
+  {k:"fever",      t:"Baby Temperature", icon:"flame",  c:C.rose,   kind:"temp",   hint:"Body temperature"},
+  {k:"vitals",     t:"Vitals",       icon:"activity",   c:C.indigo, kind:"vitals", hint:"Temperature, heart rate, BP, oxygen \u00B7 baby & mum"},
   {k:"fussy",      t:"Fussy / Colic", icon:"flame",     c:C.coral,  kind:"single"}
 ];
 var SUPPS = ["Vitamin D drops","Iron","Probiotic","DHA","Gripe water","Other"];
@@ -904,7 +905,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR",vitals:"VITL"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -1660,6 +1661,12 @@ var A = {
     ui.pumpStore=null; ui.pumpCd=null; ui.pumpSel=null; ui.pumpLabel=null; ui.pumpModal=false;
     save(); csModalHide(); render(); toast("Pumped \u00B7 "+ml+"ml logged");
   },
+  vitWho: function(x){ ui.vitWho=x; render(); },
+  vitOpen: function(x){ ui.vitItem=x; ui.vitVal=null; ui.ft=null; ui.fu="C"; render(); },
+  vitBack: function(){ ui.vitItem=null; render(); },
+  vitStep: function(x){ var cur=(ui.vitVal!=null?ui.vitVal:vitDefault(ui.vitItem)); ui.vitVal=Math.max(0, cur+(+x)); render(); },
+  vitStep2: function(x){ var p=x.split("|"); if(p[0]==="sys") ui.vitSys=Math.max(0,(ui.vitSys||120)+(+p[1])); else ui.vitDia=Math.max(0,(ui.vitDia||80)+(+p[1])); render(); },
+  vitSave: function(){ vitLog(); },
   feverStep: function(x){ var t=(ui.ft!=null?ui.ft:37); ui.ft=Math.round((t+(+x))*10)/10; render(); },
   feverSet: function(x){ ui.ft=+x; render(); },
   feverUnit: function(x){ if((ui.fu||"C")===x) return; var t=(ui.ft!=null?ui.ft:37); ui.ft=(x==="F")?Math.round((t*9/5+32)*10)/10:Math.round(((t-32)*5/9)*10)/10; ui.fu=x; render(); },
@@ -1736,6 +1743,8 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     if(x==="vomit"){ A.vomitOpen(); return; }
+    if(x==="fever"){ ui.vitWho="baby"; ui.vitItem="temp"; ui.ft=null; ui.fu="C"; S.tab="activity"; S.route="vitals"; S.eidx=null; ui.sheet=false; render(); return; }
+    if(x==="vitals"){ ui.vitItem=null; ui.vitVal=null; }
     if(x==="pumping"){ ui.pumpGo=false; ui.pumpSel=null; ui.pumpStored=false; ui.pumpWake=!S.pumpInfoSkip; nsWakeReq(); }
     if(x==="expressed"){ ui.exprGo=false; ui.exprBag=null; ui.exprMl=0; }
     if(S.editing) return;
@@ -3720,7 +3729,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.66</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.67</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4242,6 +4251,58 @@ function vExprFeed(a){
     '<div style="font-size:13px;color:var(--sub);margin-bottom:14px">'+rem+'ml remaining in this bag</div>'+
     '<button class="press" data-a="exprFeed"'+(okAmt?"":" disabled")+' style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+(okAmt?a.c:"var(--card2)")+';color:'+(okAmt?"#000":"var(--sub)")+';font-size:16px;font-weight:800">Fed '+cur+'ml from this bag</button>'+
     '<div style="height:120px"></div></div>';
+}
+var VIT=[["temp","Body temperature","\u00B0","Normal is around 98.6\u00B0F (37\u00B0C)"],["hr","Heart rate","bpm","How fast the heart beats per minute"],["rr","Respiration rate","/min","How many breaths per minute"],["bp","Blood pressure","mmHg","Force of blood against the artery walls"],["o2","Oxygen saturation","%","Amount of oxygen in the blood"]];
+function vitItem(k){ var i; for(i=0;i<VIT.length;i++) if(VIT[i][0]===k) return VIT[i]; return null; }
+function vitDefault(k){ return k==="hr"?120:(k==="rr"?40:(k==="o2"?98:100)); }
+function vVitals(a){
+  var who=ui.vitWho||"baby", whoLabel=(who==="mother"?"Mother":"Baby");
+  if(ui.vitItem) return vVitalsInput(a, who, whoLabel);
+  var i, toggle='<div style="display:flex;gap:8px;margin-bottom:16px">';
+  var ws=[["baby","Baby"],["mother","Mother"]];
+  for(i=0;i<ws.length;i++){ var on=(who===ws[i][0]); toggle+='<button class="press" data-a="vitWho" data-x="'+ws[i][0]+'" style="flex:1;height:44px;border-radius:12px;text-align:center;background:'+(on?a.c:"var(--card2)")+';color:'+(on?"#000":"#fff")+';font-size:14px;font-weight:700">'+ws[i][1]+'</button>'; }
+  toggle+='</div>';
+  var rows=""; for(i=0;i<VIT.length;i++){ var v=VIT[i];
+    rows+='<button class="card press" data-a="vitOpen" data-x="'+v[0]+'" style="width:100%;text-align:left;margin-bottom:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">'+
+      '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">'+v[1]+'</span><span style="display:block;font-size:13px;color:var(--sub);margin-top:3px">'+v[3]+'</span></span>'+ic("chevron-right",18,"#5c5c61")+'</button>';
+  }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">Vitals</span></div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:16px">Track vitals for baby and mother</div>'+
+    toggle+rows+'<div style="height:100px"></div></div>';
+}
+function vitStepBox(label,key,val){
+  return '<div style="flex:1;text-align:center"><div style="font-size:12px;color:var(--sub);margin-bottom:8px">'+label+'</div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:8px">'+
+    '<button class="press" data-a="vitStep2" data-x="'+key+'|-1" style="width:38px;height:38px;border-radius:10px;background:var(--card2);font-size:18px;font-weight:700;text-align:center">\u2212</button>'+
+    '<span class="num" style="font-size:26px;font-weight:800;min-width:44px">'+val+'</span>'+
+    '<button class="press" data-a="vitStep2" data-x="'+key+'|1" style="width:38px;height:38px;border-radius:10px;background:var(--card2);font-size:18px;font-weight:700;text-align:center">+</button></div></div>';
+}
+function vVitalsInput(a, who, whoLabel){
+  var v=vitItem(ui.vitItem);
+  var head='<div class="full" style="padding:0 4px">'+backBtn(a.c,"Vitals","vitBack")+
+    '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">'+v[1]+'</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">'+whoLabel+' \u00B7 '+v[3]+'</div>';
+  var input, saveA="vitSave";
+  if(ui.vitItem==="temp"){ input=feverInner(a); }
+  else if(ui.vitItem==="bp"){ input='<div class="card" style="padding:16px;margin-bottom:14px"><div style="display:flex;gap:12px">'+vitStepBox("Systolic","sys",(ui.vitSys||120))+vitStepBox("Diastolic","dia",(ui.vitDia||80))+'</div></div>'; }
+  else { var val=(ui.vitVal!=null?ui.vitVal:vitDefault(ui.vitItem));
+    input='<div class="card" style="padding:18px 16px;margin-bottom:14px;text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:16px">'+
+      '<button class="press" data-a="vitStep" data-x="-1" style="width:46px;height:46px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">\u2212</button>'+
+      '<span class="num" style="font-size:40px;font-weight:800">'+val+'<span style="font-size:18px;color:var(--sub)"> '+v[2]+'</span></span>'+
+      '<button class="press" data-a="vitStep" data-x="1" style="width:46px;height:46px;border-radius:12px;background:var(--card2);font-size:22px;font-weight:700;text-align:center">+</button></div></div>'; }
+  return head+input+
+    '<button class="press" data-a="'+saveA+'" style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+a.c+';color:#000;font-size:16px;font-weight:800">Save</button>'+
+    '<div style="height:100px"></div></div>';
+}
+function vitLog(){
+  var who=ui.vitWho||"baby", whoLabel=(who==="mother"?"Mother":"Baby"), v=vitItem(ui.vitItem), ts=Date.now(), detail, data;
+  if(ui.vitItem==="temp"){ var t=(ui.ft!=null?ui.ft:37), u=ui.fu||"C"; detail=whoLabel+" \u00B7 "+t.toFixed(1)+"\u00B0"+u; data={who:who,vit:"temp",temp:t,unit:u}; }
+  else if(ui.vitItem==="bp"){ detail=whoLabel+" \u00B7 "+(ui.vitSys||120)+"/"+(ui.vitDia||80)+" mmHg"; data={who:who,vit:"bp",sys:(ui.vitSys||120),dia:(ui.vitDia||80)}; }
+  else { var val=(ui.vitVal!=null?ui.vitVal:vitDefault(ui.vitItem)); detail=whoLabel+" \u00B7 "+val+" "+v[2]; data={who:who,vit:ui.vitItem,val:val,unit:v[2]}; }
+  S.entries.push({id:aidUnique(aidFrom((S.who||""), ts, "vitals")), act:"vitals", detail:detail, data:data, ts:new Date(ts).toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+  S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+  ui.vitItem=null; ui.vitVal=null; ui.ft=null; ui.vitSys=null; ui.vitDia=null; S.route="list"; save(); render(); toast(v[1]+" logged");
 }
 function feverInner(a){
   var t=(ui.ft!=null?ui.ft:37.0), u=ui.fu||"C";
@@ -6435,6 +6496,7 @@ function render(){
     else if(a.kind==="dual") h=vDual(a);
     else if(a.kind==="single") h=vSingle(a);
     else if(a.k==="expressed") h=vExpr(a);
+    else if(a.k==="vitals") h=vVitals(a);
     else if(a.kind==="temp") h=vFever(a);
     else if(a.kind==="amount") h=vAmount(a);
     else if(a.kind==="supp") h=vSupp(a);
@@ -6906,7 +6968,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.66";
+var APPVER="1.67";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
