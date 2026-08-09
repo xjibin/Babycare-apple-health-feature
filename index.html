@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.70 -->
+<!-- Baby Care v1.71 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2160,6 +2160,7 @@ var A = {
   },
   openmed: function(){ S.tab="activity"; A.open("medicine"); },
   hsopen: function(x){ S.tab="activity"; A.open(x); },
+  hsMstChecks: function(){ S.tab="activity"; S.route="growth"; S.eidx=null; ui.gtype="checks"; ui.mstInfo=null; render(); },
   upx: function(){
     ui.upDismissed=true;
     var m=byId("upmodal"); if(m && m.parentNode) m.parentNode.removeChild(m);
@@ -2801,6 +2802,7 @@ var A = {
   addDoc: function(x){ captureBaby(); var arr=((x==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs))||[]); arr.push({dept:"",name:"",phone:""}); if(x==="bdoc") ui.b.docs=arr; else { if(!ui.m)ui.m={}; ui.m.docs=arr; } render(); },
   rmDoc: function(x){ captureBaby(); var p=x.split("|"),pre=p[0],idx=+p[1]; var arr=(pre==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs)); if(arr){ arr.splice(idx,1); } render(); },
   mstInfo: function(x){ ui.mstInfo=(""+x); render(); },
+  mstClear: function(x){ if(S.baby && S.baby.mst){ delete S.baby.mst[x]; bumpSet(); } ui.mstInfo=null; save(); render(); toast("Selection cleared \u2014 check is active again"); },
   mstInfoBack: function(){ ui.mstInfo=null; render(); },
   mstFlag: function(x){
     var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i]; if(!m) return;
@@ -2824,10 +2826,9 @@ var A = {
     var m=null, i;
     for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i];
     if(!m) return;
-    bumpSet();
-    if(S.baby.mst[x]){ delete S.baby.mst[x]; toast("Unchecked"); }
-    else { S.baby.mst[x]=dISO(new Date()); toast(m.t+" \u2713"); }
-    save(); render();
+    if(S.baby.mst[x]){ toast("Already completed, tap and hold to clear"); return; }
+    var ag=ageMo(); if(ag==null||ag<m.a){ toast("This check opens at "+m.a+" months"); return; }
+    bumpSet(); S.baby.mst[x]=dISO(new Date()); save(); render(); toast(m.t+" \u2713");
   },
   hs: function(x){
     var n=byId("bname"); if(n) ui.b.name=n.value;
@@ -3754,7 +3755,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.70</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.71</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5597,16 +5598,22 @@ function vMstInfo(a){
     body+='<div style="font-size:14px;color:var(--sub);line-height:1.55">Observe \u201C'+m.t+'\u201D during calm play over the '+m.a+'\u2013'+m.b+' month window. Try a few times on different days; mention it at your next visit if you don\u2019t see it by '+m.b+' months.</div>';
   }
   var disc='<div style="font-size:12px;color:var(--sub);line-height:1.5;margin-top:6px;padding:12px;background:var(--card2);border-radius:12px">This is an informal home check to help you observe your child \u2014 not a medical diagnosis. Seek advice if your child loses skills they had, doesn\u2019t make eye contact, doesn\u2019t respond to loud sounds or their name, or seems very stiff or floppy.</div>';
-  var btns = active
-    ? '<button class="press" data-a="mstFlag" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Flag an issue</button>'+
-      '<button class="press" data-a="mstComplete" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:'+a.c+';color:#000;font-size:15px;font-weight:700">Completed</button>'
-    : '<button disabled style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid rgba(255,255,255,.15);color:var(--sub);font-size:15px;font-weight:700;opacity:.45">Flag an issue</button>'+
+  var done=!!(S.baby && S.baby.mst && S.baby.mst[m.k]);
+  var flagBtn='<button class="press" data-a="mstFlag" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Flag an issue</button>';
+  var btns;
+  if(done){
+    btns = flagBtn + '<button class="press" data-a="mstClear" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:var(--card2);color:#fff;font-size:15px;font-weight:700">Clear selection</button>';
+  } else if(active){
+    btns = flagBtn + '<button class="press" data-a="mstComplete" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:'+a.c+';color:#000;font-size:15px;font-weight:700">Completed</button>';
+  } else {
+    btns = '<button disabled style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid rgba(255,255,255,.15);color:var(--sub);font-size:15px;font-weight:700;opacity:.45">Flag an issue</button>'+
       '<button disabled style="flex:1;height:50px;border-radius:14px;text-align:center;background:var(--card2);color:var(--sub);font-size:15px;font-weight:700;opacity:.45">Completed</button>';
+  }
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c,"Growth","mstInfoBack")+
     '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">'+m.t+'</div>'+
     '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Developmental check \u00B7 '+m.a+'\u2013'+m.b+' months'+(active?'':' \u00B7 opens at '+m.a+' mo')+'</div>'+
     body+disc+
-    (active?'':'<div style="font-size:12px;color:var(--sub);text-align:center;margin-top:12px">These actions unlock when this check is due (from '+m.a+' months).</div>')+
+    ((active||done)?'':'<div style="font-size:12px;color:var(--sub);text-align:center;margin-top:12px">These actions unlock when this check is due (from '+m.a+' months).</div>')+
     '<div style="display:flex;gap:10px;margin-top:12px">'+btns+'</div>'+
     '<div style="height:200px"></div></div>';
 }
@@ -7109,7 +7116,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.70";
+var APPVER="1.71";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7327,7 +7334,7 @@ function hsCards(){
   var mc=mstDueCount();
   if(mc>0)
     cs.push({id:"mst", icon:"activity", col:"#B78CF2", title:"Developmental checks",
-      sub:mc+" milestone"+(mc>1?"s":"")+" ready to review · TDSC", right:"chevron-right", a:"hsopen", x:"growth"});
+      sub:mc+" milestone"+(mc>1?"s":"")+" ready to review · TDSC", right:"chevron-right", a:"hsMstChecks", x:""});
   cs.push({id:"hi", icon:"sparkles", col:C.pink, title:"Baby Care is crafted with infinite love",
     sub:"Easily track all your baby care activities in the Activity tab", right:"chevron-right", a:"tab", x:"activity"});
   return cs;
@@ -7584,7 +7591,7 @@ function mstSection(){
     n++;
   }
   if(!n) return "";
-  return '<div style="height:6px"></div>'+lbl("DEVELOPMENTAL CHECKS \u00B7 TDSC")+
+  return '<div style="height:6px"></div>'+lbl("DEVELOPMENTAL CHECKS \u00B7 TDSC")+'<div style="font-size:13px;color:var(--sub);line-height:1.5;margin:-6px 2px 12px">Tap and hold the checks to know how easily you can do the checks on your own.</div>'+
     '<div class="card" style="padding:0;overflow:hidden;margin-bottom:6px">'+rows+'</div>'+
     '<div style="font-size:11px;color:var(--sub);padding:0 4px;margin-bottom:14px">Baroda/Trivandrum screening ranges \u00B7 tap when it happens \u00B7 gentle reminders (max 5) while each window is open.</div>';
 }
