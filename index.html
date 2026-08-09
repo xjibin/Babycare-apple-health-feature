@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.68 -->
+<!-- Baby Care v1.69 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2797,6 +2797,7 @@ var A = {
   mstInfoBack: function(){ ui.mstInfo=null; render(); },
   mstFlag: function(x){
     var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i]; if(!m) return;
+    var _ag=ageMo(); if(_ag==null||_ag<m.a){ toast("This check opens at "+m.a+" months"); return; }
     S.entries.push({id:Date.now(), act:"note", detail:"", data:{text:"Developmental check to discuss: "+m.t+" ("+m.a+"\u2013"+m.b+" mo)"}, ts:new Date().toISOString(), by:(S.who||""), up:Date.now(), bid:S.activeBaby});
     S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
     ui.mstInfo=null; save(); render(); toast("No worries! It is good to consult a paediatrician. Added as a quick note for next doctor visit");
@@ -2804,6 +2805,7 @@ var A = {
   mstComplete: function(x){
     var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i]; if(!m) return;
     if(!S.baby || !S.baby.dob){ toast("Set the date of birth first"); return; }
+    var _ag=ageMo(); if(_ag==null||_ag<m.a){ toast("This check opens at "+m.a+" months"); return; }
     S.baby.mst=S.baby.mst||{}; S.baby.mst[x]=dISO(new Date()); bumpSet();
     S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"growth", detail:"Milestone \u2713 "+m.t, data:{mst:x, milestone:m.t}, ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
     S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
@@ -3745,7 +3747,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.68</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.69</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5487,28 +5489,121 @@ function vTrends(){
 }
 
 /* ============ Growth (WHO reference charts) ============ */
+var MSTHOW={
+smile:{need:"Just your face and voice \u2014 no items needed.",steps:[
+["Set the right time & environment","Pick a calm moment when baby is well-fed, well-rested and quiet \u2014 avoid sleepy, hungry or fussy times. Turn off the TV and dim bright lights and loud background noise."],
+["Get eye-to-eye","Place baby safely on their back on a soft flat surface, or hold them securely in your lap. Bring your face about 8\u201312 inches (20\u201330cm) away \u2014 the ideal focus distance for young infants."],
+["Prompt the smile (no touching)","Look into baby\u2019s eyes, give a big warm smile and speak gently in a playful, high-pitched voice (\u201CHello sweetie!\u201D). Pause and wait 5\u201310 seconds \u2014 no sudden moves or tickling \u2014 to let baby process your face and voice."],
+["Look for the response (PASS)","A true social smile: eyes brighten/widen and focus on your face, mouth corners turn up into a soft smile, and arms/legs may gently move or relax. A reflex smile happens randomly (often in sleep); a social smile happens directly in response to you."],
+["Track & share progress","Most babies start social smiling at 6\u20138 weeks (from the due date if born early). If it doesn\u2019t happen, try again later \u2014 it often takes several calm attempts. Mention it at the 2- or 4-month checkup if baby rarely makes eye contact or doesn\u2019t smile back at familiar faces."]]},
+track:{need:"A small bright object \u2014 a red toy, ball or pen.",steps:[
+["Set up","Baby calm and alert, on their back or supported in your lap in good light."],
+["What to do","Hold the bright object about 30cm (12in) above baby\u2019s face. Once their eyes fix on it, slowly move it side to side across the middle."],
+["What to look for (PASS)","Baby\u2019s eyes follow the object smoothly past the centre line, at least a quarter to half circle."],
+["Safety & when to ask","Move slowly and keep the object at a comfortable distance. Mention it if eyes don\u2019t follow by 4 months, or if one eye consistently turns."]]},
+head:{need:"No items needed.",steps:[
+["Set up","Baby calm, on a firm surface or held against your shoulder."],
+["What to do","Hold baby upright against your shoulder, or gently pull them to sitting by the arms and watch the head."],
+["What to look for (PASS)","Head stays steady and upright, without bobbing, for a few seconds."],
+["Safety & when to ask","Always support the head and neck; move slowly. Mention it if there\u2019s little head control by 5 months."]]},
+sound:{need:"A rattle or small bell.",steps:[
+["Set up","Baby calm and facing forward in a quiet room."],
+["What to do","Gently shake the rattle out of sight, about 15\u201330cm to one side at ear level."],
+["What to look for (PASS)","Baby goes still, then turns their eyes or head toward the sound."],
+["Safety & when to ask","Keep it soft \u2014 not too loud or close to the ear. Mention it if baby doesn\u2019t respond to sounds by 6 months."]]},
+roll:{need:"A firm soft mat and a favourite toy.",steps:[
+["Set up","Lay baby on their back on a firm, soft surface with room to move."],
+["What to do","Place a favourite toy just out of reach to one side to tempt baby to turn and roll."],
+["What to look for (PASS)","Baby rolls all the way from their back onto their tummy on their own."],
+["Safety & when to ask","Never leave baby alone on a raised surface. Mention it if not rolling by 8 months."]]},
+transfer:{need:"A small, light, safe toy or block.",steps:[
+["Set up","Baby supported in a sitting position."],
+["What to do","Offer a small toy to one hand; once it\u2019s held, offer a second toy or encourage baby to take it in the other hand."],
+["What to look for (PASS)","Baby passes the toy from one hand to the other."],
+["Safety & when to ask","Use toys with no small parts that fit fully in the mouth. Mention it if not transferring by 8 months."]]},
+standfurn:{need:"Low, sturdy furniture (sofa or coffee table) and a toy.",steps:[
+["Set up","Baby near stable, low furniture on a soft floor."],
+["What to do","Place a toy on top of the furniture to encourage baby to pull themselves up to stand."],
+["What to look for (PASS)","Baby pulls up to standing and holds on to the furniture."],
+["Safety & when to ask","Clear sharp edges and stay close to catch. Mention it if not pulling to stand by 11 months."]]},
+sitself:{need:"A firm surface with cushions around.",steps:[
+["Set up","Baby lying or leaning on a firm surface."],
+["What to do","Encourage baby to push up and sit on their own \u2014 don\u2019t pull them up."],
+["What to look for (PASS)","Baby gets themselves into a sitting position and sits steadily without support."],
+["Safety & when to ask","Cushion the area in case of a tip. Mention it if baby can\u2019t sit unsupported by 11 months."]]},
+pellet:{need:"One soft, dissolvable food piece (a single cereal puff or boiled pea).",steps:[
+["Set up","Baby seated upright and fully supervised."],
+["What to do","Place one puff on the tray and let baby pick it up."],
+["What to look for (PASS)","Baby picks it up neatly between the thumb and one finger (pincer grasp)."],
+["Safety & when to ask","CHOKING RISK \u2014 use only soft, dissolvable food, watch every second and never leave baby alone. Mention it if no pincer grasp by 11 months."]]},
+patcake:{need:"No items needed.",steps:[
+["Set up","Baby happy and supported, facing you."],
+["What to do","Sing a clapping rhyme and clap your hands, encouraging baby to copy you."],
+["What to look for (PASS)","Baby brings their hands together to clap or pat."],
+["Safety & when to ask","No special precautions. Mention it if baby isn\u2019t imitating simple gestures by 12 months."]]},
+walkhelp:{need:"Your hands, or a stable, weighted push-toy.",steps:[
+["Set up","Clear, non-slip floor; baby barefoot.  "],
+["What to do","Hold both of baby\u2019s hands (or offer a stable push-toy) and encourage a few steps forward."],
+["What to look for (PASS)","Baby steps forward taking weight on their legs with your support."],
+["Safety & when to ask","Clear the floor and stay close. Mention it if baby isn\u2019t bearing weight or stepping with help by 13 months."]]},
+throw:{need:"A small, soft ball.",steps:[
+["Set up","Sit on the floor facing baby."],
+["What to do","Show baby how to throw the soft ball to you, then encourage them to try."],
+["What to look for (PASS)","Baby throws or flings the ball forward (rather than just dropping it)."],
+["Safety & when to ask","Use a soft ball only. Mention it if not throwing by 14 months."]]},
+walkalone:{need:"A clear, open, soft space.",steps:[
+["Set up","Remove trip hazards and sharp corners; soft flooring if possible."],
+["What to do","Stand a short distance away and encourage baby to walk to you without holding on."],
+["What to look for (PASS)","Baby takes several independent steps and walks on their own."],
+["Safety & when to ask","Stay ready to steady them. Mention it if baby isn\u2019t walking alone by 15 months."]]},
+words:{need:"No items needed \u2014 just everyday talking.",steps:[
+["Set up","Chatty, relaxed play through the day."],
+["What to do","Name familiar people and objects and pause to let your child respond; listen for meaningful words."],
+["What to look for (PASS)","Child uses at least 2 meaningful words with meaning (e.g. \u201Cmama\u201D for mum, \u201Cball\u201D for ball) \u2014 beyond general babble."],
+["Safety & when to ask","No precautions. Mention it if there are no clear words by 17 months, or if your child loses words they had."]]},
+walkback:{need:"A pull-along toy (optional) and clear space.",steps:[
+["Set up","Open space with nothing behind the child."],
+["What to do","Show your child how to step backwards, or give a pull-toy and encourage them to pull it while stepping back."],
+["What to look for (PASS)","Child takes a few steps backwards without falling."],
+["Safety & when to ask","Keep the space behind them clear and stay ready to steady. Mention it if not by 17 months."]]},
+stairs:{need:"A safe staircase with a handrail.",steps:[
+["Set up","One adult per child; use a stair gate at other times."],
+["What to do","Holding one hand or the rail, help your child climb a few steps."],
+["What to look for (PASS)","Child walks up steps with your hand or the rail for support, one foot after the other."],
+["Safety & when to ask","NEVER let go on the stairs. Mention it if not managing steps with help by 19 months."]]},
+dollparts:{need:"A doll or teddy (or point to yourself).",steps:[
+["Set up","Child sitting comfortably with the doll in view."],
+["What to do","Ask one at a time: \u201CWhere is dolly\u2019s nose? \u2026 eyes? \u2026 mouth?\u201D"],
+["What to look for (PASS)","Child correctly points to at least 3 body parts on the doll."],
+["Safety & when to ask","No precautions. Mention it if your child can\u2019t identify body parts by 23 months."]]}
+};
+
 function vMstInfo(a){
   var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===ui.mstInfo) m=MST[i];
   if(!m){ ui.mstInfo=null; return vGrowth(a); }
-  var steps=[
-    "Choose a calm, alert moment \u2014 not when baby is hungry, tired, or fussy.",
-    "Sit somewhere quiet with good light and few distractions.",
-    "Gently encourage the skill \u2014 \u201C"+m.t+"\u201D \u2014 and give baby time to respond.",
-    "Try a few times across different days before deciding; babies vary day to day.",
-    "This skill usually appears between "+m.a+" and "+m.b+" months. If you don\u2019t see it by "+m.b+" months, it\u2019s worth mentioning at your next visit."
-  ];
-  var body="", j; for(j=0;j<steps.length;j++){ body+='<div style="display:flex;gap:10px;margin-bottom:12px"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(a.c,0.18)+';color:'+a.c+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+(j+1)+'</span><span style="flex:1;font-size:14px;color:var(--sub);line-height:1.55">'+steps[j]+'</span></div>'; }
+  var age=ageMo(), active=(age!=null && age>=m.a), how=MSTHOW[m.k];
+  var body="";
+  if(how){
+    if(how.need) body+='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 2px 6px">WHAT YOU\u2019LL NEED</div><div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:16px">'+how.need+'</div>';
+    var j; for(j=0;j<how.steps.length;j++){ body+='<div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-start"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(a.c,0.18)+';color:'+a.c+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+(j+1)+'</span><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:2px">'+how.steps[j][0]+'</div><div style="font-size:14px;color:var(--sub);line-height:1.55">'+how.steps[j][1]+'</div></div></div>'; }
+  } else {
+    body+='<div style="font-size:14px;color:var(--sub);line-height:1.55">Observe \u201C'+m.t+'\u201D during calm play over the '+m.a+'\u2013'+m.b+' month window. Try a few times on different days; mention it at your next visit if you don\u2019t see it by '+m.b+' months.</div>';
+  }
+  var disc='<div style="font-size:12px;color:var(--sub);line-height:1.5;margin-top:6px;padding:12px;background:var(--card2);border-radius:12px">This is an informal home check to help you observe your child \u2014 not a medical diagnosis. Seek advice if your child loses skills they had, doesn\u2019t make eye contact, doesn\u2019t respond to loud sounds or their name, or seems very stiff or floppy.</div>';
+  var btns = active
+    ? '<button class="press" data-a="mstFlag" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Flag an issue</button>'+
+      '<button class="press" data-a="mstComplete" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:'+a.c+';color:#000;font-size:15px;font-weight:700">Completed</button>'
+    : '<button disabled style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid rgba(255,255,255,.15);color:var(--sub);font-size:15px;font-weight:700;opacity:.45">Flag an issue</button>'+
+      '<button disabled style="flex:1;height:50px;border-radius:14px;text-align:center;background:var(--card2);color:var(--sub);font-size:15px;font-weight:700;opacity:.45">Completed</button>';
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c,"Growth","mstInfoBack")+
     '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">'+m.t+'</div>'+
-    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Developmental check \u00B7 '+m.a+'\u2013'+m.b+' months</div>'+
-    '<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 2px 12px">HOW TO CHECK</div>'+
-    body+
-    '<div style="display:flex;gap:10px;margin-top:8px">'+
-      '<button class="press" data-a="mstFlag" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Flag an issue</button>'+
-      '<button class="press" data-a="mstComplete" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:'+a.c+';color:#000;font-size:15px;font-weight:700">Completed</button>'+
-    '</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Developmental check \u00B7 '+m.a+'\u2013'+m.b+' months'+(active?'':' \u00B7 opens at '+m.a+' mo')+'</div>'+
+    body+disc+
+    (active?'':'<div style="font-size:12px;color:var(--sub);text-align:center;margin-top:12px">These actions unlock when this check is due (from '+m.a+' months).</div>')+
+    '<div style="display:flex;gap:10px;margin-top:12px">'+btns+'</div>'+
     '<div style="height:200px"></div></div>';
 }
+
 function vGrowth(a){
   if(ui.mstInfo) return vMstInfo(a);
   var segs=["weight","length","head","checks"], sh="", i;
@@ -7007,7 +7102,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.68";
+var APPVER="1.69";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
