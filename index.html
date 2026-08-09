@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.67 -->
+<!-- Baby Care v1.68 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2793,6 +2793,22 @@ var A = {
   fblood: function(x){ captureBaby(); if(!ui.f) ui.f={docs:[]}; ui.f.blood=x; render(); },
   addDoc: function(x){ captureBaby(); var arr=((x==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs))||[]); arr.push({dept:"",name:"",phone:""}); if(x==="bdoc") ui.b.docs=arr; else { if(!ui.m)ui.m={}; ui.m.docs=arr; } render(); },
   rmDoc: function(x){ captureBaby(); var p=x.split("|"),pre=p[0],idx=+p[1]; var arr=(pre==="bdoc"?ui.b.docs:(ui.m&&ui.m.docs)); if(arr){ arr.splice(idx,1); } render(); },
+  mstInfo: function(x){ ui.mstInfo=(""+x); render(); },
+  mstInfoBack: function(){ ui.mstInfo=null; render(); },
+  mstFlag: function(x){
+    var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i]; if(!m) return;
+    S.entries.push({id:Date.now(), act:"note", detail:"", data:{text:"Developmental check to discuss: "+m.t+" ("+m.a+"\u2013"+m.b+" mo)"}, ts:new Date().toISOString(), by:(S.who||""), up:Date.now(), bid:S.activeBaby});
+    S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
+    ui.mstInfo=null; save(); render(); toast("No worries! It is good to consult a paediatrician. Added as a quick note for next doctor visit");
+  },
+  mstComplete: function(x){
+    var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===x) m=MST[i]; if(!m) return;
+    if(!S.baby || !S.baby.dob){ toast("Set the date of birth first"); return; }
+    S.baby.mst=S.baby.mst||{}; S.baby.mst[x]=dISO(new Date()); bumpSet();
+    S.entries.push({id:Date.now()+Math.floor(Math.random()*1e4), act:"growth", detail:"Milestone \u2713 "+m.t, data:{mst:x, milestone:m.t}, ts:new Date().toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby});
+    S.entries.sort(function(p,q){ return p.ts<q.ts?1:(p.ts>q.ts?-1:0); });
+    ui.mstInfo=null; save(); render(); toast("Great, your check was successful");
+  },
   mstT: function(x){
     if(!S.baby || !S.baby.dob){ toast("Set the date of birth first"); return; }
     S.baby.mst=S.baby.mst||{};
@@ -3729,7 +3745,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.67</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.68</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5471,7 +5487,30 @@ function vTrends(){
 }
 
 /* ============ Growth (WHO reference charts) ============ */
+function vMstInfo(a){
+  var m=null,i; for(i=0;i<MST.length;i++) if(MST[i].k===ui.mstInfo) m=MST[i];
+  if(!m){ ui.mstInfo=null; return vGrowth(a); }
+  var steps=[
+    "Choose a calm, alert moment \u2014 not when baby is hungry, tired, or fussy.",
+    "Sit somewhere quiet with good light and few distractions.",
+    "Gently encourage the skill \u2014 \u201C"+m.t+"\u201D \u2014 and give baby time to respond.",
+    "Try a few times across different days before deciding; babies vary day to day.",
+    "This skill usually appears between "+m.a+" and "+m.b+" months. If you don\u2019t see it by "+m.b+" months, it\u2019s worth mentioning at your next visit."
+  ];
+  var body="", j; for(j=0;j<steps.length;j++){ body+='<div style="display:flex;gap:10px;margin-bottom:12px"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(a.c,0.18)+';color:'+a.c+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+(j+1)+'</span><span style="flex:1;font-size:14px;color:var(--sub);line-height:1.55">'+steps[j]+'</span></div>'; }
+  return '<div class="full" style="padding:0 4px">'+backBtn(a.c,"Growth","mstInfoBack")+
+    '<div style="font-size:24px;font-weight:700;margin:8px 0 2px">'+m.t+'</div>'+
+    '<div style="font-size:13px;color:var(--sub);margin-bottom:16px">Developmental check \u00B7 '+m.a+'\u2013'+m.b+' months</div>'+
+    '<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 2px 12px">HOW TO CHECK</div>'+
+    body+
+    '<div style="display:flex;gap:10px;margin-top:8px">'+
+      '<button class="press" data-a="mstFlag" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:transparent;border:1.5px solid '+C.red+';color:'+C.red+';font-size:15px;font-weight:700">Flag an issue</button>'+
+      '<button class="press" data-a="mstComplete" data-x="'+m.k+'" style="flex:1;height:50px;border-radius:14px;text-align:center;background:'+a.c+';color:#000;font-size:15px;font-weight:700">Completed</button>'+
+    '</div>'+
+    '<div style="height:200px"></div></div>';
+}
 function vGrowth(a){
+  if(ui.mstInfo) return vMstInfo(a);
   var segs=["weight","length","head","checks"], sh="", i;
   for(i=0;i<segs.length;i++)
     sh+='<button class="seg press'+(ui.gtype===segs[i]?" on":"")+'" data-a="gt" data-x="'+segs[i]+'">'+(segs[i]==="checks"?"Checks":GLBL[segs[i]])+'</button>';
@@ -6968,7 +7007,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.67";
+var APPVER="1.68";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7435,7 +7474,7 @@ function mstSection(){
       st2==="late" ? "overdue \u00B7 mention to your pediatrician" :
       st2==="now" ? "check now" : "opens at "+m2.a+" mo";
     var upF=(st2==="up");
-    rows+='<button class="press" data-a="mstT" data-x="'+m2.k+'" '+(upF?'disabled ':'')+'style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;opacity:'+(upF?'.45':'1')+(n?';border-top:1px solid var(--hair)':'')+'">'+
+    rows+='<button class="press" data-a="mstT" data-x="'+m2.k+'" data-hold="mstInfo" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;opacity:'+(upF?'.55':'1')+(n?';border-top:1px solid var(--hair)':'')+'">'+
       '<span class="circ" style="width:26px;height:26px;background:'+(st2==="ach"?"#34C77B":"transparent")+';border:1.5px solid '+(st2==="ach"?"#34C77B":"rgba(255,255,255,.25)")+'">'+
       (st2==="ach"?ic("check",14,"#000",{sw:3}):"")+'</span>'+
       '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600">'+m2.t+'</span>'+
