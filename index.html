@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.71 -->
+<!-- Baby Care v1.72 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2358,6 +2358,15 @@ var A = {
     }
     save(); render();
   },
+  feedSwitch: function(){
+    var now=Date.now();
+    if(ui._feedTap && (now-ui._feedTap)<400){ ui._feedTap=0; var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); }
+    else { ui._feedTap=now; toast("Tap again to start on the "+(suggSide()==="Left"?"Right":"Left")+" side"); }
+  },
+  cryYes: function(){ ui.crySug=true; render(); },
+  cryNo: function(){ ui.cryDismiss=Date.now(); ui.crySug=false; render(); },
+  cryFeed: function(){ ui.crySug=false; var sug=suggSide(); A.cstart(sug==="Left"?"L":"R"); },
+  cryNappy: function(){ ui.crySug=false; ui.cryDismiss=Date.now(); S.tab="activity"; A.open("nappy"); },
   cstart: function(x){
     var k="nursing", s=S.sess[k];
     if(s){
@@ -3454,6 +3463,7 @@ function vSummary(){
   var age=babyAge(), un=upNext();
   var due = un && un.next ? un.next<Date.now() : false;
   var upHtml =
+    cryCardHtml()+
     '<div class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;min-height:156px;box-sizing:border-box">'+
       '<div class="rowsb" style="margin-bottom:10px">'+
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
@@ -3464,7 +3474,7 @@ function vSummary(){
         '<span style="min-width:0">'+
           '<div style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+
             (un ? (due ? 'Due Now' : tClock(un.next)) : 'No feeds yet')+'</div>'+
-          '<div style="font-size:15px;color:var(--sub);margin-top:4px">'+lastFeedLine()+'</div></span>'+
+          '<div style="font-size:15px;color:var(--sub);margin-top:4px">'+lastFeedLine()+'</div>'+(un?'<button class="press" data-a="feedSwitch" style="margin-top:6px;font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;padding:0;text-align:left">Double Tap to switch sides</button>':'')+'</span>'+
         '<span style="display:flex;gap:8px;flex-shrink:0;align-items:center">'+
         '<button class="circ press" data-a="heroplay" style="width:46px;height:46px;background:'+C.pink+'">'+
           ((S.sess.nursing&&S.sess.nursing.run)?ic("pause",18,"#fff"):ic("play",18,"#fff"))+'</button>'+
@@ -3755,7 +3765,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.71</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.72</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7116,7 +7126,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.71";
+var APPVER="1.72";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7395,6 +7405,28 @@ function upCheck(){
   }catch(e){}
 }
 function lastFeed(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(isFeed(S.entries[i])){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
+function cryCardHtml(){
+  var un=upNext(), feedSoon=!!(un && un.next && un.next<=Date.now()+20*60000);
+  var nc=nappyChip(), napDue=!!(nc && nc.txt && nc.txt.indexOf("due now")>=0);
+  if(!feedSoon && !napDue) return "";
+  if(ui.cryDismiss && (Date.now()-ui.cryDismiss)<30*60000) return "";
+  if(ui.crySug){
+    var tips=[];
+    if(feedSoon) tips.push("Baby may be hungry \u2014 a feed is due "+((un.next<=Date.now())?"now":"soon")+".");
+    if(napDue) tips.push("It may be time for a nappy change.");
+    return '<div class="card" style="width:100%;margin-bottom:12px;padding:16px">'+
+      '<div style="font-size:15px;font-weight:700;margin-bottom:6px">Comforting baby</div>'+
+      '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:12px">'+tips.join(" ")+'</div>'+
+      '<div style="display:flex;gap:8px">'+
+      (feedSoon?'<button class="press" data-a="cryFeed" style="flex:1;height:42px;border-radius:12px;text-align:center;background:'+C.pink+';color:#fff;font-size:14px;font-weight:700">Start a feed</button>':'')+
+      (napDue?'<button class="press" data-a="cryNappy" style="flex:1;height:42px;border-radius:12px;text-align:center;background:'+C.blue+';color:#fff;font-size:14px;font-weight:700">Log a nappy</button>':'')+
+      '<button class="press" data-a="cryNo" style="flex:1;height:42px;border-radius:12px;text-align:center;background:var(--card2);color:#fff;font-size:14px;font-weight:700">Dismiss</button></div></div>';
+  }
+  return '<div class="card" style="width:100%;margin-bottom:12px;padding:16px;display:flex;align-items:center;gap:12px">'+
+    '<span style="flex:1;min-width:0;font-size:16px;font-weight:700">Is the baby crying?</span>'+
+    '<button class="press" data-a="cryYes" style="padding:9px 20px;border-radius:12px;text-align:center;background:'+C.coral+';color:#000;font-size:14px;font-weight:700">Yes</button>'+
+    '<button class="press" data-a="cryNo" style="padding:9px 20px;border-radius:12px;text-align:center;background:var(--card2);color:#fff;font-size:14px;font-weight:700">No</button></div>';
+}
 function lastFeedLine(){
   var e=lastFeed(); if(!e) return "Log a feed to start predictions";
   var what = e.act==="nursing"
