@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.73 -->
+<!-- Baby Care v1.74 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -912,7 +912,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR",vitals:"VITL"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR",vitals:"VITL",crying:"CRY"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -2358,21 +2358,17 @@ var A = {
     }
     save(); render();
   },
-  feedSwitch: function(){
-    var now=Date.now();
-    if(ui._feedTap && (now-ui._feedTap)<400){ ui._feedTap=0; var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); }
-    else { ui._feedTap=now; toast("Tap again to start on the "+(suggSide()==="Left"?"Right":"Left")+" side"); }
-  },
-  cryYes: function(){ ui.cryStep="redflags"; ui.cryFlags=[]; render(); },
-  cryNo: function(){ ui.cryStep="no_branch"; ui.cryDismiss=Date.now(); render(); },
+  feedSwitch: function(){ var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); },
+  cryYes: function(){ ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; cryLogNew(true); ui.cryStep="redflags"; render(); },
+  cryNo: function(){ ui.cryEntryId=null; cryLogNew(false); ui.cryStep="no_branch"; render(); },
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
   cryReset: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); render(); },
   cryFlagToggle: function(x){ x=+x; var f=(ui.cryFlags||[]).slice(); if(x===4){ f=(f.indexOf(4)>=0)?[]:[4]; } else { f=f.filter(function(v){return v!==4;}); var p=f.indexOf(x); if(p>=0) f.splice(p,1); else f.push(x); } ui.cryFlags=f; render(); },
-  cryRedNext: function(){ var f=ui.cryFlags||[], any=false, i; for(i=0;i<4;i++) if(f.indexOf(i)>=0) any=true; ui.cryStep=any?"emergency":"feeding"; render(); },
-  cryFeedPick: function(x){ ui.cryFeed=x; ui.cryPhys=[]; ui.cryStep="physical"; render(); },
+  cryRedNext: function(){ var f=ui.cryFlags||[], any=false, i; for(i=0;i<4;i++) if(f.indexOf(i)>=0) any=true; cryPatch(function(d){ d.emergency=any; d.flags=f.slice(); }); ui.cryStep=any?"emergency":"feeding"; render(); },
+  cryFeedPick: function(x){ ui.cryFeed=x; ui.cryPhys=[]; cryPatch(function(d){ d.feed=x; }); ui.cryStep="physical"; render(); },
   cryPhysToggle: function(x){ x=+x; var s=(ui.cryPhys||[]).slice(), p=s.indexOf(x); if(p>=0) s.splice(p,1); else s.push(x); ui.cryPhys=s; render(); },
-  cryPhysNext: function(){ ui.cryStep="results"; render(); },
-  cryNoPick: function(x){ ui.cryStep="no_"+x; render(); },
+  cryPhysNext: function(){ cryPatch(function(d){ d.phys=(ui.cryPhys||[]).slice(); }); ui.cryStep="results"; render(); },
+  cryNoPick: function(x){ cryPatch(function(d){ d.noPick=x; }); ui.cryStep="no_"+x; render(); },
   cryStartFeed: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); var sug=suggSide(); A.cstart(sug==="Left"?"L":"R"); },
   cryNappy: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); S.tab="activity"; A.open("nappy"); },
   cryLogSleep: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); S.tab="activity"; A.open("babysleep"); },
@@ -2695,6 +2691,10 @@ var A = {
     var i=+x, e=S.entries[i]; if(!e) return;
     S.eidx=i; ui.sheet=false; ui.dts={};
     var a=act(e.act), d=e.data||{};
+    if(e.act==="crying"){
+      ui.cryEntryId=e.id; ui.cryFlags=(d.flags||[]).slice(); ui.cryFeed=d.feed||null; ui.cryPhys=(d.phys||[]).slice();
+      ui.cryStep=d.crying?"redflags":"no_branch"; S.eidx=null; S.tab="summary"; S.sub=""; S.route="list"; render(); return;
+    }
     if(e.act==="vomit"){
       ui.vom={ type:d.type||"Spit-up", vol:(d.vol!=null?d.vol:5), look:d.look||"Fresh", exit:d.exit||"Mouth", after:d.after||"Content", ts:new Date(e.ts).getTime(), past:false, editId:e.id };
       S.eidx=null; S.tab="activity"; S.route="vomit"; S.pmode=false; ui.sheet=false; render(); return;
@@ -3294,7 +3294,7 @@ function liveNowHtml(){
     '<div class="card" style="margin-bottom:24px;padding:0;overflow:hidden">'+rows+'</div>';
 }
 function entryRow(e, first, idx){
-  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : ((e.act==="pumping" && e.data && e.data.storage) ? {t:"Pumped", icon:"zap", c:(act("pumping")||{}).c} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"}));
+  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : (e.act==="crying" ? {t:(e.data&&e.data.crying?"Crying":"Not crying"), icon:"activity", c:C.coral} : ((e.act==="pumping" && e.data && e.data.storage) ? {t:"Pumped", icon:"zap", c:(act("pumping")||{}).c} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"})));
   var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
     '<span style="display:block;font-size:13px;color:var(--sub)">'+(e.act==="note" ? ('Next visit '+((S.baby&&S.baby.nextVisit)?(dayLabel(new Date(S.baby.nextVisit).toISOString())+' '+tClock(S.baby.nextVisit)):'not set')+(e.by?'. '+esc(e.by):'')) : ((e.detail?esc(e.detail):'')+(e.by?((e.detail?' \u00B7 ':'')+esc(e.by)):'')))+'</span></span>'+
@@ -3480,7 +3480,7 @@ function vSummary(){
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
         '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">'+
           (un ? 'Start on the '+un.side : '')+ic("chevron-right",16,C.sub)+'</span></div>'+
-      (un?'<div style="text-align:right;margin-bottom:6px"><button class="press" data-a="feedSwitch" style="font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;padding:0">Double Tap to switch sides</button></div>':'')+
+      (un?'<div style="text-align:right;margin-bottom:6px"><button class="press" data-a="feedSwitch" style="font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;padding:0">Switch side</button></div>':'')+
       '<div style="height:14px"></div>'+
       '<div class="rowsb" style="align-items:flex-end">'+
         '<span style="min-width:0">'+
@@ -3777,7 +3777,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.73</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.74</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7138,7 +7138,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.73";
+var APPVER="1.74";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7491,11 +7491,19 @@ function vCry(){
   }
   ui.cryStep=null; return "";
 }
+function cryDetail(d){
+  if(!d.crying){ var np={prevent:"Preventative check",log:"Logging activity",play:"Play & development"}; return "Not crying"+(d.noPick?" \u00B7 "+(np[d.noPick]||d.noPick):""); }
+  var p=["Crying"];
+  if(d.emergency) p.push("warning signs");
+  if(d.feed==="BEFORE_FEED") p.push("due for feed"); else if(d.feed==="AFTER_FEED") p.push("just fed"); else if(d.feed==="OTHER_NEEDS") p.push("other needs");
+  return p.join(" \u00B7 ");
+}
+function cryLogNew(crying){
+  var ts=Date.now(), e={id:aidUnique(aidFrom((S.who||""), ts, "crying")), act:"crying", detail:cryDetail({crying:crying}), data:{crying:crying}, ts:new Date(ts).toISOString(), by:(S.who||undefined), up:ts, bid:S.activeBaby};
+  S.entries.push(e); S.entries.sort(function(x,y){return x.ts<y.ts?1:(x.ts>y.ts?-1:0);}); ui.cryEntryId=e.id; save();
+}
+function cryPatch(fn){ var i,e=null; for(i=0;i<S.entries.length;i++) if(String(S.entries[i].id)===String(ui.cryEntryId)){ e=S.entries[i]; break; } if(!e) return; fn(e.data); e.detail=cryDetail(e.data); e.up=Date.now(); save(); }
 function cryCardHtml(){
-  var un=upNext(), feedSoon=!!(un && un.next && un.next<=Date.now()+20*60000);
-  var nc=nappyChip(), napDue=!!(nc && nc.txt && nc.txt.indexOf("due now")>=0);
-  if(!feedSoon && !napDue) return "";
-  if(ui.cryDismiss && (Date.now()-ui.cryDismiss)<30*60000) return "";
   return '<div class="card" style="width:100%;margin-bottom:12px;padding:16px;display:flex;align-items:center;gap:12px">'+
     '<span style="flex:1;min-width:0;font-size:16px;font-weight:700">Is the baby crying?</span>'+
     '<button class="press" data-a="cryYes" style="padding:9px 20px;border-radius:12px;text-align:center;background:'+C.coral+';color:#000;font-size:14px;font-weight:700">Yes</button>'+
