@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.74 -->
+<!-- Baby Care v1.75 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2364,8 +2364,8 @@ var A = {
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
   cryReset: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); render(); },
   cryFlagToggle: function(x){ x=+x; var f=(ui.cryFlags||[]).slice(); if(x===4){ f=(f.indexOf(4)>=0)?[]:[4]; } else { f=f.filter(function(v){return v!==4;}); var p=f.indexOf(x); if(p>=0) f.splice(p,1); else f.push(x); } ui.cryFlags=f; render(); },
-  cryRedNext: function(){ var f=ui.cryFlags||[], any=false, i; for(i=0;i<4;i++) if(f.indexOf(i)>=0) any=true; cryPatch(function(d){ d.emergency=any; d.flags=f.slice(); }); ui.cryStep=any?"emergency":"feeding"; render(); },
-  cryFeedPick: function(x){ ui.cryFeed=x; ui.cryPhys=[]; cryPatch(function(d){ d.feed=x; }); ui.cryStep="physical"; render(); },
+  cryRedNext: function(){ var f=ui.cryFlags||[], any=false, i; for(i=0;i<4;i++) if(f.indexOf(i)>=0) any=true; if(!any && !ui.cryFeed){ ui.cryFeed=cryContext().infer; } cryPatch(function(d){ d.emergency=any; d.flags=f.slice(); if(!any) d.feed=ui.cryFeed; }); ui.cryStep=any?"emergency":"feeding"; render(); },
+  cryFeedPick: function(x){ ui.cryFeed=x; var _c=cryContext(); ui.cryPhys=_c.napDue?[0]:[]; cryPatch(function(d){ d.feed=x; d.phys=ui.cryPhys.slice(); }); ui.cryStep="physical"; render(); },
   cryPhysToggle: function(x){ x=+x; var s=(ui.cryPhys||[]).slice(), p=s.indexOf(x); if(p>=0) s.splice(p,1); else s.push(x); ui.cryPhys=s; render(); },
   cryPhysNext: function(){ cryPatch(function(d){ d.phys=(ui.cryPhys||[]).slice(); }); ui.cryStep="results"; render(); },
   cryNoPick: function(x){ cryPatch(function(d){ d.noPick=x; }); ui.cryStep="no_"+x; render(); },
@@ -3777,7 +3777,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.74</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.75</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7138,7 +7138,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.74";
+var APPVER="1.75";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7419,8 +7419,26 @@ function upCheck(){
 function lastFeed(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(isFeed(S.entries[i])){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
 function cryHead(t,s){ return '<div class="full" style="padding:0 4px">'+backBtn(C.pink,"Back","cryBack")+'<div style="font-size:24px;font-weight:700;margin:8px 0 4px">'+t+'</div>'+(s?'<div style="font-size:14px;color:var(--sub);margin-bottom:16px">'+s+'</div>':''); }
 function cryChk(label,on,action,x,good){ var col=good?C.green:(on?C.pink:"var(--sub)"); return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left;background:var(--card);border-radius:14px;margin-bottom:8px;border:1px solid '+(on?alpha(col,0.6):"transparent")+'"><span style="width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid '+(on?col:"var(--sub)")+';background:'+(on?col:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(on?ic("check",13,"#000",{sw:3}):"")+'</span><span style="flex:1;font-size:14px;font-weight:600">'+label+'</span></button>'; }
-function cryOpt(label,action,x,desc){ return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;text-align:left;background:var(--card);border-radius:14px;margin-bottom:10px;padding:16px;display:flex;align-items:center;gap:12px"><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">'+label+'</span>'+(desc?'<span style="display:block;font-size:13px;color:var(--sub);margin-top:3px">'+desc+'</span>':"")+'</span>'+ic("chevron-right",18,"#5c5c61")+'</button>'; }
+function cryOpt(label,action,x,desc,hi,badge){ return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;text-align:left;background:var(--card);border-radius:14px;margin-bottom:10px;padding:16px;display:flex;align-items:center;gap:12px'+(hi?";border:1.5px solid "+C.pink:"")+'"><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">'+label+(badge?' <span style="font-size:11px;font-weight:800;color:'+C.pink+'">\u00B7 '+badge+'</span>':"")+'</span>'+(desc?'<span style="display:block;font-size:13px;color:var(--sub);margin-top:3px">'+desc+'</span>':"")+'</span>'+ic("chevron-right",18,"#5c5c61")+'</button>'; }
 function cryStepRow(n,h,b){ return '<div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-start"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(C.pink,0.18)+';color:'+C.pink+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+n+'</span><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:2px">'+h+'</div><div style="font-size:14px;color:var(--sub);line-height:1.55">'+b+'</div></div></div>'; }
+function cryContext(){
+  var lf=lastFeed(), un=upNext(), ln=lastNappy(), now=Date.now();
+  var feedMins = lf ? Math.round((now-new Date(lf.ts).getTime())/60000) : null;
+  var feedDue = !!(un && un.next && un.next<=now);
+  var nc=nappyChip(), napDue = !!(nc && nc.txt && nc.txt.indexOf("due now")>=0);
+  var infer="OTHER_NEEDS";
+  if(feedMins!=null && feedMins<30) infer="AFTER_FEED";
+  else if(feedDue || (feedMins!=null && feedMins>=120)) infer="BEFORE_FEED";
+  return {lf:lf, un:un, ln:ln, feedMins:feedMins, feedDue:feedDue, napDue:napDue, nc:nc, infer:infer};
+}
+function cryCtxLine(ctx){
+  var bits=[];
+  bits.push(ctx.feedMins!=null ? ("Last feed "+fmtMin(ctx.feedMins*60)+" ago") : "No feeds logged yet");
+  if(ctx.un && ctx.un.next) bits.push("next feed "+(ctx.feedDue?"due now":"~"+tClock(ctx.un.next)));
+  if(ctx.ln) bits.push("last nappy "+agoStr(new Date(ctx.ln.ts).getTime()));
+  if(ctx.nc && ctx.nc.txt) bits.push("nappy "+(ctx.napDue?"due now":ctx.nc.txt.toLowerCase()));
+  return '<div class="card" style="margin-bottom:14px;padding:12px 14px"><div style="font-size:11px;font-weight:800;letter-spacing:.4px;color:'+C.pink+';margin-bottom:4px">FROM YOUR LOGS</div><div style="font-size:13px;color:var(--sub);line-height:1.5">'+bits.join(" \u00B7 ")+'</div></div>';
+}
 function vCry(){
   var s=ui.cryStep, i, j;
   if(s==="redflags"){
@@ -7436,15 +7454,21 @@ function vCry(){
       '<button class="press" data-a="cryReset" style="width:100%;height:50px;border-radius:16px;margin-top:16px;text-align:center;background:var(--card2);color:#fff;font-size:15px;font-weight:700">Done</button><div style="height:120px"></div></div>';
   }
   if(s==="feeding"){
-    return cryHead("Feeding status","What is the baby\u2019s current feeding status?")+
-      cryOpt("Haven\u2019t fed in 2+ hours / due for a feed","cryFeedPick","BEFORE_FEED","")+
-      cryOpt("Just finished feeding (under 30 min ago)","cryFeedPick","AFTER_FEED","")+
-      cryOpt("Fed recently and satisfied","cryFeedPick","OTHER_NEEDS","")+'<div style="height:200px"></div></div>';
+    var fx=cryContext(), sug=ui.cryFeed||fx.infer;
+    var bf=["BEFORE_FEED","Due for a feed / 2h+ since last"],af=["AFTER_FEED","Just fed (under 30 min ago)"],on2=["OTHER_NEEDS","Fed recently and satisfied"];
+    return cryHead("Feeding status","We\u2019ve pre-filled this from your logs \u2014 change it if it\u2019s off.")+
+      cryCtxLine(fx)+
+      cryOpt(bf[1],"cryFeedPick","BEFORE_FEED","",sug==="BEFORE_FEED",(fx.infer==="BEFORE_FEED"?"suggested":""))+
+      cryOpt(af[1],"cryFeedPick","AFTER_FEED","",sug==="AFTER_FEED",(fx.infer==="AFTER_FEED"?"suggested":""))+
+      cryOpt(on2[1],"cryFeedPick","OTHER_NEEDS","",sug==="OTHER_NEEDS",(fx.infer==="OTHER_NEEDS"?"suggested":""))+
+      '<div style="height:200px"></div></div>';
   }
   if(s==="physical"){
-    var op=["Diaper is wet or soiled","Chest/neck feels hot or sweaty","Hands/feet cool, environment chilly","Bright lights / loud environment","Signs of fatigue (yawning, rubbing eyes)"], se=ui.cryPhys||[], r2="";
+    var px=cryContext();
+    var op=["Diaper is wet or soiled"+(px.napDue?" \u00B7 predicted due":""),"Chest/neck feels hot or sweaty","Hands/feet cool, environment chilly","Bright lights / loud environment","Signs of fatigue (yawning, rubbing eyes)"], se=ui.cryPhys||[], r2="";
     for(i=0;i<op.length;i++) r2+=cryChk(op[i], se.indexOf(i)>=0, "cryPhysToggle", i, false);
-    return cryHead("Physical & environment","Select all that apply.")+r2+
+    return cryHead("Physical & environment","Select all that apply \u2014 we\u2019ve pre-checked what your logs suggest.")+
+      (px.napDue?'<div style="font-size:12px;color:var(--sub);margin:-8px 2px 12px">A nappy is predicted due, so it\u2019s pre-checked.</div>':"")+r2+
       '<button class="press" data-a="cryPhysNext" style="width:100%;height:52px;border-radius:16px;margin-top:14px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">See comfort tips</button><div style="height:200px"></div></div>';
   }
   if(s==="results"){
