@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.75 -->
+<!-- Baby Care v1.76 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1749,6 +1749,7 @@ var A = {
   },
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
+    ui.feedOnly=false;
     if(x==="vomit"){ A.vomitOpen(); return; }
     if(x==="fever"){ ui.vitWho="baby"; ui.vitItem="temp"; ui.ft=null; ui.fu="C"; S.tab="activity"; S.route="vitals"; S.eidx=null; ui.sheet=false; render(); return; }
     if(x==="vitals"){ ui.vitItem=null; ui.vitVal=null; }
@@ -2359,13 +2360,18 @@ var A = {
     save(); render();
   },
   feedSwitch: function(){ var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); },
-  cryYes: function(){ ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; cryLogNew(true); ui.cryStep="redflags"; render(); },
-  cryNo: function(){ ui.cryEntryId=null; cryLogNew(false); ui.cryStep="no_branch"; render(); },
+  cryYes: function(){ ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(true); ui.cryStep="redflags"; render(); },
+  cryNo: function(){ ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; render(); },
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
+  feedAll: function(){ ui.feedOnly=false; render(); },
   cryReset: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); render(); },
+  cryDelete: function(){ if(ui.cryEntryId){ S.entries=S.entries.filter(function(z){return String(z.id)!==String(ui.cryEntryId);}); syTomb(ui.cryEntryId); } ui.cryStep=null; ui.cryFromLog=false; ui.cryEntryId=null; S.tab="summary"; S.sub="hist"; save(); render(); toast("Entry deleted"); },
   cryFlagToggle: function(x){ x=+x; var f=(ui.cryFlags||[]).slice(); if(x===4){ f=(f.indexOf(4)>=0)?[]:[4]; } else { f=f.filter(function(v){return v!==4;}); var p=f.indexOf(x); if(p>=0) f.splice(p,1); else f.push(x); } ui.cryFlags=f; render(); },
   cryRedNext: function(){ var f=ui.cryFlags||[], any=false, i; for(i=0;i<4;i++) if(f.indexOf(i)>=0) any=true; if(!any && !ui.cryFeed){ ui.cryFeed=cryContext().infer; } cryPatch(function(d){ d.emergency=any; d.flags=f.slice(); if(!any) d.feed=ui.cryFeed; }); ui.cryStep=any?"emergency":"feeding"; render(); },
-  cryFeedPick: function(x){ ui.cryFeed=x; var _c=cryContext(); ui.cryPhys=_c.napDue?[0]:[]; cryPatch(function(d){ d.feed=x; d.phys=ui.cryPhys.slice(); }); ui.cryStep="physical"; render(); },
+  cryFeedPick: function(x){ ui.cryFeed=x; var _c=cryContext(); ui.cryPhys=_c.napDue?[0]:[]; cryPatch(function(d){ d.feed=x; d.phys=ui.cryPhys.slice(); });
+    if(x==="BEFORE_FEED"){ ui.cryStep=null; ui.cryFromLog=false; ui.feedOnly=true; S.tab="activity"; S.route="list"; S.sub=""; S.eidx=null; render(); toast("Time to feed \u2014 pick a feeding activity"); return; }
+    ui.cryStep="physical"; render();
+  },
   cryPhysToggle: function(x){ x=+x; var s=(ui.cryPhys||[]).slice(), p=s.indexOf(x); if(p>=0) s.splice(p,1); else s.push(x); ui.cryPhys=s; render(); },
   cryPhysNext: function(){ cryPatch(function(d){ d.phys=(ui.cryPhys||[]).slice(); }); ui.cryStep="results"; render(); },
   cryNoPick: function(x){ cryPatch(function(d){ d.noPick=x; }); ui.cryStep="no_"+x; render(); },
@@ -2692,7 +2698,7 @@ var A = {
     S.eidx=i; ui.sheet=false; ui.dts={};
     var a=act(e.act), d=e.data||{};
     if(e.act==="crying"){
-      ui.cryEntryId=e.id; ui.cryFlags=(d.flags||[]).slice(); ui.cryFeed=d.feed||null; ui.cryPhys=(d.phys||[]).slice();
+      ui.cryEntryId=e.id; ui.cryFlags=(d.flags||[]).slice(); ui.cryFeed=d.feed||null; ui.cryPhys=(d.phys||[]).slice(); ui.cryFromLog=true;
       ui.cryStep=d.crying?"redflags":"no_branch"; S.eidx=null; S.tab="summary"; S.sub=""; S.route="list"; render(); return;
     }
     if(e.act==="vomit"){
@@ -3777,7 +3783,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.75</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.76</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -3835,6 +3841,7 @@ function vList(){
     '<button class="press" data-a="setGrid" data-x="1" style="width:40px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:'+(S.grid?C.blue:"var(--card2)")+'">'+ic("grid",17,S.grid?"#000":"#fff")+'</button>'+
     '</span></div>';
   else h += bannerHtml();
+  if(ui.feedOnly) h += '<div class="card" style="margin-bottom:12px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="flex:1;font-size:13px;color:var(--sub)">Showing feeding activities</span><button class="press" data-a="feedAll" style="color:'+C.pink+';font-size:13px;font-weight:700;background:none;border:none">Show all</button></div>';
   h += '<div id="cards" class="'+(edit?'wigmode ':'')+(grid?'grid':'')+'">';
   var CORE={nursing:1,nappy:1,burp:1,vomit:1,babysleep:1,pacifier:1,mothersleep:1,medicine:1,growth:1,vaccine:1,carseat:1};
   function usedIn4d(kk){
@@ -3853,8 +3860,10 @@ function vList(){
     for(_ri=0;_ri<acts.length;_ri++){ var _ra=acts[_ri]; if(!coreOn(_ra.k) && !S.sess[_ra.k] && recent2d(_ra.k)) _res.push(_ra); else _norm.push(_ra); }
     acts=_norm.concat(_res);
   }
+  var FEEDACTS={nursing:1,formula:1,expressed:1,water:1,solids:1,motherhydration:1};
   var hiddenN=0, vbDone=false;
   for(i=0;i<acts.length;i++){
+    if(ui.feedOnly && !FEEDACTS[acts[i].k]) continue;
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     var manHid=!coreOn(a.k);
     if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k) && !recent2d(a.k)){ hiddenN++; continue; }
@@ -7138,7 +7147,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.75";
+var APPVER="1.76";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7417,7 +7426,7 @@ function upCheck(){
   }catch(e){}
 }
 function lastFeed(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(isFeed(S.entries[i])){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
-function cryHead(t,s){ return '<div class="full" style="padding:0 4px">'+backBtn(C.pink,"Back","cryBack")+'<div style="font-size:24px;font-weight:700;margin:8px 0 4px">'+t+'</div>'+(s?'<div style="font-size:14px;color:var(--sub);margin-bottom:16px">'+s+'</div>':''); }
+function cryHead(t,s){ return '<div class="full" style="padding:0 4px">'+backBtn(C.pink,"Back","cryBack")+'<div style="font-size:24px;font-weight:700;margin:8px 0 4px">'+t+'</div>'+(s?'<div style="font-size:14px;color:var(--sub);margin-bottom:'+(ui.cryFromLog?'6px':'16px')+'">'+s+'</div>':'')+(ui.cryFromLog?'<div style="text-align:right;margin:0 0 14px"><button class="press" data-a="cryDelete" style="color:'+C.red+';font-size:13px;font-weight:700;background:none;border:none;padding:0">Delete this entry</button></div>':''); }
 function cryChk(label,on,action,x,good){ var col=good?C.green:(on?C.pink:"var(--sub)"); return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left;background:var(--card);border-radius:14px;margin-bottom:8px;border:1px solid '+(on?alpha(col,0.6):"transparent")+'"><span style="width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid '+(on?col:"var(--sub)")+';background:'+(on?col:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(on?ic("check",13,"#000",{sw:3}):"")+'</span><span style="flex:1;font-size:14px;font-weight:600">'+label+'</span></button>'; }
 function cryOpt(label,action,x,desc,hi,badge){ return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;text-align:left;background:var(--card);border-radius:14px;margin-bottom:10px;padding:16px;display:flex;align-items:center;gap:12px'+(hi?";border:1.5px solid "+C.pink:"")+'"><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">'+label+(badge?' <span style="font-size:11px;font-weight:800;color:'+C.pink+'">\u00B7 '+badge+'</span>':"")+'</span>'+(desc?'<span style="display:block;font-size:13px;color:var(--sub);margin-top:3px">'+desc+'</span>':"")+'</span>'+ic("chevron-right",18,"#5c5c61")+'</button>'; }
 function cryStepRow(n,h,b){ return '<div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-start"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(C.pink,0.18)+';color:'+C.pink+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+n+'</span><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:2px">'+h+'</div><div style="font-size:14px;color:var(--sub);line-height:1.55">'+b+'</div></div></div>'; }
@@ -7444,7 +7453,7 @@ function vCry(){
   if(s==="redflags"){
     var of=["Fever over 100.4\u00B0F (38\u00B0C)","Difficulty breathing / nasal flaring","Inconsolable high-pitched shrieking","Lethargy or weak cry","None of the above"], fl=ui.cryFlags||[], rows="";
     for(i=0;i<of.length;i++) rows+=cryChk(of[i], fl.indexOf(i)>=0, "cryFlagToggle", i, i===4);
-    return cryHead("Safety check first","Are any of these medical warning signs present?")+rows+
+    return cryHead("Safety check first","Are any of these medical warning signs present?")+cryCtxLine(cryContext())+rows+
       '<button class="press" data-a="cryRedNext" style="width:100%;height:52px;border-radius:16px;margin-top:14px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">Continue</button><div style="height:200px"></div></div>';
   }
   if(s==="emergency"){
