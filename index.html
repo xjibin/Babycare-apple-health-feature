@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.77 -->
+<!-- Baby Care v1.78 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3488,7 +3488,7 @@ function vSummary(){
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
         '<span style="display:flex;align-items:center;gap:4px;color:var(--sub);font-size:15px">'+
           (un ? 'Start on the '+un.side : '')+ic("chevron-right",16,C.sub)+'</span></div>'+
-      (un?'<div style="text-align:right;margin-bottom:6px"><button class="press" data-a="feedSwitch" style="font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;padding:0">Tap to switch sides</button></div>':'')+
+      (un?'<div style="text-align:right;margin-top:-6px;margin-bottom:8px"><button class="press" data-a="feedSwitch" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;padding:0">Tap to switch sides'+ic("repeat",14,C.pink)+'</button></div>':'')+
       '<div class="rowsb" style="align-items:flex-end">'+
         '<span style="min-width:0">'+
           '<div style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+
@@ -3784,7 +3784,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.77</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.78</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7168,7 +7168,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.77";
+var APPVER="1.78";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7508,8 +7508,8 @@ function vCry(){
     else { title="Sensory reset & the 5 S\u2019s"; steps=[["Thermal adjust","Add or remove one breathable cotton layer based on how their chest feels."],["Sensory reset","Dim the lights and cut background noise."],["Soothing chain","Swaddle \u2192 continuous white noise \u2192 rhythmic motion \u2192 pacifier."]]; }
     var body='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:2px 2px 4px">PRIMARY RECOMMENDATION</div><div style="font-size:20px;font-weight:800;margin-bottom:14px">'+title+'</div>';
     for(j=0;j<steps.length;j++) body+=cryStepRow(j+1, steps[j][0], steps[j][1]);
-    var add=[]; if(phys.indexOf(0)>=0) add.push("Diaper felt wet/soiled \u2014 change it first."); if(phys.indexOf(1)>=0) add.push("Chest felt hot \u2014 remove a layer and check the room temperature."); if(phys.indexOf(2)>=0) add.push("Hands/feet cool \u2014 add a light layer or socks."); if(phys.indexOf(3)>=0) add.push("Bright/loud \u2014 move to a calmer, dimmer space."); if(phys.indexOf(4)>=0) add.push("Fatigue cues \u2014 start a calm nap routine.");
-    if(add.length){ body+='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:14px 2px 6px">ALSO NOTED</div>'; for(i=0;i<add.length;i++) body+='<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:6px">\u2022 '+add[i]+'</div>'; }
+    var add=[]; if(phys.indexOf(0)>=0) add.push(["Diaper wet or soiled","Change it first before anything else."]); if(phys.indexOf(1)>=0) add.push(["Chest / neck hot","Remove a layer and check the room temperature."]); if(phys.indexOf(2)>=0) add.push(["Hands / feet cool","Add a light layer or socks."]); if(phys.indexOf(3)>=0) add.push(["Bright / loud","Move to a calmer, dimmer space."]); if(phys.indexOf(4)>=0) add.push(["Fatigue cues","Start a calm nap routine."]);
+    if(add.length){ body+='<div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:var(--sub);margin:16px 2px 8px">ALSO NOTED</div><div class="card" style="padding:2px 0;margin-bottom:4px">'; for(i=0;i<add.length;i++) body+='<div style="padding:12px 16px'+(i?";border-top:1px solid var(--hair)":"")+'"><div style="font-size:15px;font-weight:700;margin-bottom:3px">'+add[i][0]+'</div><div style="font-size:14px;color:var(--sub);line-height:1.5">'+add[i][1]+'</div></div>'; body+='</div>'; }
     var quick = (b==="BEFORE_FEED"?'<button class="press" data-a="cryStartFeed" style="flex:1;height:46px;border-radius:14px;text-align:center;background:'+C.pink+';color:#fff;font-size:14px;font-weight:700">Start a feed</button>':"")+((phys.indexOf(0)>=0)?'<button class="press" data-a="cryNappy" style="flex:1;height:46px;border-radius:14px;text-align:center;background:'+C.blue+';color:#fff;font-size:14px;font-weight:700">Log a nappy</button>':"");
     return cryHead("Comfort tips","Tailored to what you told us.")+body+
       (quick?'<div style="display:flex;gap:8px;margin-top:8px">'+quick+'</div>':"")+
