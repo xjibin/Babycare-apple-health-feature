@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.82 -->
+<!-- Baby Care v1.83 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2368,8 +2368,17 @@ var A = {
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
   feedAll: function(){ ui.feedOnly=false; render(); },
   onbStart: function(){ ui.onbData=ui.onbData||{}; ui.onb="name"; render(); },
-  onbSignin: function(){ toast("Sign in is coming soon \u2014 tap \u2018I\u2019ll Join\u2019 to set up your baby"); },
-  onbPick: function(x){ var p=x.split("|"); (ui.onbData=ui.onbData||{})[p[0]]=p[1]; render(); },
+  onbSignin: function(){ ui.onbData=ui.onbData||{}; ui.signinErr=""; ui.signinBusy=false; ui.onb="signin"; render(); },
+  onbJoin: function(){
+    var o=ui.onbData=ui.onbData||{}, g=function(id){ var el=byId(id); return el?el.value:""; };
+    var url=g("siUrl").trim(), pass=g("siPass").trim(), cr=g("siRel").replace(/\s+/g,"").replace(/[<>]/g,"").slice(0,20);
+    if(cr) o.relation=cr;
+    if(!url || !pass){ ui.signinErr="Enter the endpoint URL and passphrase."; render(); return; }
+    if(!o.relation){ ui.signinErr="Choose who you are to the baby."; render(); return; }
+    o.url=url; o.pass=pass; ui.signinBusy=true; ui.signinErr=""; render();
+    signinPull(url, pass, function(doc){ signinApply(doc, url, pass, o.relation); }, function(msg){ ui.signinBusy=false; ui.signinErr=msg||"Couldn\u2019t unlock \u2014 check the details."; render(); });
+  },
+  onbPick: function(x){ var p=x.split("|"), o=(ui.onbData=ui.onbData||{}); if(ui.onb==="signin"){ var u9=byId("siUrl"),p9=byId("siPass"); if(u9)o.url=u9.value; if(p9)o.pass=p9.value; } o[p[0]]=p[1]; render(); },
   onbBack: function(x){ ui.onb=(x||"welcome"); render(); },
   onbNext: function(){
     var o=ui.onbData=ui.onbData||{}, step=ui.onb, g=function(id){ var el=byId(id); return el?el.value:""; };
@@ -3818,7 +3827,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.82</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.83</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6777,6 +6786,22 @@ function vOnboard(){
       '<div style="font-size:14px;color:var(--sub);margin-top:10px">Setting up your dashboard\u2026</div></div>'+
       '<div style="padding:10px 0 calc(24px + env(safe-area-inset-bottom))"><button class="press" data-a="onbFinish" style="width:100%;height:54px;border-radius:16px;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px">'+spin+'Continue</button></div>');
   }
+  if(step==="signin"){
+    var pre=(["Mother","Father","Guardian"].indexOf(o.relation)<0)?(o.relation||""):"";
+    return frame('<div style="flex:1;padding-top:34px">'+
+      '<div style="font-size:26px;font-weight:800;margin-bottom:6px">Join an existing baby</div>'+
+      '<div style="font-size:14px;color:var(--sub);margin-bottom:20px">Enter the sync details shared with you to load a baby that\u2019s already set up on another device.</div>'+
+      lbl("SYNC ENDPOINT URL")+'<textarea id="siUrl" class="ninput" rows="2" autocapitalize="off" spellcheck="false" placeholder="https://\u2026" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:14px;font-size:14px;color:#fff;resize:none;word-break:break-all;margin-bottom:14px">'+esc(o.url||"")+'</textarea>'+
+      lbl("PASSPHRASE")+'<input id="siPass" type="password" class="ninput" value="'+esc(o.pass||"")+'" autocapitalize="off" placeholder="Shared passphrase" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff;margin-bottom:16px">'+
+      lbl("I AM THE BABY\u2019S\u2026")+onbOpts("relation",["Mother","Father","Guardian"],o.relation,false)+
+      '<div style="height:10px"></div><input id="siRel" class="ninput" value="'+esc(pre)+'" placeholder="Or type your own (one word)" maxlength="20" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:14px;font-size:15px;color:#fff">'+
+      (ui.signinErr?'<div style="font-size:13px;color:'+C.red+';font-weight:600;margin-top:14px;line-height:1.5">'+esc(ui.signinErr)+'</div>':'')+
+      '<div style="font-size:12px;color:var(--sub);line-height:1.5;margin-top:16px;padding:12px;background:var(--card2);border-radius:12px">The passphrase unlocks full read &amp; write access to this baby\u2019s data \u2014 only use details shared with you directly.</div>'+
+      '<div style="height:20px"></div></div>'+
+      '<div style="display:flex;gap:10px;padding:10px 0 calc(24px + env(safe-area-inset-bottom))">'+
+      '<button class="press" data-a="onbBack" data-x="welcome" style="flex:1;height:54px;border-radius:16px;text-align:center;background:var(--card2);color:#fff;font-size:16px;font-weight:800">Back</button>'+
+      '<button class="press" data-a="onbJoin" style="flex:2;height:54px;border-radius:16px;text-align:center;background:'+(ui.signinBusy?"var(--card2)":C.pink)+';color:#fff;font-size:16px;font-weight:800"'+(ui.signinBusy?" disabled":"")+'>'+(ui.signinBusy?"Connecting\u2026":"Join baby")+'</button></div>');
+  }
   var tmap={name:["Baby\u2019s name","What should we call your little one?"],dob:["Date & time of birth","When was your baby born?"],gender:["Gender",""],blood:["Blood group",""],relation:["I am the baby\u2019s\u2026",""],hospital:["Hospital details","Optional \u2014 you can add these later."]};
   var bmap={name:"welcome",dob:"name",gender:"dob",blood:"gender",relation:"blood",hospital:"relation"};
   var t=tmap[step]||["",""], body="";
@@ -7289,12 +7314,38 @@ function syTick(){
       .catch(function(e){ SY.err=String(e.message||e); SY.busy=false; });
   });
 }
+function signinPull(url, pass, ok, err){
+  if(typeof fetch==="undefined" || typeof crypto==="undefined" || !crypto.subtle){ err("Live sync isn\u2019t supported on this device."); return; }
+  SY.url=url; SY.pass=pass; SY.key=null;
+  syKey(function(key){
+    fetch(url, {method:"GET", headers:{"Accept":"application/json"}})
+      .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error("GET "+r.status); return r.json(); })
+      .then(function(body){
+        if(body && body.c){ syDec(key, body.c, function(doc){ ok(doc); }, function(){ err("Couldn\u2019t unlock \u2014 check the passphrase."); }); }
+        else { ok(null); }
+      })
+      .catch(function(){ err("Couldn\u2019t reach that endpoint \u2014 check the URL and your connection."); });
+  });
+}
+function signinApply(doc, url, pass, relation){
+  SY.url=url; SY.pass=pass; SY.key=null; SY.on=true; SY.pushSig=""; SY.err="";
+  var rec=babyRec(S.activeBaby); if(rec) rec.sync={on:true, url:url, pass:pass};
+  if(doc) syMerge(doc);
+  rec=babyRec(S.activeBaby); if(rec) rec.sync={on:true, url:url, pass:pass};
+  if(relation==="Mother") S.who="Mum"; else if(relation==="Father") S.who="Dad"; else if(relation) S.who=relation;
+  S.onbDone=true; ui.onb=null; ui.onbData=null; ui.signinErr=""; ui.signinBusy=false;
+  if(typeof babyStash==="function") babyStash();
+  if(typeof sySaveCfg==="function") sySaveCfg();
+  S.tab="summary"; S.sub=""; S.route="list";
+  save(); render();
+  if(typeof sySoon==="function") sySoon();
+}
 function sySoon(){
   if(!SY.on) return;
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.82";
+var APPVER="1.83";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
