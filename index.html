@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.84 -->
+<!-- Baby Care v1.85 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -747,11 +747,15 @@ function agoStr(ms){
 }
 function babyAge(){
   if(!S.baby || !S.baby.dob) return null;
-  var d=Math.floor((Date.now()-new Date(S.baby.dob).getTime())/864e5);
-  if(d<0) return null;
-  if(d<49) return d+" days old";
-  var mo=Math.floor(d/30.4375);
-  return mo+" mo "+Math.floor(d-mo*30.4375)+" d old";
+  var b=new Date(S.baby.dob), d0=Math.floor((Date.now()-b.getTime())/864e5);
+  if(d0<0) return null;
+  if(d0<49) return d0+" days old";
+  var nd=new Date(), y=nd.getFullYear()-b.getFullYear(), m=nd.getMonth()-b.getMonth(), d=nd.getDate()-b.getDate();
+  if(d<0){ m--; d+=new Date(nd.getFullYear(), nd.getMonth(), 0).getDate(); }
+  if(m<0){ y--; m+=12; }
+  if(y>=1){ var pl=function(n,w){ return n+" "+w+(n===1?"":"s"); }; return pl(y,"year")+" "+pl(m,"month")+" "+pl(d,"day")+" old"; }
+  var mo0=Math.floor(d0/30.4375);
+  return mo0+" mo "+Math.floor(d0-mo0*30.4375)+" d old";
 }
 function interp(xs, ys, x){
   if(x<=xs[0]) return ys[0];
@@ -2367,6 +2371,7 @@ var A = {
   cryNo: function(){ ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; render(); },
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
   feedAll: function(){ ui.feedOnly=false; render(); },
+  onbToWelcome: function(){ ui.onb="welcome"; render(); },
   onbStart: function(){ ui.onbData=ui.onbData||{}; ui.onb="name"; render(); },
   onbSignin: function(){ ui.onbData=ui.onbData||{}; ui.signinErr=""; ui.signinBusy=false; ui.onb="signin"; render(); },
   onbJoin: function(){
@@ -2399,7 +2404,7 @@ var A = {
     ui.onb="success"; save(); render();
     if(typeof setTimeout!=="undefined") setTimeout(function(){ if(ui.onb==="success") A.onbFinish(); }, 1900);
   },
-  onbFinish: function(){ ui.onb=null; ui.onbData=null; S.tab="summary"; S.sub=""; S.route="list"; render(); },
+  onbFinish: function(){ ui.onb=null; ui.onbData=null; S.night=false; S.cnight=false; S.tab="summary"; S.sub=""; S.route="list"; render(); },
   crySleepStart: function(){ ui.cryStep=null; ui.cryFromLog=false; S.sess.babysleep={sec:0, run:true, at:Date.now(), st:Date.now()}; S.tab="activity"; S.route="babysleep"; S.pmode=false; S.eidx=null; ui.sheet=false; ui.feedOnly=false; save(); render(); toast("Baby sleep started"); },
   howsSleeping: function(){ ui.howsStep="sleeping"; showHowsBaby(); },
   howsEyes: function(){ ui.howsStep="eyes"; showHowsBaby(); },
@@ -3827,7 +3832,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.84</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.85</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6770,7 +6775,20 @@ function onbOpts(field, opts, cur, grid){
 function vOnboard(){
   var step=ui.onb, o=ui.onbData=ui.onbData||{};
   function frame(inner){ return '<div class="full" style="padding:0 6px;display:flex;flex-direction:column;min-height:82vh">'+inner+'</div>'; }
-  if(!step || step==="welcome"){
+  if(!step || step==="intro"){
+    var g1='<svg width="150" height="150" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="76" fill="'+alpha(C.pink,0.14)+'"/><path d="M80 116 C40 92 40 60 62 60 C74 60 80 70 80 70 C80 70 86 60 98 60 C120 60 120 92 80 116 Z" fill="'+alpha(C.coral,0.55)+'"/><circle cx="80" cy="54" r="16" fill="'+alpha(C.pink,0.5)+'"/><circle cx="74" cy="52" r="2.5" fill="#fff"/><circle cx="86" cy="52" r="2.5" fill="#fff"/></svg>';
+    var g2='<svg width="150" height="150" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="76" fill="'+alpha(C.sky,0.14)+'"/><rect x="52" y="40" width="56" height="76" rx="10" fill="'+alpha(C.sky,0.35)+'"/><rect x="66" y="32" width="28" height="16" rx="8" fill="'+alpha(C.sky,0.7)+'"/><circle cx="64" cy="62" r="4" fill="#fff"/><rect x="74" y="59" width="24" height="6" rx="3" fill="#fff"/><circle cx="64" cy="80" r="4" fill="#fff"/><rect x="74" y="77" width="24" height="6" rx="3" fill="#fff"/><circle cx="64" cy="98" r="4" fill="#fff"/><rect x="74" y="95" width="16" height="6" rx="3" fill="#fff"/></svg>';
+    var g3='<svg width="150" height="150" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="76" fill="'+alpha(C.lav,0.16)+'"/><circle cx="60" cy="86" r="24" fill="'+alpha(C.indigo,0.45)+'"/><circle cx="100" cy="86" r="24" fill="'+alpha(C.pink,0.45)+'"/><path d="M80 60 C74 52 62 54 62 64 C62 72 80 82 80 82 C80 82 98 72 98 64 C98 54 86 52 80 60 Z" fill="'+C.coral+'"/></svg>';
+    var slides=[[g1,"Started as a personal Nappy and Baby Feed Tracker from day one of our baby\u2019s life. Baby Care is crafted with infinite love and care for all the babies around the world."],[g2,"Helps you take care of your baby \u2014 track feeds, nappies, daily chores and many more\u2026 easily."],[g3,"Made meticulously for all moms and dads out there! Developed by a loving and caring New Dad and Mom \u2764\uFE0F"]];
+    var cards="", i; for(i=0;i<slides.length;i++) cards+='<div style="flex:0 0 100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 22px;box-sizing:border-box">'+slides[i][0]+'<div style="font-size:16px;color:#fff;line-height:1.6;margin-top:26px;max-width:320px">'+slides[i][1]+'</div></div>';
+    var dots=""; for(i=0;i<3;i++) dots+='<span style="width:8px;height:8px;border-radius:4px;background:'+(i===0?C.pink:"var(--card2)")+';display:inline-block;margin:0 4px"></span>';
+    return frame('<div style="flex:1;display:flex;flex-direction:column;min-height:0">'+
+      '<div style="flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none">'+cards+'</div>'+
+      '<div style="text-align:center;padding:12px 0 2px">'+dots+'</div>'+
+      '<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:6px">Swipe to explore</div></div>'+
+      '<div style="padding:8px 0 calc(24px + env(safe-area-inset-bottom))"><button class="press" data-a="onbToWelcome" style="width:100%;height:54px;border-radius:16px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">Get started</button></div>');
+  }
+  if(step==="welcome"){
     return frame('<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 10px">'+onbGraphic()+
       '<div style="font-size:30px;font-weight:800;margin-top:26px">Welcome to Baby Care</div>'+
       '<div style="font-size:15px;color:var(--sub);margin-top:10px;line-height:1.5;max-width:300px">Track feeds, sleep, nappies, growth and more \u2014 all in one calm place.</div></div>'+
@@ -7345,7 +7363,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.84";
+var APPVER="1.85";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8366,6 +8384,7 @@ function idleNightTick(){
 }
 function autoNightTick(){
   if(typeof inOnboarding==="function" && inOnboarding()){ anT=0; return; }
+  if(!S.night && !S.cnight && typeof lastTimedMs==="function" && lastTimedMs()===0 && !anyTimedRunning()){ anT=0; return; }
   if(byId("streakmodal")||byId("duemodal")){ anT=0; return; }
   var _cm=byId("csmodal"); if(_cm && _cm.style.display && _cm.style.display!=="none"){ anT=0; return; }
   if(S.route==="pumping"){ anT=0; return; }
