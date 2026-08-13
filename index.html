@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.81 -->
+<!-- Baby Care v1.82 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1496,6 +1496,7 @@ function dayLabel(ts){
   return d.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"});
 }
 function toast(msg, ms, go, hi){
+  if(typeof inOnboarding==="function" && inOnboarding()) return;
   var t=document.getElementById("toast");
   t.textContent=msg; t.style.opacity="1"; t._ms=ms||1600;
   t.style.border = hi ? ("2px solid "+C.mint) : "";
@@ -1542,12 +1543,12 @@ function addEntry(k, detail, data){ return addEntryAt(k, detail, data, new Date(
 var A = {
   tab: function(x){
     if(typeof Notification!=="undefined" && Notification.permission==="default"){ try{ Notification.requestPermission(); }catch(e){} }
-    if(S.tab===x && x!=="chat" && S.sub==="" && S.route==="list" && S.eidx==null && !S.pmode){
+    if(S.tab===x && x!=="chat" && S.sub==="" && S.route==="list" && S.eidx==null && !S.pmode && !ui.cryStep){
       var sc9=document.getElementById("scroll");
       if(sc9) sc9.scrollTo({top:0, behavior:"smooth"});
       return;
     }
-    S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; ui.feedOnly=false; ui.logFilter=[]; ui.logExpand={}; ui.affDel=null; ui.invPick=false; render();
+    S.tab=x; S.route="list"; S.sub=""; S.editing=false; S.pmode=false; S.eidx=null; ui.sheet=false; ui.showAll=false; ui.feedOnly=false; ui.cryStep=null; ui.cryStill=false; ui.cryFromLog=false; ui.logFilter=[]; ui.logExpand={}; ui.affDel=null; ui.invPick=false; render();
     if(x==="chat") setTimeout(chFit, 40); if(x==="chat"||x==="sharing"){ try{ if(typeof Notification!=="undefined" && Notification.permission==="default") Notification.requestPermission(); }catch(_n){} } },
   sub: function(x){
     S.sub=x;
@@ -2376,7 +2377,7 @@ var A = {
     else if(step==="dob"){ var dd=g("onbDob"), tt=g("onbTob"); if(!dd){ toast("Please choose the date of birth"); return; } o.dob=dd; o.tob=tt||"12:00"; ui.onb="gender"; }
     else if(step==="gender"){ if(!o.sex){ toast("Please select the gender"); return; } ui.onb="blood"; }
     else if(step==="blood"){ if(!o.blood){ toast("Please select the blood group"); return; } ui.onb="relation"; }
-    else if(step==="relation"){ if(!o.relation){ toast("Please select your relation to the baby"); return; } ui.onb="hospital"; }
+    else if(step==="relation"){ var cr=g("onbRel").replace(/\s+/g,"").replace(/[<>]/g,"").slice(0,20); if(cr) o.relation=cr; if(!o.relation){ return; } ui.onb="hospital"; }
     else if(step==="hospital"){ o.hospital=g("onbHosp").replace(/[<>]/g,"").trim().slice(0,40); o.uhid=g("onbUhid").replace(/[<>]/g,"").trim().slice(0,24); A.onbCreate(); return; }
     render();
   },
@@ -2398,6 +2399,7 @@ var A = {
   howsCryNo: function(){ closeHows(); ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; S.tab="summary"; S.sub=""; S.route="list"; save(); render(); },
   howsClose: function(){ closeHows(); S.howsSnooze=Date.now(); save(); },
   cryStillCrying: function(){ ui.cryStill=true; ui.cryFlags=[]; ui.cryStep="redflags"; render(); },
+  cryExit: function(){ ui.cryStep=null; ui.cryStill=false; ui.cryFromLog=false; S.tab="summary"; S.sub=""; S.route="list"; render(); },
   cryReset: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); render(); },
   cryDelete: function(){ if(ui.cryEntryId){ S.entries=S.entries.filter(function(z){return String(z.id)!==String(ui.cryEntryId);}); syTomb(ui.cryEntryId); } ui.cryStep=null; ui.cryFromLog=false; ui.cryEntryId=null; S.tab="summary"; S.sub="hist"; save(); render(); toast("Entry deleted"); },
   cryFlagToggle: function(x){ x=+x; var f=(ui.cryFlags||[]).slice(); if(x===4){ f=(f.indexOf(4)>=0)?[]:[4]; } else { f=f.filter(function(v){return v!==4;}); var p=f.indexOf(x); if(p>=0) f.splice(p,1); else f.push(x); } ui.cryFlags=f; render(); },
@@ -3816,7 +3818,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.81</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.82</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4908,6 +4910,7 @@ function medStreakModalHtml(mid, withX){
     medDotsHtml(st)+'</div>';
 }
 function showStreakModal(mid, withX, autoClose){
+  if(inOnboarding()) return;
   var ex=byId("streakmodal"); if(ex && ex.parentNode) ex.parentNode.removeChild(ex);
   var d=document.createElement("div"); d.id="streakmodal";
   d.innerHTML='<div data-a="streakClose" style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:420;display:flex;align-items:center;justify-content:center;padding:32px">'+
@@ -4917,6 +4920,7 @@ function showStreakModal(mid, withX, autoClose){
   if(autoClose){ mbStreakT=setTimeout(function(){ if(A&&A.streakClose) A.streakClose(); }, (autoClose===true?5000:autoClose)); }
 }
 function showDueModal(mid, slot){
+  if(inOnboarding()) return;
   var m=null,i; for(i=0;i<S.meds.length;i++) if(S.meds[i].id===mid) m=S.meds[i]; if(!m || byId("duemodal")) return;
   var d=document.createElement("div"); d.id="duemodal";
   d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:410;display:flex;align-items:center;justify-content:center;padding:32px">'+
@@ -4953,7 +4957,7 @@ function bagSweep(){
 }
 function closeHows(){ var d=byId("howsmodal"); if(d && d.parentNode) d.parentNode.removeChild(d); ui.howsStep=null; }
 function isTimedKind(k){ var aa=act(k); return !!(aa && (aa.kind==="dual"||aa.kind==="single"||aa.kind==="burp"||aa.kind==="seat")); }
-function anyTimedRunning(){ var k; for(k in S.sess){ if(S.sess[k] && S.sess[k].run && isTimedKind(k)) return true; } return false; }
+function anyTimedRunning(){ var ls=allLive(), i; for(i=0;i<ls.length;i++){ if(ls[i].run && isTimedKind(ls[i].k)) return true; } return false; }
 function lastTimedMs(){ var i,best=0; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(isTimedKind(e.act)){ var t=new Date(e.ts).getTime(); if(t>best) best=t; } } return best; }
 function showHowsBaby(){
   var d=byId("howsmodal"); if(!d){ d=document.createElement("div"); d.id="howsmodal"; document.body.appendChild(d); }
@@ -4978,6 +4982,7 @@ function showHowsBaby(){
   d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:410;display:flex;align-items:center;justify-content:center;padding:32px"><div class="card" style="max-width:340px;width:100%;padding:22px">'+body+'</div></div>';
 }
 function howsBabyCheck(){
+  if(inOnboarding()) return;
   if(byId("duemodal")||byId("streakmodal")||byId("howsmodal")) return;
   if(S.tab!=="summary"||S.sub||S.eidx!=null||S.pmode||ui.cryStep) return;
   if(Date.now()-(S.howsSnooze||0) < 60*60000) return;
@@ -4987,6 +4992,7 @@ function howsBabyCheck(){
   ui.howsStep=null; showHowsBaby();
 }
 function medDueModalCheck(){
+  if(inOnboarding()) return;
   if(byId("duemodal")||byId("streakmodal")) return;
   if(S.tab!=="summary"||S.sub||S.eidx!=null) return;
   medMigrate();
@@ -6733,7 +6739,8 @@ function tabbarHtml(){
    Dispatches on S.tab / S.sub / S.route / S.eidx to pick a vXxx() view builder,
    writes the result into #scroll.innerHTML, then positions the fixed bars. Called
    after (almost) every state change. Predictions are recomputed here, live. ======= */
-function onbNeeded(){ return !S.onbDone && !(S.baby && (S.baby.name || S.baby.dob)); }
+function onbNeeded(){ var bs=S.babies||[], i; if(!bs.length) return true; for(i=0;i<bs.length;i++){ var b=bs[i].baby; if(b && (b.name||b.dob)) return false; } return true; }
+function inOnboarding(){ return !!ui.onb || onbNeeded(); }
 function onbGraphic(){
   return '<svg width="176" height="176" viewBox="0 0 180 180" fill="none">'+
     '<circle cx="90" cy="90" r="86" fill="'+alpha(C.pink,0.14)+'"/>'+
@@ -6777,7 +6784,7 @@ function vOnboard(){
   else if(step==="dob") body=lbl("DATE OF BIRTH")+'<input id="onbDob" type="date" value="'+(o.dob||"")+'" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff;margin-bottom:14px">'+lbl("TIME OF BIRTH")+'<input id="onbTob" type="time" value="'+(o.tob||"")+'" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff">';
   else if(step==="gender") body=onbOpts("sex",["Girl","Boy"],o.sex,false);
   else if(step==="blood") body=onbOpts("blood",["A+","A\u2212","B+","B\u2212","AB+","AB\u2212","O+","O\u2212"],o.blood,true);
-  else if(step==="relation") body=onbOpts("relation",["Mother","Father","Guardian"],o.relation,false);
+  else if(step==="relation"){ var pre=(["Mother","Father","Guardian"].indexOf(o.relation)<0)?(o.relation||""):""; body=onbOpts("relation",["Mother","Father","Guardian"],o.relation,false)+'<div style="height:14px"></div>'+lbl("OR TYPE YOUR OWN (ONE WORD)")+'<input id="onbRel" class="ninput" value="'+esc(pre)+'" placeholder="e.g. Nani, Appa, Amma" maxlength="20" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff">'; }
   else if(step==="hospital") body=lbl("HOSPITAL (OPTIONAL)")+'<input id="onbHosp" class="ninput" value="'+esc(o.hospital||"")+'" placeholder="Hospital name" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff;margin-bottom:14px">'+lbl("HOSPITAL ID (OPTIONAL)")+'<input id="onbUhid" class="ninput" value="'+esc(o.uhid||"")+'" placeholder="Hospital / UHID number" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:16px;font-size:16px;color:#fff">';
   return frame('<div style="flex:1;padding-top:34px"><div style="font-size:26px;font-weight:800;margin-bottom:6px">'+t[0]+'</div>'+(t[1]?'<div style="font-size:14px;color:var(--sub);margin-bottom:24px">'+t[1]+'</div>':'<div style="height:18px"></div>')+body+'</div>'+
     '<div style="display:flex;gap:10px;padding:10px 0 calc(24px + env(safe-area-inset-bottom))">'+
@@ -6916,7 +6923,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
-  document.getElementById("ov").innerHTML = (ui.land && !ui.landX && !ui.pumpModal) ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
+  document.getElementById("ov").innerHTML = inOnboarding() ? "" : (ui.land && !ui.landX && !ui.pumpModal) ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
 /* 1s ticker: targeted text updates so taps aren't interrupted */
@@ -7287,7 +7294,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.81";
+var APPVER="1.82";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -7566,7 +7573,7 @@ function upCheck(){
   }catch(e){}
 }
 function lastFeed(){ var best=null,bt=-1,i,t; for(i=0;i<S.entries.length;i++){ if(isFeed(S.entries[i])){ t=new Date(S.entries[i].ts).getTime(); if(t>bt){ bt=t; best=S.entries[i]; } } } return best; }
-function cryHead(t,s){ return '<div class="full" style="padding:0 4px">'+backBtn(C.pink,"Back","cryBack")+'<div style="font-size:24px;font-weight:700;margin:8px 0 4px">'+t+'</div>'+(s?'<div style="font-size:14px;color:var(--sub);margin-bottom:'+(ui.cryFromLog?'6px':'16px')+'">'+s+'</div>':'')+(ui.cryFromLog?'<div style="text-align:right;margin:0 0 14px"><button class="press" data-a="cryDelete" style="color:'+C.red+';font-size:13px;font-weight:700;background:none;border:none;padding:0">Delete this entry</button></div>':''); }
+function cryHead(t,s){ return '<div class="full" style="padding:0 4px">'+'<div style="display:flex;align-items:center;justify-content:space-between">'+backBtn(C.pink,"Back","cryBack")+'<button class="press" data-a="cryExit" style="color:var(--sub);font-size:14px;font-weight:700;background:none;border:none;padding:6px 2px">Exit</button></div>'+'<div style="font-size:24px;font-weight:700;margin:8px 0 4px">'+t+'</div>'+(s?'<div style="font-size:14px;color:var(--sub);margin-bottom:'+(ui.cryFromLog?'6px':'16px')+'">'+s+'</div>':'')+(ui.cryFromLog?'<div style="text-align:right;margin:0 0 14px"><button class="press" data-a="cryDelete" style="color:'+C.red+';font-size:13px;font-weight:700;background:none;border:none;padding:0">Delete this entry</button></div>':''); }
 function cryChk(label,on,action,x,good){ var col=good?C.green:(on?C.pink:"var(--sub)"); return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left;background:var(--card);border-radius:14px;margin-bottom:8px;border:1px solid '+(on?alpha(col,0.6):"transparent")+'"><span style="width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid '+(on?col:"var(--sub)")+';background:'+(on?col:"transparent")+';display:inline-flex;align-items:center;justify-content:center">'+(on?ic("check",13,"#000",{sw:3}):"")+'</span><span style="flex:1;font-size:14px;font-weight:600">'+label+'</span></button>'; }
 function cryOpt(label,action,x,desc,hi,badge){ return '<button class="press" data-a="'+action+'" data-x="'+x+'" style="width:100%;text-align:left;background:var(--card);border-radius:14px;margin-bottom:10px;padding:16px;display:flex;align-items:center;gap:12px'+(hi?";border:1.5px solid "+C.pink:"")+'"><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700">'+label+(badge?' <span style="font-size:11px;font-weight:800;color:'+C.pink+'">\u00B7 '+badge+'</span>':"")+'</span>'+(desc?'<span style="display:block;font-size:13px;color:var(--sub);margin-top:3px">'+desc+'</span>':"")+'</span>'+ic("chevron-right",18,"#5c5c61")+'</button>'; }
 function cryStepRow(n,h,b){ return '<div style="margin-bottom:14px;display:flex;gap:10px;align-items:flex-start"><span style="flex:none;width:22px;height:22px;border-radius:11px;background:'+alpha(C.pink,0.18)+';color:'+C.pink+';font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">'+n+'</span><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:2px">'+h+'</div><div style="font-size:14px;color:var(--sub);line-height:1.55">'+b+'</div></div></div>'; }
@@ -7597,7 +7604,7 @@ function vCry(){
       '<button class="press" data-a="cryRedNext" style="width:100%;height:52px;border-radius:16px;margin-top:14px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">Continue</button><div style="height:200px"></div></div>';
   }
   if(s==="emergency"){
-    return '<div class="full" style="padding:0 4px">'+backBtn(C.red,"Back","cryBack")+
+    return '<div class="full" style="padding:0 4px">'+'<div style="display:flex;align-items:center;justify-content:space-between">'+backBtn(C.red,"Back","cryBack")+'<button class="press" data-a="cryExit" style="color:var(--sub);font-size:14px;font-weight:700;background:none;border:none;padding:6px 2px">Exit</button></div>'+
       '<div style="margin-top:8px;padding:18px;border-radius:16px;background:'+alpha(C.red,0.14)+';border:1px solid '+alpha(C.red,0.5)+'"><div style="font-size:20px;font-weight:800;color:'+C.red+';margin-bottom:8px">Seek medical care now</div><div style="font-size:14px;color:#fff;line-height:1.6">One or more warning signs are present. Trust your instincts \u2014 contact your pediatrician or your local emergency number right away. If breathing is hard, the baby is very difficult to wake, or the cry is weak or high-pitched, treat it as urgent.</div></div>'+
       '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-top:14px">This app can\u2019t assess emergencies \u2014 when in doubt, get medical help.</div>'+
       '<button class="press" data-a="cryReset" style="width:100%;height:50px;border-radius:16px;margin-top:16px;text-align:center;background:var(--card2);color:#fff;font-size:15px;font-weight:700">Done</button><div style="height:120px"></div></div>';
@@ -8307,6 +8314,7 @@ function idleNightTick(){
   render();
 }
 function autoNightTick(){
+  if(typeof inOnboarding==="function" && inOnboarding()){ anT=0; return; }
   if(byId("streakmodal")||byId("duemodal")){ anT=0; return; }
   var _cm=byId("csmodal"); if(_cm && _cm.style.display && _cm.style.display!=="none"){ anT=0; return; }
   if(S.route==="pumping"){ anT=0; return; }
