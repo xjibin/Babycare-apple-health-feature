@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.89 -->
+<!-- Baby Care v1.90 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2434,6 +2434,11 @@ var A = {
     if(typeof setTimeout!=="undefined") setTimeout(function(){ if(ui.onb==="success") A.onbFinish(); }, 1900);
   },
   onbFinish: function(){ ui.onb=null; ui.onbData=null; S.night=false; S.cnight=false; S.tab="summary"; S.sub=""; S.route="list"; render(); },
+  adminRemoveAsk: function(x){ if(!meAdmin()) return; ui.rmAdmin=x; ui.rmStep=1; ui.rmErr=""; showRmAdmin(); },
+  rmAdminYes: function(){ ui.rmStep=2; ui.rmErr=""; showRmAdmin(); },
+  rmAdminNo: function(){ closeRmAdmin(); },
+  rmAdminExit: function(){ closeRmAdmin(); },
+  rmAdminDelete: function(){ var v=((byId("rmAdminInput")||{}).value||"").trim(); if(v!==ui.rmAdmin){ ui.rmErr="That doesn\u2019t match \u2014 type "+ui.rmAdmin+" exactly."; showRmAdmin(); return; } var nm=ui.rmAdmin; closeRmAdmin(); if(A.userRemove) A.userRemove(nm); },
   userMakeAdmin: function(x){ if(!meAdmin()) return; if(!S.baby) return; S.baby.admins=(S.baby.admins||[]).slice(); if(S.baby.admins.indexOf(x)<0) S.baby.admins.push(x); if(typeof bumpSet==="function") bumpSet(); save(); render(); toast(x+" is now an admin"); },
   userRemove: function(x){ if(!meAdmin()) return; if(!S.baby || x===(S.who||"")) return; S.baby.removed=(S.baby.removed||[]).slice(); if(S.baby.removed.indexOf(x)<0) S.baby.removed.push(x); S.baby.admins=(S.baby.admins||[]).filter(function(a){return a!==x;}); if(typeof bumpSet==="function") bumpSet(); save(); render(); toast(x+" removed from this baby"); },
   crySleepStart: function(){ ui.cryStep=null; ui.cryFromLog=false; S.sess.babysleep={sec:0, run:true, at:Date.now(), st:Date.now()}; S.tab="activity"; S.route="babysleep"; S.pmode=false; S.eidx=null; ui.sheet=false; ui.feedOnly=false; save(); render(); toast("Baby sleep started"); },
@@ -3865,7 +3870,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.89</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.90</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5082,6 +5087,27 @@ function bagSweep(){
     if(e.act==="pumping" && e.data && e.data.storage && e.data.expires && now > (e.data.expires + 3*864e5)){ syTomb(e.id); S.entries.splice(i,1); removed++; }
   }
   if(removed){ S.bagSweepNote={n:removed, ts:now}; save(); if(typeof notif==="function") notif(removed+" expired milk bag"+(removed>1?"s":"")+" removed from your stored log."); }
+}
+function closeRmAdmin(){ var d=byId("rmadminmodal"); if(d && d.parentNode) d.parentNode.removeChild(d); ui.rmAdmin=null; ui.rmStep=null; ui.rmErr=""; }
+function showRmAdmin(){
+  var d=byId("rmadminmodal"); if(!d){ d=document.createElement("div"); d.id="rmadminmodal"; document.body.appendChild(d); }
+  var name=ui.rmAdmin||"", body;
+  if(ui.rmStep===2){
+    body='<div style="font-size:18px;font-weight:800;margin:0 0 10px">Type the username to confirm</div>'+
+      '<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:14px">Type <b style="color:#fff">'+esc(name)+'</b> to remove the user from this baby profile. Any data logged by them won\u2019t be deleted.</div>'+
+      '<input id="rmAdminInput" class="ninput" placeholder="Username" autocapitalize="off" spellcheck="false" style="width:100%;background:var(--card2);border:none;border-radius:14px;padding:14px;font-size:15px;color:#fff;margin-bottom:'+(ui.rmErr?'8px':'16px')+'">'+
+      (ui.rmErr?'<div style="font-size:13px;color:'+C.red+';font-weight:600;margin-bottom:14px">'+esc(ui.rmErr)+'</div>':'')+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="press" data-a="rmAdminDelete" style="flex:1;height:48px;border-radius:14px;text-align:center;background:'+C.red+';color:#fff;font-size:15px;font-weight:800">Delete</button>'+
+      '<button class="press" data-a="rmAdminExit" style="flex:1;height:48px;border-radius:14px;text-align:center;background:var(--card2);color:#fff;font-size:15px;font-weight:800">Exit</button></div>';
+  } else {
+    body='<div style="font-size:18px;font-weight:800;margin:0 0 10px">Remove admin '+esc(name)+'?</div>'+
+      '<div style="font-size:14px;color:var(--sub);line-height:1.5;margin-bottom:18px">Do you really wish to remove this admin user? Any data logged by them will be stored as it is, under their name.</div>'+
+      '<div style="display:flex;gap:10px">'+
+      '<button class="press" data-a="rmAdminYes" style="flex:1;height:48px;border-radius:14px;text-align:center;background:'+C.red+';color:#fff;font-size:15px;font-weight:800">Yes, Remove</button>'+
+      '<button class="press" data-a="rmAdminNo" style="flex:1;height:48px;border-radius:14px;text-align:center;background:var(--card2);color:#fff;font-size:15px;font-weight:800">No, Exit</button></div>';
+  }
+  d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:420;display:flex;align-items:center;justify-content:center;padding:32px"><div class="card" style="max-width:360px;width:100%;padding:22px">'+body+'</div></div>';
 }
 function closeHows(){ var d=byId("howsmodal"); if(d && d.parentNode) d.parentNode.removeChild(d); ui.howsStep=null; }
 function isTimedKind(k){ var aa=act(k); return !!(aa && (aa.kind==="dual"||aa.kind==="single"||aa.kind==="burp"||aa.kind==="seat")); }
@@ -6622,7 +6648,7 @@ function usersCardHtml(){
     if(admin && !me && !rmv){
       ctrls='<div style="display:flex;gap:8px;margin-top:10px">'+
         (uAdm?'':'<button class="press" data-a="userMakeAdmin" data-x="'+esc(u.n)+'" style="flex:1;height:38px;border-radius:10px;text-align:center;background:var(--card);color:'+C.green+';font-size:13px;font-weight:700">Make admin</button>')+
-        '<button class="press" data-a="userRemove" data-x="'+esc(u.n)+'" style="flex:1;height:38px;border-radius:10px;text-align:center;background:var(--card);color:'+C.red+';font-size:13px;font-weight:700">Remove</button></div>';
+        '<button class="press" data-a="'+(uAdm?"adminRemoveAsk":"userRemove")+'" data-x="'+esc(u.n)+'" style="flex:1;height:38px;border-radius:10px;text-align:center;background:var(--card);color:'+C.red+';font-size:13px;font-weight:700">Remove</button></div>';
     }
     rows+='<div style="padding:12px 0'+(i?';border-top:1px solid var(--hair)':'')+';opacity:'+(rmv?'.4':'1')+'">'+
       '<div class="rowsb">'+
@@ -7521,7 +7547,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.89";
+var APPVER="1.90";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
