@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.86 -->
+<!-- Baby Care v1.87 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -254,7 +254,7 @@ var ACTS = [
   {k:"supplement", t:"Supplement",   icon:"pill",       c:C.green,  kind:"supp"},
   {k:"pumping",    t:"Pumping",      icon:"zap",        c:C.mint,   kind:"dual", pump:true},
   {k:"tummytime",  t:"Tummy Time",   icon:"activity",   c:"#C084FC", kind:"single"},
-  {k:"bath",       t:"Bath",         icon:"droplets",   c:C.sky,    kind:"single"},
+  {k:"bath",       t:"Baby Bath",    icon:"droplets",   c:C.sky,    kind:"bath",   hint:"Bath type, skin & products \u00B7 2\u20133\u00D7 a week"},
   {k:"play",       t:"Play Time",    icon:"sparkles",   c:C.yellow, kind:"single"},
   {k:"walk",       t:"Walk / Fresh Air", icon:"gauge",  c:C.mint,   kind:"single"},
   {k:"reading",    t:"Reading",      icon:"music",      c:C.blue,   kind:"single"},
@@ -295,7 +295,7 @@ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch(e
    babyLoad(id) does the reverse and swaps the sync config (SY) to that baby.
    mkBaby() creates a fresh record; babyGuard() is the safety net (see below). ==== */
 var HARDCORE={nursing:1, nappy:1, pacifier:1};
-var DEFAULT_HIDDEN={expressed:1, formula:1, supplement:1, pumping:1, tummytime:1, bath:1, play:1, walk:1, reading:1, skin:1, solids:1, water:1, fussy:1};
+var DEFAULT_HIDDEN={expressed:1, formula:1, supplement:1, pumping:1, tummytime:1, play:1, walk:1, reading:1, skin:1, solids:1, water:1, fussy:1};
 function coreOn(k){
   if(HARDCORE[k]) return true;
   if((S.shownCards||[]).indexOf(k)>=0) return true;
@@ -917,7 +917,7 @@ function rRun(k){
    not create a duplicate when it later processes the stop command. */
 function aidAbbr(k, data){
   if(k==="burp" && data && (data.type==="Mid" || data.mid)) return "MBUR";
-  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR",vitals:"VITL",crying:"CRY",cord:"CORD"};
+  var m={nursing:"NURS",pumping:"PUMP",babysleep:"BSLP",mothersleep:"MSLP",pacifier:"PACI",carseat:"SEAT",burp:"BURP",vomit:"VOMT",nappy:"NAPY",medicine:"MEDN",expressed:"EXPR",fever:"FEVR",vitals:"VITL",crying:"CRY",cord:"CORD",bath:"BATH"};
   return m[k] || (((k||"ACT")+"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ACT");
 }
 function aidFrom(who, st, k, data){
@@ -1680,6 +1680,24 @@ var A = {
   vitStep: function(x){ var cur=(ui.vitVal!=null?ui.vitVal:vitDefault(ui.vitItem)); ui.vitVal=Math.max(0, cur+(+x)); render(); },
   vitStep2: function(x){ var p=x.split("|"); if(p[0]==="sys") ui.vitSys=Math.max(0,(ui.vitSys||120)+(+p[1])); else ui.vitDia=Math.max(0,(ui.vitDia||80)+(+p[1])); render(); },
   vitSave: function(){ vitLog(); },
+  bathTouch: function(){ ui.bathEdited=true; ui.bathLeft=10; },
+  bathType: function(x){ ui.bathType=x; ui.bathEdited=true; ui.bathLeft=10; render(); },
+  bathObs: function(x){ var s=(ui.bathObs||[]).slice(); if(x==="None"){ s=(s.indexOf("None")>=0)?[]:["None"]; } else { s=s.filter(function(v){return v!=="None";}); var p=s.indexOf(x); if(p>=0) s.splice(p,1); else s.push(x); } ui.bathObs=s; ui.bathEdited=true; ui.bathLeft=10; render(); },
+  bathProd: function(x){ var s=(ui.bathProd||[]).slice(), p=s.indexOf(x); if(p>=0) s.splice(p,1); else s.push(x); ui.bathProd=s; ui.bathEdited=true; ui.bathLeft=10; render(); },
+  bathSave: function(){
+    bathTimerStop();
+    var dv=(byId("bathdate")||{}).value, tv=(byId("bathtime")||{}).value;
+    var ts=dv?new Date(dv+"T"+(tv||"12:00")).getTime():Date.now(); if(isNaN(ts)) ts=Date.now();
+    var ptext=((byId("bathprodtext")||{}).value||"").replace(/[<>]/g,"").trim().slice(0,40);
+    var type=ui.bathType||"Tub", obs=(ui.bathObs||[]).slice(), prod=(ui.bathProd||[]).slice();
+    var det=type+(prod.length?" \u00B7 "+prod.join(", "):"")+(ptext?" ("+ptext+")":"")+((obs.length&&obs[0]!=="None")?" \u00B7 "+obs.join(", "):"");
+    var data={type:type, obs:obs, products:prod, product:ptext};
+    if(ui.bathEditId){ var e=bathById(ui.bathEditId); if(e){ e.ts=new Date(ts).toISOString(); e.detail=det; e.data=data; e.up=Date.now(); } ui.bathEditId=null; }
+    else { S.entries.push({id:aidUnique(aidFrom((S.who||""), ts, "bath")), act:"bath", detail:det, data:data, ts:new Date(ts).toISOString(), by:(S.who||undefined), up:Date.now(), bid:S.activeBaby}); }
+    S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
+    ui.bathType=null; ui.bathObs=[]; ui.bathProd=[]; ui.bathProdText=""; ui.bathEdited=false; ui.bathLeft=6;
+    S.route="list"; save(); render(); toast("Bath logged");
+  },
   cordMark: function(){
     var dv=(byId("corddate")||{}).value, ts=dv?new Date(dv+"T12:00").getTime():Date.now(); if(isNaN(ts)) ts=Date.now();
     if(ui.cordEdit){ var e=cordById(ui.cordEdit); if(e){ e.ts=new Date(ts).toISOString(); e.data=e.data||{}; e.data.fallen=true; e.detail="Cord stump fell off"; e.up=Date.now(); } ui.cordEdit=null; }
@@ -1764,6 +1782,7 @@ var A = {
   autoSleepCancel: function(){ S.autoSleep=null; save(); render(); },
   open: function(x){
     ui.feedOnly=false; ui.cordEdit=null;
+    if(x==="bath"){ bathTimerStop(); var _bp=bathPattern(); ui.bathEditId=null; ui.bathType=_bp?_bp.type:null; ui.bathObs=[]; ui.bathProd=_bp?_bp.products.slice():[]; ui.bathProdText=""; ui.bathLeft=6; ui.bathEdited=false; }
     if(x==="vomit"){ A.vomitOpen(); return; }
     if(x==="fever"){ ui.vitWho="baby"; ui.vitItem="temp"; ui.ft=null; ui.fu="C"; S.tab="activity"; S.route="vitals"; S.eidx=null; ui.sheet=false; render(); return; }
     if(x==="vitals"){ ui.vitItem=null; ui.vitVal=null; }
@@ -2757,6 +2776,7 @@ var A = {
     S.eidx=i; ui.sheet=false; ui.dts={};
     var a=act(e.act), d=e.data||{};
     if(e.act==="cord"){ ui.cordEdit=e.id; S.eidx=null; S.tab="activity"; S.route="cord"; render(); return; }
+    if(e.act==="bath"){ ui.bathEditId=e.id; ui.bathType=(d.type||null); ui.bathObs=(d.obs||[]).slice(); ui.bathProd=(d.products||[]).slice(); ui.bathProdText=(d.product||""); ui.bathEdited=false; S.eidx=null; S.tab="activity"; S.route="bath"; render(); return; }
     if(e.act==="crying"){
       ui.cryEntryId=e.id; ui.cryFlags=(d.flags||[]).slice(); ui.cryFeed=d.feed||null; ui.cryPhys=(d.phys||[]).slice(); ui.cryFromLog=true; ui.cryStill=false;
       ui.cryStep=d.crying?"redflags":"no_branch"; S.eidx=null; S.tab="summary"; S.sub=""; S.route="list"; render(); return;
@@ -3360,7 +3380,7 @@ function liveNowHtml(){
     '<div class="card" style="margin-bottom:24px;padding:0;overflow:hidden">'+rows+'</div>';
 }
 function entryRow(e, first, idx){
-  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : (e.act==="cord" ? {t:"Umbilical Cord", icon:"droplet", c:C.brown} : (e.act==="crying" ? {t:(e.data&&e.data.crying?"Crying":"Not crying"), icon:"activity", c:C.coral} : ((e.act==="pumping" && e.data && e.data.storage) ? {t:"Pumped", icon:"zap", c:(act("pumping")||{}).c} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"}))));
+  var a = e.act==="note" ? {t:"Quick Note", icon:"pencil", c:C.blue} : (e.act==="bath" ? {t:"Baby Bath", icon:"droplet", c:C.sky} : (e.act==="cord" ? {t:"Umbilical Cord", icon:"droplet", c:C.brown} : (e.act==="crying" ? {t:(e.data&&e.data.crying?"Crying":"Not crying"), icon:"activity", c:C.coral} : ((e.act==="pumping" && e.data && e.data.storage) ? {t:"Pumped", icon:"zap", c:(act("pumping")||{}).c} : (act(e.act) || {t:"Custom", icon:"circle-dot", c:"#98989F"})))));
   var inner = ic(a.icon,22,a.c)+
     '<span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">'+a.t+'</span>'+
     '<span style="display:block;font-size:13px;color:var(--sub)">'+(e.act==="note" ? ('Next visit '+((S.baby&&S.baby.nextVisit)?(dayLabel(new Date(S.baby.nextVisit).toISOString())+' '+tClock(S.baby.nextVisit)):'not set')+(e.by?'. '+esc(e.by):'')) : ((e.detail?esc(e.detail):'')+(e.by?((e.detail?' \u00B7 ':'')+esc(e.by)):'')))+'</span></span>'+
@@ -3842,7 +3862,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.86</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.87</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4434,6 +4454,57 @@ function vitLog(){
     S.entries.push(e); S.entries.sort(function(x,y){ return x.ts<y.ts?1:(x.ts>y.ts?-1:0); });
   }
   ui.vitItem=null; ui.vitVal=null; ui.ft=null; ui.vitSys=null; ui.vitDia=null; S.route="list"; save(); render(); toast(v[1]+" logged");
+}
+var BATH_TYPES=["Sponge","Tub"], BATH_OBS=["Dry patches","Redness","Cradle cap","Diaper rash","None"], BATH_PRODS=["Baby wash","Lotion","Oil","Soap"];
+function bathById(id){ var i; for(i=0;i<S.entries.length;i++) if(String(S.entries[i].id)===String(id)) return S.entries[i]; return null; }
+function bathPattern(){
+  var b=[], i; for(i=0;i<S.entries.length && b.length<3;i++) if(S.entries[i].act==="bath") b.push(S.entries[i]);
+  if(b.length<2) return null;
+  var d0=b[0].data||{}, d1=b[1].data||{};
+  if(d0.type && d0.type===d1.type && (d0.products||[]).join(",")===(d1.products||[]).join(",")) return {type:d0.type, products:(d0.products||[]).slice()};
+  return null;
+}
+var bathT=null;
+function bathTimerStop(){ if(bathT){ clearInterval(bathT); bathT=null; } }
+function bathTimerStart(){ if(bathT) return; bathT=setInterval(function(){
+  if(S.route!=="bath" || ui.bathEditId || !bathPattern()){ bathTimerStop(); return; }
+  ui.bathLeft=(ui.bathLeft||6)-1;
+  if(ui.bathLeft<=0){ bathTimerStop(); if(A&&A.bathSave) A.bathSave(); return; }
+  render();
+}, 1000); }
+function bathChips(field, opts, cur, action){
+  var i,h='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+  for(i=0;i<opts.length;i++){ var on=(field==="type")?(cur===opts[i]):(cur.indexOf(opts[i])>=0);
+    h+='<button class="press" data-a="'+action+'" data-x="'+opts[i]+'" style="padding:10px 16px;border-radius:999px;text-align:center;font-size:14px;font-weight:700;background:'+(on?C.sky:"var(--card)")+';color:#fff;border:1.5px solid '+(on?C.sky:"transparent")+'">'+opts[i]+'</button>'; }
+  return h+'</div>';
+}
+function vBath(a){
+  var editing = ui.bathEditId ? bathById(ui.bathEditId) : null;
+  var pat = editing ? null : bathPattern();
+  if(pat && ui.bathType==null && !ui.bathEdited){ ui.bathType=pat.type; ui.bathProd=(pat.products||[]).slice(); }
+  if(ui.bathType===undefined) ui.bathType=null; ui.bathObs=ui.bathObs||[]; ui.bathProd=ui.bathProd||[];
+  var dn=new Date(), p2=function(n){return ("0"+n).slice(-2);};
+  var defDate = editing ? new Date(editing.ts).toISOString().slice(0,10) : dn.toISOString().slice(0,10);
+  var eD = editing ? new Date(editing.ts) : dn;
+  var defTime = p2(eD.getHours())+":"+p2(eD.getMinutes());
+  var h='<div class="full" style="padding:0 4px">'+backBtn(a.c)+
+    '<div style="display:flex;align-items:center;gap:12px;margin:4px 0 4px">'+ic(a.icon,30,a.c)+'<span style="font-size:28px;font-weight:700">Baby Bath</span></div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;margin-bottom:18px">Aim for 2\u20133 baths a week. Note the type, any skin changes and the products used to spot what irritates their skin.</div>';
+  h+='<div style="display:flex;gap:12px;margin-bottom:16px"><div style="flex:1">'+lbl("DATE")+'<input id="bathdate" type="date" value="'+defDate+'" data-a="bathTouch" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:14px;font-size:15px;color:#fff"></div><div style="flex:1">'+lbl("TIME")+'<input id="bathtime" type="time" value="'+defTime+'" data-a="bathTouch" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:14px;font-size:15px;color:#fff"></div></div>';
+  h+=lbl("BATH TYPE")+bathChips("type",BATH_TYPES,ui.bathType,"bathType")+'<div style="height:16px"></div>';
+  h+=lbl("SKIN OBSERVATIONS")+bathChips("obs",BATH_OBS,ui.bathObs,"bathObs")+'<div style="height:16px"></div>';
+  h+=lbl("PRODUCTS USED")+bathChips("prod",BATH_PRODS,ui.bathProd,"bathProd")+'<div style="height:10px"></div>'+
+     '<input id="bathprodtext" class="ninput" value="'+esc(editing?(editing.data.product||""):(ui.bathProdText||""))+'" placeholder="Specific product / medication (optional)" data-a="bathTouch" style="width:100%;background:var(--card);border:none;border-radius:14px;padding:14px;font-size:15px;color:#fff;margin-bottom:20px">';
+  var showAuto = pat && !editing;
+  if(showAuto){
+    bathTimerStart();
+    h+='<div style="font-size:13px;color:var(--sub);text-align:center;margin-bottom:8px">Tap to save quickly</div>'+
+       '<button class="press" data-a="bathSave" style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+C.green+';color:#000;font-size:16px;font-weight:800">Save in '+(ui.bathLeft||6)+'s</button>';
+  } else {
+    bathTimerStop();
+    h+='<button class="press" data-a="bathSave" style="width:100%;height:52px;border-radius:16px;text-align:center;background:'+a.c+';color:#fff;font-size:16px;font-weight:800">'+(editing?"Update bath":"Save bath")+'</button>';
+  }
+  return h+'<div style="height:100px"></div></div>';
 }
 function cordFallen(){ var i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="cord" && e.data && e.data.fallen) return e; } return null; }
 function cordById(id){ var i; for(i=0;i<S.entries.length;i++) if(String(S.entries[i].id)===String(id)) return S.entries[i]; return null; }
@@ -6906,6 +6977,7 @@ function render(){
     else if(a.kind==="single") h=vSingle(a);
     else if(a.k==="expressed") h=vExpr(a);
     else if(a.k==="cord") h=vCord(a);
+    else if(a.k==="bath") h=vBath(a);
     else if(a.k==="vitals") h=vVitals(a);
     else if(a.kind==="temp") h=vFever(a);
     else if(a.kind==="amount") h=vAmount(a);
@@ -7404,7 +7476,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.86";
+var APPVER="1.87";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
