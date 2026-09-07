@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.91 -->
+<!-- Baby Care v1.92 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2780,6 +2780,21 @@ var A = {
     try{ location.href=url; }catch(err){}
     toast("Asking Shortcuts to set a "+tClock(t)+" alarm");
   },
+  falarmDroid: function(x){
+    var t=parseInt(x,10); if(!t) return; var url=droidAlarmUrl(t);
+    try{ var an=document.createElement("a"); an.href=url; an.style.display="none"; document.body.appendChild(an); an.click(); document.body.removeChild(an); }
+    catch(e){ try{ location.href=url; }catch(e2){} }
+    toast("Opening Clock for a "+tClock(t)+" alarm \u2014 confirm in the Clock app. If nothing opens, use the calendar reminder.", 4800);
+  },
+  falarmIcs: function(x){
+    var t=parseInt(x,10); if(!t) return;
+    try{
+      var blob=new Blob([icsReminder(t)],{type:"text/calendar;charset=utf-8"}), u=URL.createObjectURL(blob);
+      var an=document.createElement("a"); an.href=u; an.download="next-feed.ics"; document.body.appendChild(an); an.click(); document.body.removeChild(an);
+      setTimeout(function(){ try{URL.revokeObjectURL(u);}catch(_){} }, 1500);
+      toast("Calendar reminder for "+tClock(t)+" downloaded \u2014 open it to add the alert.", 4800);
+    }catch(e){ toast("Couldn\u2019t create the reminder file on this device."); }
+  },
   eopen: function(x){
     var i=+x, e=S.entries[i]; if(!e) return;
     S.eidx=i; ui.sheet=false; ui.dts={};
@@ -3872,7 +3887,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.91</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.92</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5417,6 +5432,9 @@ function vOutput(){
 /* ============ next-feed schedule editor ============ */
 function hasFormula(){ var lim=Date.now()-3*864e5, i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="formula" && new Date(e.ts).getTime()>=lim) return true; } return false; }
 function hasExpressed(){ var lim=Date.now()-3*864e5, i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="expressed" && new Date(e.ts).getTime()>=lim) return true; } return false; }
+function droidAlarmUrl(t){ var d=new Date(t); return "intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR="+d.getHours()+";i.android.intent.extra.alarm.MINUTES="+d.getMinutes()+";S.android.intent.extra.alarm.MESSAGE=Next+feed;B.android.intent.extra.alarm.SKIP_UI=false;end"; }
+function icsReminder(t){ var d=new Date(t), end=new Date(t+15*60000), z=function(n){return ("0"+n).slice(-2);}, f=function(x){ return x.getUTCFullYear()+z(x.getUTCMonth()+1)+z(x.getUTCDate())+"T"+z(x.getUTCHours())+z(x.getUTCMinutes())+z(x.getUTCSeconds())+"Z"; };
+  return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Baby Care//Feed//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:babycare-"+t+"@babycare\r\nDTSTAMP:"+f(new Date())+"\r\nDTSTART:"+f(d)+"\r\nDTEND:"+f(end)+"\r\nSUMMARY:Next feed\r\nDESCRIPTION:Baby Care feed reminder\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Next feed\r\nTRIGGER:PT0M\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"; }
 function alarmPill(ts){
   var t=new Date(ts).getTime();
   return '<button class="press" data-a="falarmAt" data-x="'+t+'" title="Set iPhone alarm" style="flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--card2);color:'+C.mint+';font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px">'+ic("alarm-clock",13,C.mint)+'Set alarm</button>';
@@ -5526,17 +5544,15 @@ function vFeed(){
     '<div style="margin-top:8px">This button sends the time as text (<span class="mono" style="color:'+C.teal+'">\u201C'+tClock(al)+'\u201D</span>); '+
     'step 1 converts it to a real time, so Shortcuts creates the alarm without asking. '+
     'If you already made the one-action version, just add step 1 above Create Alarm and point Time at <b style="color:#fff">Dates</b>.</div></div></div>';
-  var alD=new Date(al);
-  var aurl="intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR="+alD.getHours()+
-    ";i.android.intent.extra.alarm.MINUTES="+alD.getMinutes()+
-    ";S.android.intent.extra.alarm.MESSAGE=Next%20feed;end";
   h += '<div style="height:14px"></div>'+lbl("ANDROID ALARM")+
     '<div class="card">'+
-    '<a href="'+aurl+'" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;color:inherit;text-decoration:none" class="press">'+
+    '<button class="press" data-a="falarmDroid" data-x="'+al+'" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;color:inherit;padding:0">'+
     ic("clock",20,"#34C77B")+
     '<span style="flex:1;font-size:15px;font-weight:600">Set Android alarm for '+tClock(al)+'</span>'+
-    ic("chevron-right",16,C.sub)+'</a>'+
-    '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">Opens the Clock app with this time pre-filled \u2014 confirm with one tap. If nothing happens, your browser blocked the web intent; set '+tClock(al)+' manually.</div></div>';
+    ic("chevron-right",16,C.sub)+'</button>'+
+    '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px;border-top:1px solid var(--hair);padding-top:10px">Tries to open the Clock app with '+tClock(al)+' pre-filled. Many Android phones block alarms launched from a browser \u2014 if nothing opens, use the calendar reminder below, which always works.</div>'+
+    '<button class="press" data-a="falarmIcs" data-x="'+al+'" style="display:inline-flex;align-items:center;gap:8px;background:none;border:none;color:'+C.mint+';font-size:13px;font-weight:700;margin-top:12px;padding:0">'+ic("calendar",15,C.mint)+'Add a calendar reminder instead</button>'+
+    '</div>';
 
   if(!auto) h += saveBar(C.mint, true, "fSave");
   return h;
@@ -7550,7 +7566,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.91";
+var APPVER="1.92";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
