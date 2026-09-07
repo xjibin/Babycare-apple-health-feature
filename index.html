@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.90 -->
+<!-- Baby Care v1.91 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2722,6 +2722,7 @@ var A = {
   fmlEditQ: function(x){ ui.fml=Math.max(0,(ui.fml||0)+(+x)); if(ui.fmlLeft>ui.fml) ui.fmlLeft=ui.fml; render(); },
   fmlEditL: function(x){ ui.fmlLeft=Math.max(0, Math.min((ui.fml||0),(ui.fmlLeft||0)+(+x))); render(); },
   fmlQuick: function(){ A.fmlCountdown(); },
+  exprQuick: function(){ S.tab="activity"; S.sub=""; A.open("expressed"); },
   fmlCountdown: function(x){
     S.tab="activity"; S.route="formula"; S.sub=""; S.eidx=null;
     ui.fml=(x?parseInt(x,10):0)||formulaVols().def;
@@ -3583,8 +3584,9 @@ function vSummary(){
         '<span style="display:flex;gap:8px;flex-shrink:0;align-items:center">'+
         '<button class="circ press" data-a="heroplay" style="width:46px;height:46px;background:'+C.pink+'">'+
           ((S.sess.nursing&&S.sess.nursing.run)?ic("pause",18,"#fff"):ic("play",18,"#fff"))+'</button>'+
-        '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2)">'+ic("alarm-clock",20,"#fff")+'</button>'+
-        (hasFormula() ? '<button class="circ press" data-a="fmlQuick" title="Start a formula feed" style="width:46px;height:46px;background:'+C.orange+'">'+ic("milk",20,"#000")+'</button>' : "")+'</span>'+
+        ((hasFormula() && hasExpressed()) ? "" : '<button class="circ press" data-a="feedAlarms" style="width:46px;height:46px;background:var(--card2)">'+ic("alarm-clock",20,"#fff")+'</button>')+
+        (hasFormula() ? '<button class="circ press" data-a="fmlQuick" title="Start a formula feed" style="width:46px;height:46px;background:'+C.orange+'">'+ic("milk",20,"#000")+'</button>' : "")+
+        (hasExpressed() ? '<button class="circ press" data-a="exprQuick" title="Log an expressed feed" style="width:46px;height:46px;background:'+C.teal+'">'+ic("droplets",20,"#000")+'</button>' : "")+'</span>'+
       '</div></div>';
   var ot=outToday(), dol=dayOfLife(), tgt=wetTarget(dol);
   var os=outSplit(), oChip=nappyChip(), lNap=lastNappy();
@@ -3870,7 +3872,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.90</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.91</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5414,6 +5416,7 @@ function vOutput(){
 
 /* ============ next-feed schedule editor ============ */
 function hasFormula(){ var lim=Date.now()-3*864e5, i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="formula" && new Date(e.ts).getTime()>=lim) return true; } return false; }
+function hasExpressed(){ var lim=Date.now()-3*864e5, i; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(e.act==="expressed" && new Date(e.ts).getTime()>=lim) return true; } return false; }
 function alarmPill(ts){
   var t=new Date(ts).getTime();
   return '<button class="press" data-a="falarmAt" data-x="'+t+'" title="Set iPhone alarm" style="flex:none;display:inline-flex;align-items:center;gap:5px;background:var(--card2);color:'+C.mint+';font-size:12px;font-weight:700;padding:6px 11px;border-radius:999px">'+ic("alarm-clock",13,C.mint)+'Set alarm</button>';
@@ -7547,7 +7550,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.90";
+var APPVER="1.91";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
