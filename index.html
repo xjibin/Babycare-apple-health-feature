@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.92 -->
+<!-- Baby Care v1.93 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3240,6 +3240,14 @@ document.addEventListener("click", function(e){
   if(fn) fn(el.getAttribute("data-x"));
 });
 
+/* intro slides: sync the pagination dots to the swiped slide */
+document.addEventListener("scroll", function(e){
+  var el=e.target; if(!el || el.id!=="introslides") return;
+  var w9=el.clientWidth||1, idx=Math.round(el.scrollLeft/w9);
+  var dd=document.getElementById("introdots"); if(!dd) return;
+  var ch=dd.children, i; for(i=0;i<ch.length;i++) ch[i].style.background=(i===idx?C.pink:"var(--card2)");
+}, true);
+
 /* generic long-press for [data-hold] (e.g. the navbar Baby button) */
 var holdT2=null;
 document.addEventListener("pointerdown", function(ev){
@@ -3887,7 +3895,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.92</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.93</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6982,10 +6990,10 @@ function vOnboard(){
     var g3='<svg width="150" height="150" viewBox="0 0 160 160" fill="none"><circle cx="80" cy="80" r="76" fill="'+alpha(C.lav,0.16)+'"/><circle cx="60" cy="86" r="24" fill="'+alpha(C.indigo,0.45)+'"/><circle cx="100" cy="86" r="24" fill="'+alpha(C.pink,0.45)+'"/><path d="M80 60 C74 52 62 54 62 64 C62 72 80 82 80 82 C80 82 98 72 98 64 C98 54 86 52 80 60 Z" fill="'+C.coral+'"/></svg>';
     var slides=[[g1,"Started as a personal Nappy and Baby Feed Tracker from day one of our baby\u2019s life. Baby Care is crafted with infinite love and care for all the babies around the world."],[g2,"Helps you take care of your baby \u2014 track feeds, nappies, daily chores and many more\u2026 easily."],[g3,"Made meticulously for all moms and dads out there! Developed by a loving and caring New Dad and Mom \u2764\uFE0F"]];
     var cards="", i; for(i=0;i<slides.length;i++) cards+='<div style="flex:0 0 100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 22px;box-sizing:border-box">'+slides[i][0]+'<div style="font-size:16px;color:#fff;line-height:1.6;margin-top:26px;max-width:320px">'+slides[i][1]+'</div></div>';
-    var dots=""; for(i=0;i<3;i++) dots+='<span style="width:8px;height:8px;border-radius:4px;background:'+(i===0?C.pink:"var(--card2)")+';display:inline-block;margin:0 4px"></span>';
+    var dots=""; for(i=0;i<3;i++) dots+='<span class="idot" style="width:8px;height:8px;border-radius:4px;background:'+(i===0?C.pink:"var(--card2)")+';display:inline-block;margin:0 4px;transition:background .2s"></span>';
     return frame('<div style="flex:1;display:flex;flex-direction:column;min-height:0">'+
-      '<div style="flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none">'+cards+'</div>'+
-      '<div style="text-align:center;padding:12px 0 2px">'+dots+'</div>'+
+      '<div id="introslides" style="flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none">'+cards+'</div>'+
+      '<div id="introdots" style="text-align:center;padding:12px 0 2px">'+dots+'</div>'+
       '<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:6px">Swipe to explore</div></div>'+
       '<div style="padding:8px 0 calc(24px + env(safe-area-inset-bottom))"><button class="press" data-a="onbToWelcome" style="width:100%;height:54px;border-radius:16px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">Get started</button></div>');
   }
@@ -6994,7 +7002,7 @@ function vOnboard(){
       '<div style="font-size:30px;font-weight:800;margin-top:26px">Welcome to Baby Care</div>'+
       '<div style="font-size:15px;color:var(--sub);margin-top:10px;line-height:1.5;max-width:300px">Track feeds, sleep, nappies, growth and more \u2014 all in one calm place.</div></div>'+
       '<div style="display:flex;gap:10px;padding:10px 0 calc(24px + env(safe-area-inset-bottom))">'+
-      '<button class="press" data-a="onbStart" style="flex:1;height:54px;border-radius:16px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">I\u2019ll Join</button>'+
+      '<button class="press" data-a="onbStart" style="flex:1;height:54px;border-radius:16px;text-align:center;background:'+C.pink+';color:#fff;font-size:16px;font-weight:800">Skip to use</button>'+
       '<button class="press" data-a="onbSignin" style="flex:1;height:54px;border-radius:16px;text-align:center;background:var(--card2);color:#fff;font-size:16px;font-weight:800">Sign In</button></div>');
   }
   if(step==="success"){
@@ -7566,7 +7574,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.92";
+var APPVER="1.93";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
