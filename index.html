@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.93 -->
+<!-- Baby Care v1.94 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1524,6 +1524,16 @@ function dsFold(s){ var e=dsE(s); s.l=e.l; s.r=e.r; s.at=Date.now(); }
 function nurseGapPause(s){ if(s && s.run && !s.pausedAt) s.pausedAt=Date.now(); }        // mark the moment nursing was paused
 function nurseGapResume(s){ if(s && !s.run && s.pausedAt){ var g=Math.round((Date.now()-s.pausedAt)/1000); if(g>=2){ (s.gaps=s.gaps||[]).push(g); s.pausedSec=(s.pausedSec||0)+g; } s.pausedAt=0; } }  // on resume, note the gap since the pause
 function ssn(k){ if(!S.sess[k]) S.sess[k]={sec:0,run:false,at:0}; return S.sess[k]; }
+function feedRecoverCheck(){
+  var s = S.sess && S.sess.nursing;
+  if(s && s.run && (Date.now()-(s.at||Date.now())) > 2*3600*1000){
+    s.run=false; s.at=Date.now();
+    if(typeof save==="function") save();
+    if(typeof toast==="function") toast("A nursing session was left running \u2014 paused so you can save or clear it in Nursing.", 5500);
+    return true;
+  }
+  return false;
+}
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
 function sFold(s){ s.sec=sE(s); s.at=Date.now(); }
 function addEntryAt(k, detail, data, ts){
@@ -3895,7 +3905,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.93</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.94</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7574,7 +7584,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.93";
+var APPVER="1.94";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8841,7 +8851,7 @@ setInterval(function(){
     tt.textContent=fmt(sE(s2));
   }
 },1000);
-document.addEventListener("visibilitychange", function(){ if(!document.hidden){ if(!removedCheck()){ purgeRemoved(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } } });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden){ if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } } });
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
 
 /* boot: static status bar icons + first paint */
@@ -9091,6 +9101,7 @@ howsBabyCheck();
 cordOverdueCheck();
 removedCheck();
 purgeRemoved();
+feedRecoverCheck();
 </script>
 </body>
 </html>
