@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.98 -->
+<!-- Baby Care v1.99 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1540,6 +1540,18 @@ function feedRecoverCheck(){
     if(typeof toast==="function") toast("A nursing session was left running \u2014 paused so you can save or clear it in Nursing.", 5500);
     return true;
   }
+  return false;
+}
+/* On app open, re-derive the paused-nursing auto-save from the persisted pausedAt
+   (nasDL is runtime-only and is lost when the app is closed). */
+function pauseAutosaveResume(){
+  var s = S.sess && S.sess.nursing;
+  if(!s || s.run) return false;
+  if((s.l||0)+(s.r||0) < 0.5 || !s.pausedAt) return false;
+  var nas = cfgGet("nurseAS")||0; if(nas<=0) return false;
+  var deadline = s.pausedAt + nas*6e4;
+  if(Date.now() >= deadline){ autoSaveNursing(); if(typeof toast==="function") toast("A paused nursing session was auto-saved."); return true; }
+  nasDL = deadline;   // re-arm the countdown so capTick continues it
   return false;
 }
 function sE(s){ return s.sec+(s.run?(Date.now()-s.at)/1000:0); }
@@ -3918,7 +3930,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.98</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.99</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -7598,7 +7610,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.98";
+var APPVER="1.99";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8867,7 +8879,7 @@ setInterval(function(){
   }
 },1000);
 function flushPendingSave(){ if(ui.sheet){ try{ if(A.shSave) A.shSave(); }catch(e){} } }
-document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
+document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
 window.addEventListener("pagehide", flushPendingSave);
 window.addEventListener("beforeunload", flushPendingSave);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
@@ -9120,6 +9132,7 @@ cordOverdueCheck();
 removedCheck();
 purgeRemoved();
 feedRecoverCheck();
+pauseAutosaveResume();
 </script>
 </body>
 </html>
