@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v2.00 -->
+<!-- Baby Care v0.2.01 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -748,6 +748,13 @@ function upNext(){
     med:iv, auto:(band==="d"?autoD:autoN), manual:(band==="d"?(S.feedIvD!=null):(S.feedIvN!=null)),
     src:(band==="d"?m.srcD:m.srcN), model:m, adj:aj.adj, adjParts:aj.parts, held:_held,
     next:_nx, side:suggSide()};
+}
+/* nfView(): single live source for every Next Feed display (summary card, app-open modal, nightstand).
+   Always recomputed from upNext() at call time; never cached. */
+function nfView(){
+  var un=upNext(), due=!!(un && un.next && un.next<=Date.now());
+  return {un:un, due:due, big:(un ? (due ? "Due Now" : tClock(un.next)) : "No feeds yet"),
+    side:((un && un.side) || "Left"), last:lastFeedLine()};
 }
 function agoStr(ms){
   var m=Math.max(0,Math.round((Date.now()-ms)/6e4));
@@ -3626,8 +3633,8 @@ function vSummary(){
   for(i=0;i<bars.length;i++)
     bh+='<span style="display:inline-block;width:6px;height:'+bars[i]+'px;border-radius:2px;margin-left:4px;background:'+
         (i===bars.length-1?C.orange:"#5A5A5E")+'"></span>';
-  var age=babyAge(), un=upNext();
-  var due = un && un.next ? un.next<Date.now() : false;
+  var age=babyAge(), nv=nfView(), un=nv.un;
+  var due = nv.due;
   var upHtml =
     cryCardHtml()+
     '<div class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;min-height:156px;box-sizing:border-box">'+
@@ -3639,8 +3646,8 @@ function vSummary(){
       '<div class="rowsb" style="align-items:flex-end">'+
         '<span style="min-width:0">'+
           '<div style="font-size:32px;font-weight:700;letter-spacing:-.5px;line-height:1.15">'+
-            (un ? (due ? 'Due Now' : tClock(un.next)) : 'No feeds yet')+'</div>'+
-          '<div style="font-size:15px;color:var(--sub);margin-top:4px">'+lastFeedLine()+'</div></span>'+
+            nv.big+'</div>'+
+          '<div style="font-size:15px;color:var(--sub);margin-top:4px">'+nv.last+'</div></span>'+
         '<span style="display:flex;gap:8px;flex-shrink:0;align-items:center">'+
         '<button class="circ press" data-a="heroplay" style="width:46px;height:46px;background:'+C.pink+'">'+
           ((S.sess.nursing&&S.sess.nursing.run)?ic("pause",18,"#fff"):ic("play",18,"#fff"))+'</button>'+
@@ -3932,7 +3939,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v2.00</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.01</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5175,18 +5182,38 @@ function closeHows(){ var d=byId("howsmodal"); if(d && d.parentNode) d.parentNod
 function isTimedKind(k){ var aa=act(k); return !!(aa && (aa.kind==="dual"||aa.kind==="single"||aa.kind==="burp"||aa.kind==="seat")); }
 function anyTimedRunning(){ var ls=allLive(), i; for(i=0;i<ls.length;i++){ if(ls[i].run && isTimedKind(ls[i].k)) return true; } return false; }
 function lastTimedMs(){ var i,best=0; for(i=0;i<S.entries.length;i++){ var e=S.entries[i]; if(isTimedKind(e.act)){ var t=new Date(e.ts).getTime(); if(t>best) best=t; } } return best; }
+/* v0.2.01: the app-open Next Feed modal is always built from a fresh nfView(). showHowsBaby() discards any
+   existing #howsmodal node and creates a new one; howsRefresh() keeps an open modal live (rebuilds on change,
+   closes when no longer warranted) and runs from render(), the 1s tick and app resume. */
+function howsSig(nv){ return (nv.due?"1":"0")+"|"+nv.big+"|"+nv.side+"|"+nv.last; }
+function howsWanted(nv){
+  if(inOnboarding()) return false;
+  if(S.tab!=="summary"||S.sub||S.eidx!=null||S.pmode||ui.cryStep) return false;
+  if(anyTimedRunning()) return false;
+  if(!nv.un||!nv.un.next) return false;               // no prediction -> nothing to prompt
+  if(nv.un.next-Date.now() > 60*60000) return false;  // more than an hour away -> don't nag
+  return true;                                        // due now (Case 1) or within the hour (Case 2)
+}
+function howsRefresh(){
+  var d=byId("howsmodal"); if(!d) return;
+  var nv=nfView();
+  if(!howsWanted(nv)){ closeHows(); return; }
+  if(d.getAttribute("data-sig")!==howsSig(nv)) showHowsBaby();
+}
 function showHowsBaby(){
-  var d=byId("howsmodal"); if(!d){ d=document.createElement("div"); d.id="howsmodal"; document.body.appendChild(d); }
-  var un=upNext(), due = un && un.next ? un.next<=Date.now() : false;
+  var old=byId("howsmodal"); if(old && old.parentNode) old.parentNode.removeChild(old);
+  var d=document.createElement("div"); d.id="howsmodal";
+  var nv=nfView(), un=nv.un, due=nv.due;
+  d.setAttribute("data-sig", howsSig(nv));
   var head='<div style="display:flex;align-items:center;gap:7px;justify-content:center;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</div>';
-  var big='<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;text-align:center;margin-top:6px">'+(un?(due?'Due Now':tClock(un.next)):'No feeds yet')+'</div>';
-  var last='<div style="font-size:14px;color:var(--sub);text-align:center;margin-top:6px">'+lastFeedLine()+'</div>';
+  var big='<div style="font-size:34px;font-weight:700;letter-spacing:-.5px;text-align:center;margin-top:6px">'+nv.big+'</div>';
+  var last='<div style="font-size:14px;color:var(--sub);text-align:center;margin-top:6px">'+nv.last+'</div>';
   var body;
   if(due){
     body=head+big+last+
       '<div style="display:flex;flex-direction:column;align-items:center;margin-top:22px">'+
         '<button class="circ press" data-a="howsStartFeed" style="width:78px;height:78px;background:'+C.pink+'">'+ic("play",32,"#fff",{fill:true,style:"margin-left:4px"})+'</button>'+
-        '<div style="font-size:16px;font-weight:700;margin-top:12px">Start on the '+((un&&un.side)||"Left")+'</div>'+
+        '<div style="font-size:16px;font-weight:700;margin-top:12px">Start on the '+nv.side+'</div>'+
         '<button class="press" data-a="howsSwitch" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+C.pink+';background:none;border:none;margin-top:8px;padding:0">Tap to switch sides'+ic("repeat",14,C.pink)+'</button>'+
       '</div>';
   } else {
@@ -5197,16 +5224,15 @@ function showHowsBaby(){
     '<div data-a="howsStay" class="card" style="max-width:340px;width:100%;padding:24px 22px">'+body+'</div>'+
     '<div style="margin-top:18px;background:'+alpha(C.pink,0.22)+';color:#fff;font-size:13px;font-weight:700;padding:8px 16px;border-radius:999px;letter-spacing:.2px">Tap anywhere to exit</div>'+
   '</div>';
+  document.body.appendChild(d);
 }
 function howsBabyCheck(){
+  if(byId("howsmodal")){ howsRefresh(); return; }      // an open modal is re-validated, never redisplayed as-is
   if(inOnboarding()) return;
-  if(byId("duemodal")||byId("streakmodal")||byId("howsmodal")) return;
-  if(S.tab!=="summary"||S.sub||S.eidx!=null||S.pmode||ui.cryStep) return;
+  if(byId("duemodal")||byId("streakmodal")) return;
   if(Date.now()-(S.howsSnooze||0) < 60*60000) return;
-  if(anyTimedRunning()) return;
-  var un=upNext(); if(!un||!un.next) return;            // no prediction -> nothing to prompt
-  if(un.next-Date.now() > 60*60000) return;             // more than an hour away -> don't nag
-  ui.howsStep=null; showHowsBaby();                     // due now (Case 1) or within the hour (Case 2)
+  if(!howsWanted(nfView())) return;
+  ui.howsStep=null; showHowsBaby();
 }
 function medDueModalCheck(){
   if(inOnboarding()) return;
@@ -6425,13 +6451,13 @@ function startNursingSide(side){
 function nightNF(nc){
   var ss9=allLive(), i9;
   for(i9=0;i9<ss9.length;i9++){ if(ss9[i9].k==="nursing") return ""; }
-  var un=upNext(); if(!un || !un.next) return "";
-  var due = un.next<=Date.now();
+  var nv=nfView(), un=nv.un; if(!un || !un.next) return "";
+  var due = nv.due;
   var pill='<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
     'background:'+alpha(nc,0.16)+';font-size:20px;font-weight:800;letter-spacing:.2px;color:'+nc+'">'+
-    'Next feed \u00B7 '+(due?"Due Now":tClock(un.next))+'</div>';
+    'Next feed \u00B7 '+nv.big+'</div>';
   if(!due) return pill;
-  var side=(un.side||"Left");
+  var side=nv.side;
   return pill+
     '<div style="display:flex;flex-direction:column;align-items:center;margin-top:22px">'+
       '<button class="press" data-a="nightStartFeed" style="width:76px;height:76px;border-radius:999px;background:'+alpha(nc,0.16)+';border:2px solid '+nc+';display:flex;align-items:center;justify-content:center">'+ic("play",30,nc,{fill:true,style:"margin-left:4px"})+'</button>'+
@@ -7201,6 +7227,7 @@ function render(){
       initDT("e1", new Date(ee.ts));
     }
   }
+  howsRefresh();
   var lss=allLive(), vis=[], li;
   for(li=0;li<lss.length;li++)
     if(lss[li].r || !(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
@@ -7627,7 +7654,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="2.00";
+var APPVER="0.2.01";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8778,6 +8805,7 @@ setInterval(function(){
   autoNightTick();
   seatTick();
   capTick();
+  if(byId("howsmodal")) howsRefresh();
   var _bs=S.sess.burp;
   if(_bs && sE(_bs)>=1200){ if(_bs.mid){ saveMidBurp(); } else { A.nstop("burp"); } toast("Burp time-out \u2014 Session saved"); }
   var pkeys=Object.keys(S.sess), pi;
@@ -8874,7 +8902,7 @@ setInterval(function(){
       var xld=document.getElementById("nlfd"); if(xld) xld.textContent=nb.lfd;
       var xnp=document.getElementById("nnp"); if(xnp) xnp.textContent=nb.np;
       var xnf=document.getElementById("nnf");
-      if(xnf){ var un9=upNext(); xnf.textContent="Next feed \u00B7 "+((un9 && un9.next<=Date.now())?"Due Now":(un9?tClock(un9.next):"")); }
+      if(xnf){ var nv9=nfView(); xnf.textContent="Next feed \u00B7 "+(nv9.un?nv9.big:""); }
     }
   }
 
@@ -8896,7 +8924,7 @@ setInterval(function(){
   }
 },1000);
 function flushPendingSave(){ if(ui.sheet){ try{ if(A.shSave) A.shSave(); }catch(e){} } }
-document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
+document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); closeHows(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
 window.addEventListener("pagehide", flushPendingSave);
 window.addEventListener("beforeunload", flushPendingSave);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
