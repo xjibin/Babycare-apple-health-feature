@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v1.99 -->
+<!-- Baby Care v2.00 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2425,6 +2425,8 @@ var A = {
     save(); render();
   },
   feedSwitch: function(){ var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); },
+  nightStartFeed: function(){ var u=upNext(); startNursingSide(((u&&u.side)||"Left").charAt(0)); render(); },
+  nightSwitch: function(){ var u=upNext(); var sug=((u&&u.side)||"Left"); startNursingSide(sug==="Left"?"R":"L"); render(); },
   cryYes: function(){ ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; ui.cryFromLog=false; ui.cryStill=false; cryLogNew(true); ui.cryStep="feeding"; render(); },
   cryNo: function(){ ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; render(); },
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
@@ -3930,7 +3932,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v1.99</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v2.00</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -6413,14 +6415,29 @@ function nightRemote(nc, skipFirst){
   }
   return h;
 }
+function startNursingSide(side){
+  var s=ds("nursing");
+  if(s.run && s.side===side) return;
+  nurseGapResume(s); dsFold(s); s.side=side; if(!s.startSide) s.startSide=side; if(!s.st) s.st=Date.now();
+  s.run=true; s.at=Date.now(); nasDL=0;
+  save();
+}
 function nightNF(nc){
   var ss9=allLive(), i9;
   for(i9=0;i9<ss9.length;i9++){ if(ss9[i9].k==="nursing") return ""; }
   var un=upNext(); if(!un || !un.next) return "";
   var due = un.next<=Date.now();
-  return '<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
+  var pill='<div id="nnf" style="margin-top:18px;display:inline-block;padding:9px 18px;border-radius:16px;'+
     'background:'+alpha(nc,0.16)+';font-size:20px;font-weight:800;letter-spacing:.2px;color:'+nc+'">'+
     'Next feed \u00B7 '+(due?"Due Now":tClock(un.next))+'</div>';
+  if(!due) return pill;
+  var side=(un.side||"Left");
+  return pill+
+    '<div style="display:flex;flex-direction:column;align-items:center;margin-top:22px">'+
+      '<button class="press" data-a="nightStartFeed" style="width:76px;height:76px;border-radius:999px;background:'+alpha(nc,0.16)+';border:2px solid '+nc+';display:flex;align-items:center;justify-content:center">'+ic("play",30,nc,{fill:true,style:"margin-left:4px"})+'</button>'+
+      '<div style="font-size:16px;font-weight:700;margin-top:12px;color:'+nc+'">Start on the '+side+'</div>'+
+      '<button class="press" data-a="nightSwitch" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:'+nc+';background:none;border:none;margin-top:8px;padding:0">Tap to switch sides'+ic("repeat",14,nc)+'</button>'+
+    '</div>';
 }
 function nTimeBare(ls){ return fmt(ls.secs); }
 function nTime(ls){
@@ -7610,7 +7627,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="1.99";
+var APPVER="2.00";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
