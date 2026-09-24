@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.2.01 -->
+<!-- Baby Care v0.2.02 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,6 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAC70lEQVR42u3dUUpjQRBAUfPIUnUZ/ugyXGz8F8REQtJ969zvgXn96lB2wjCeLq8flxcp0uEVCGgJaAloCWgBLQEtAS0BLQEtoCWgJaAloCWgBbQEtAS0BLQEtICWgJaAloCWgBbQEtAS0BLQEtACWgJaAloCWgJatc4jTvn1fv2ffft0vo07JX9p0C0D3hFA/XxA33nIKw6/fj6gHzTkZw6/fj4fChcZ9iP+/vr5bOiFX/Q9t1n9fDb0BlvjXs9VP58NveGPv/9ss/r5bOiN73K3Pm/9fEDv/8Hk6ueunw/owLCvff76+YAODfuvc9TPB3Rw2L+dp34+oMPD/nmu+vmAlqqgq9vL+QaCrg97SgvM0ZVDrhy2s1ad5wGzSnN15ZArhwS064Zrhw0tAS2gXTfUmLMNLRtaAlpKgnZ/do+2oSWgBbQEtAS0BLQEtICWgJaAljYHHf89eXruvG1o2dAS0FIWtHu0+7MNLQEtoF07tO98bWjZ0BLQrh2uGyM2NNQwu3JIK4O2pW3n3IaGGmZXDmll0La07Zzb0FDDnLtyQA1z7g4NNcy5D4VQm0sKNNTmcWPnrV6i/ywd5O03tG3tvec2tG0NcnJD29beb25D29YgJze0be09ZkFD7f3lQEPtvb0U//ko1KPf12FIMAMtAW37eD9AG5r3AjTUc9/HYYgwA22Yzg+0BLQt5dxAG+7c8868ckwZ8sCfSHPv0PVhD71ezf5QWB364G90fMtRG/7wryeBFtC2tHMADYPnBxoKmIGehQNmoDNIYAZaQNvSng9oqGEGGh6YgR6ECGagM5hgBjqDCmagBbRW3Ja2M9AZZDADnUENM9AZ1DADnUENM9AZ1DADLQG94pa2nYHOoIYZ6AxqmIHOoIYZ6AxqmIGWgF5xS9vOQGdQwwx0BjXMQI/5kCigJaAFtAS0BLQEtAS0gJaAloCWgJaAFtAS0BLQEtACWgJaAloCWgJaQEtAS0BLQEtAC2gJaGmJvgGABc1L55n2gwAAAABJRU5ErkJggg==">
 <style>
+  body.nsOn #howsmodal, body.nsOn #duemodal, body.nsOn #streakmodal, body.nsOn #upmodal, body.nsOn #nursemodal{display:none !important}
   :root{
     --card:#1C1C1E; --card2:#2C2C2E; --hair:#2C2C2E; --sub:#98989F;
     --blue:#3D82F7; --pink:#FF6482; --red:#FF453A;
@@ -2432,8 +2433,8 @@ var A = {
     save(); render();
   },
   feedSwitch: function(){ var sug=suggSide(); var side=(sug==="Left"?"R":"L"); A.cstart(side); toast("Nursing started on the "+(side==="L"?"Left":"Right")+" side"); },
-  nightStartFeed: function(){ var u=upNext(); startNursingSide(((u&&u.side)||"Left").charAt(0)); render(); },
-  nightSwitch: function(){ var u=upNext(); var sug=((u&&u.side)||"Left"); startNursingSide(sug==="Left"?"R":"L"); render(); },
+  nightStartFeed: function(){ closeHows(); var u=upNext(); startNursingSide(((u&&u.side)||"Left").charAt(0)); render(); },
+  nightSwitch: function(){ closeHows(); var u=upNext(); var sug=((u&&u.side)||"Left"); startNursingSide(sug==="Left"?"R":"L"); render(); },
   cryYes: function(){ ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; ui.cryFromLog=false; ui.cryStill=false; cryLogNew(true); ui.cryStep="feeding"; render(); },
   cryNo: function(){ ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; render(); },
   cryBack: function(){ var s=ui.cryStep, m={emergency:"redflags",feeding:"redflags",physical:"feeding",results:"physical",no_prevent:"no_branch",no_log:"no_branch",no_play:"no_branch"}; ui.cryStep=(m[s]||null); render(); },
@@ -2491,6 +2492,11 @@ var A = {
   howsCryYes: function(){ closeHows(); ui.cryFlags=[]; ui.cryFeed=null; ui.cryPhys=[]; ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(true); ui.cryStill=false; ui.cryStep="feeding"; S.tab="summary"; S.sub=""; S.route="list"; save(); render(); },
   howsCryNo: function(){ closeHows(); ui.cryEntryId=null; ui.cryFromLog=false; cryLogNew(false); ui.cryStep="no_branch"; S.tab="summary"; S.sub=""; S.route="list"; save(); render(); },
   howsClose: function(){ closeHows(); S.howsSnooze=Date.now(); save(); },
+  nmMin: function(){ closeNurseModal(); render(); medDueModalCheck(); },
+  nmPause: function(){ A.lapause("nursing"); },
+  nmSwitch: function(){ A.laswitch("nursing"); },
+  nmOpen: function(){ closeNurseModal(); A.laopen("nursing"); },
+  nmStop: function(){ closeNurseModal(); S.tab="activity"; S.route="nursing"; S.sub=""; S.pmode=false; S.eidx=null; A.stop(); },
   cryStillCrying: function(){ ui.cryStill=true; ui.cryFlags=[]; ui.cryStep="redflags"; render(); },
   cryExit: function(){ ui.cryStep=null; ui.cryStill=false; ui.cryFromLog=false; S.tab="summary"; S.sub=""; S.route="list"; render(); },
   cryReset: function(){ ui.cryStep=null; ui.cryDismiss=Date.now(); render(); },
@@ -3119,6 +3125,7 @@ var A = {
     else { S.tab=x; S.sub=""; }
     S.route="list"; S.eidx=null; S.pmode=false; ui.sheet=false;
     render();
+    if(x==="summary") nurseModalCheck();
   },
   nightoff: function(){ ntKill();
     S.night=false; if(ui.land) ui.landX=true;
@@ -3126,6 +3133,7 @@ var A = {
     if(a0 && S.sess[a0.k] && S.sess[a0.k].run) nsSup=a0.k;
     if(nsWake){ nsWake.release().catch(function(){}); nsWake=null; }
     render();
+    nurseModalCheck();
   },
   nstop: function(x){
     var a=act(x), se=S.sess[x]; if(!a || !se) return;
@@ -3939,7 +3947,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.01</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.02</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -5187,7 +5195,8 @@ function lastTimedMs(){ var i,best=0; for(i=0;i<S.entries.length;i++){ var e=S.e
    closes when no longer warranted) and runs from render(), the 1s tick and app resume. */
 function howsSig(nv){ return (nv.due?"1":"0")+"|"+nv.big+"|"+nv.side+"|"+nv.last; }
 function howsWanted(nv){
-  if(inOnboarding()) return false;
+  if(inOnboarding() || nsShown()) return false;
+  if(sessActive("nursing") || byId("nursemodal")) return false;
   if(S.tab!=="summary"||S.sub||S.eidx!=null||S.pmode||ui.cryStep) return false;
   if(anyTimedRunning()) return false;
   if(!nv.un||!nv.un.next) return false;               // no prediction -> nothing to prompt
@@ -5226,6 +5235,65 @@ function showHowsBaby(){
   '</div>';
   document.body.appendChild(d);
 }
+/* v0.2.02: nsShown() = any nightstand face is on screen (portrait, landscape or car-seat).
+   No prompt modal is ever shown above it (CSS body.nsOn hides them; checks skip). */
+function nsShown(){ return !inOnboarding() && ((ui.land && !ui.landX && !ui.pumpModal) || !!S.cnight || !!S.night); }
+/* v0.2.02: live nursing modal. Shown over the summary screen whenever a nursing session is active
+   (running or paused) and the app is opened, resumed, or leaves the nightstand. "Tap anywhere to exit"
+   minimises it to the usual live-activity capsule above the nav bar. */
+function nmSig(){ var s=S.sess.nursing; return s ? ((s.run?"1":"0")+(s.side||"")) : ""; }
+function closeNurseModal(){ var d=byId("nursemodal"); if(d && d.parentNode) d.parentNode.removeChild(d); }
+function nurseModalOK(){
+  if(inOnboarding() || nsShown()) return false;
+  if(!sessActive("nursing")) return false;
+  if(ui.sheet || S.eidx!=null || S.pmode || S.editing || ui.cryStep) return false;
+  if(byId("duemodal")||byId("streakmodal")||byId("upmodal")||byId("rmadminmodal")) return false;
+  return true;
+}
+function nurseModalCheck(){
+  if(!nurseModalOK()) return false;
+  closeHows();
+  S.tab="summary"; S.sub=""; S.route="list";
+  render(); showNurseModal();
+  return true;
+}
+function showNurseModal(){
+  closeNurseModal();
+  var s=S.sess.nursing; if(!s) return;
+  var e=dsE(s), run=!!s.run, side=s.side, a=act("nursing"), col=(a&&a.c)||C.pink;
+  var d=document.createElement("div"); d.id="nursemodal"; d.setAttribute("data-sig", nmSig());
+  var box=function(k,lab,sec){ var on=run && side===k;
+    return '<div style="flex:1;border-radius:14px;padding:10px 8px;text-align:center;background:'+(on?alpha(col,0.18):'var(--card2)')+';border:1.5px solid '+(on?col:'transparent')+'">'+
+      '<div style="font-size:12px;font-weight:700;color:'+(on?col:'var(--sub)')+'">'+lab+'</div>'+
+      '<div id="nm'+k+'" class="num" style="font-size:20px;font-weight:700;margin-top:2px">'+fmt(sec)+'</div></div>'; };
+  var status = run ? ('<span class="pulse" style="display:inline-block;width:7px;height:7px;border-radius:4px;background:'+col+';margin-right:6px"></span>Running \u00B7 '+(side==="R"?"Right":"Left")+' side') : 'Paused';
+  var body=
+    '<div style="display:flex;align-items:center;gap:7px;justify-content:center;color:'+col+';font-size:15px;font-weight:600">'+ic((a&&a.icon)||"baby",16,col)+'Nursing</div>'+
+    '<div id="nmT" class="num" style="font-size:44px;font-weight:700;letter-spacing:-.5px;text-align:center;margin-top:6px">'+fmt(e.l+e.r)+'</div>'+
+    '<div style="font-size:14px;color:var(--sub);text-align:center;margin-top:2px">'+status+'</div>'+
+    '<div style="display:flex;gap:10px;margin-top:18px">'+box("L","Left",e.l)+box("R","Right",e.r)+'</div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:22px;margin-top:22px">'+
+      '<button class="circ press" data-a="nmSwitch" title="Switch sides" style="width:52px;height:52px;background:var(--card2)">'+ic("repeat",20,"#fff")+'</button>'+
+      '<button class="circ press" data-a="nmPause" style="width:74px;height:74px;background:'+col+'">'+(run?ic("pause",28,"#fff",{fill:true}):ic("play",30,"#fff",{fill:true,style:"margin-left:4px"}))+'</button>'+
+      '<button class="circ press" data-a="nmStop" title="Stop and save" style="width:52px;height:52px;background:var(--card2)">'+ic("square",16,"#fff",{fill:true})+'</button>'+
+    '</div>'+
+    '<div style="text-align:center;margin-top:16px"><button class="press" data-a="nmOpen" style="font-size:13px;font-weight:800;color:'+col+';background:none;border:none;padding:0">Open nursing screen</button></div>';
+  d.innerHTML='<div data-a="nmMin" style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.62);z-index:412;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">'+
+    '<div data-a="howsStay" class="card" style="max-width:340px;width:100%;padding:24px 22px">'+body+'</div>'+
+    '<div style="margin-top:18px;background:'+alpha(col,0.22)+';color:#fff;font-size:13px;font-weight:700;padding:8px 16px;border-radius:999px;letter-spacing:.2px">Tap anywhere to exit</div>'+
+  '</div>';
+  document.body.appendChild(d);
+}
+function nurseModalRefresh(){
+  var d=byId("nursemodal"); if(!d) return;
+  if(nsShown() || !sessActive("nursing") || S.tab!=="summary" || S.sub || S.eidx!=null || ui.sheet){ closeNurseModal(); return; }
+  if(d.getAttribute("data-sig")!==nmSig()) showNurseModal();
+}
+function nurseModalTick(){
+  var s=S.sess.nursing; if(!s){ closeNurseModal(); return; }
+  var e=dsE(s), t=byId("nmT"), l=byId("nmL"), r=byId("nmR");
+  if(t) t.textContent=fmt(e.l+e.r); if(l) l.textContent=fmt(e.l); if(r) r.textContent=fmt(e.r);
+}
 function howsBabyCheck(){
   if(byId("howsmodal")){ howsRefresh(); return; }      // an open modal is re-validated, never redisplayed as-is
   if(inOnboarding()) return;
@@ -5235,8 +5303,8 @@ function howsBabyCheck(){
   ui.howsStep=null; showHowsBaby();
 }
 function medDueModalCheck(){
-  if(inOnboarding()) return;
-  if(byId("duemodal")||byId("streakmodal")) return;
+  if(inOnboarding() || nsShown()) return;
+  if(byId("duemodal")||byId("streakmodal")||byId("nursemodal")) return;
   if(S.tab!=="summary"||S.sub||S.eidx!=null) return;
   medMigrate();
   var slot=curSlot(); if(!slot) return;
@@ -7228,6 +7296,7 @@ function render(){
     }
   }
   howsRefresh();
+  nurseModalRefresh();
   var lss=allLive(), vis=[], li;
   for(li=0;li<lss.length;li++)
     if(lss[li].r || !(S.tab==="activity" && S.route===lss[li].k)) vis.push(lss[li]);
@@ -7257,6 +7326,7 @@ function render(){
   var q9=byId("csq");
   if(q9 && !q9._w){ q9._w=1; q9.addEventListener("input", function(){ A.csQ(this.value); }); }
   if(S.cnight && !S.sess.carseat) S.cnight=false;
+  try{ document.body.classList.toggle("nsOn", nsShown()); }catch(e){}
   document.getElementById("ov").innerHTML = inOnboarding() ? "" : (ui.land && !ui.landX && !ui.pumpModal) ? (sessActive("carseat") ? cLandHtml() : nightLandHtml()) : (S.cnight ? cnightHtml() : (S.night ? nightHtml() : sheetHtml));
 }
 
@@ -7654,7 +7724,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.2.01";
+var APPVER="0.2.02";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8806,6 +8876,7 @@ setInterval(function(){
   seatTick();
   capTick();
   if(byId("howsmodal")) howsRefresh();
+  if(byId("nursemodal")) nurseModalTick();
   var _bs=S.sess.burp;
   if(_bs && sE(_bs)>=1200){ if(_bs.mid){ saveMidBurp(); } else { A.nstop("burp"); } toast("Burp time-out \u2014 Session saved"); }
   var pkeys=Object.keys(S.sess), pi;
@@ -8924,7 +8995,7 @@ setInterval(function(){
   }
 },1000);
 function flushPendingSave(){ if(ui.sheet){ try{ if(A.shSave) A.shSave(); }catch(e){} } }
-document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); closeHows(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
+document.addEventListener("visibilitychange", function(){ if(document.hidden){ flushPendingSave(); closeHows(); closeNurseModal(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); nurseModalCheck(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
 window.addEventListener("pagehide", flushPendingSave);
 window.addEventListener("beforeunload", flushPendingSave);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
@@ -8940,7 +9011,7 @@ function setVH(){ try{ document.documentElement.style.setProperty("--appvh", (wi
 function landCheck(){
   var isL=false;
   try{ isL = !!(window.matchMedia && window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches); }catch(e){}
-  if(ui.land!==isL){ ui.land=isL; ui.landX=false; render(); }
+  if(ui.land!==isL){ var wasNs=nsShown(); ui.land=isL; ui.landX=false; render(); if(wasNs && !nsShown()) nurseModalCheck(); }
 }
 setVH(); landCheck();
 window.addEventListener("resize", function(){ setVH(); landCheck(); });
@@ -9171,6 +9242,7 @@ document.addEventListener("focusin", function(e){
 render();
 pumpMigrate();
 bagSweep();
+nurseModalCheck();
 medDueModalCheck();
 howsBabyCheck();
 cordOverdueCheck();
