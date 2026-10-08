@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.2.06 -->
+<!-- Baby Care v0.2.07 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -15,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAC70lEQVR42u3dUUpjQRBAUfPIUnUZ/ugyXGz8F8REQtJ969zvgXn96lB2wjCeLq8flxcp0uEVCGgJaAloCWgBLQEtAS0BLQEtoCWgJaAloCWgBbQEtAS0BLQEtICWgJaAloCWgBbQEtAS0BLQEtACWgJaAloCWgJatc4jTvn1fv2ffft0vo07JX9p0C0D3hFA/XxA33nIKw6/fj6gHzTkZw6/fj4fChcZ9iP+/vr5bOiFX/Q9t1n9fDb0BlvjXs9VP58NveGPv/9ss/r5bOiN73K3Pm/9fEDv/8Hk6ueunw/owLCvff76+YAODfuvc9TPB3Rw2L+dp34+oMPD/nmu+vmAlqqgq9vL+QaCrg97SgvM0ZVDrhy2s1ad5wGzSnN15ZArhwS064Zrhw0tAS2gXTfUmLMNLRtaAlpKgnZ/do+2oSWgBbQEtAS0BLQEtICWgJaAljYHHf89eXruvG1o2dAS0FIWtHu0+7MNLQEtoF07tO98bWjZ0BLQrh2uGyM2NNQwu3JIK4O2pW3n3IaGGmZXDmll0La07Zzb0FDDnLtyQA1z7g4NNcy5D4VQm0sKNNTmcWPnrV6i/ywd5O03tG3tvec2tG0NcnJD29beb25D29YgJze0be09ZkFD7f3lQEPtvb0U//ko1KPf12FIMAMtAW37eD9AG5r3AjTUc9/HYYgwA22Yzg+0BLQt5dxAG+7c8868ckwZ8sCfSHPv0PVhD71ezf5QWB364G90fMtRG/7wryeBFtC2tHMADYPnBxoKmIGehQNmoDNIYAZaQNvSng9oqGEGGh6YgR6ECGagM5hgBjqDCmagBbRW3Ja2M9AZZDADnUENM9AZ1DADnUENM9AZ1DADLQG94pa2nYHOoIYZ6AxqmIHOoIYZ6AxqmIGWgF5xS9vOQGdQwwx0BjXMQI/5kCigJaAFtAS0BLQEtAS0gJaAloCWgJaAFtAS0BLQEtACWgJaAloCWgJaQEtAS0BLQEtAC2gJaGmJvgGABc1L55n2gwAAAABJRU5ErkJggg==">
 <style>
-  body.nsOn #howsmodal, body.nsOn #duemodal, body.nsOn #streakmodal, body.nsOn #upmodal, body.nsOn #nursemodal{display:none !important}
+  body.nsOn #howsmodal, body.nsOn #duemodal, body.nsOn #streakmodal, body.nsOn #upmodal, body.nsOn #nursemodal, body.nsOn #fevermodal{display:none !important}
   :root{
     --card:#1C1C1E; --card2:#2C2C2E; --hair:#2C2C2E; --sub:#98989F;
     --blue:#3D82F7; --pink:#FF6482; --red:#FF453A;
@@ -300,7 +300,7 @@ function singleDetail(k, sec){
   var a=act(k), suf = (k==="pacifier") ? " with pacifier" : (k==="babysleep"||k==="mothersleep") ? " of sleep" : (a ? " \u00B7 "+a.t : "");
   return fmt(sec)+suf;
 }
-var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","shownCards","mother","father","del","setUp","rsess","autoSleep","inventory","lastSaved"];
+var PERBABY=["baby","entries","sess","meds","order","custom","feedIvD","feedIvN","hiddenCards","shownCards","mother","father","del","setUp","rsess","autoSleep","inventory","lastSaved","feverClr","feverAskedFor"];
 function babyDef(f){
   if(f==="entries"||f==="order"||f==="custom"||f==="hiddenCards"||f==="shownCards"||f==="del") return [];
   if(f==="sess"||f==="rsess"||f==="mother"||f==="father"||f==="baby"||f==="lastSaved") return {};
@@ -1339,7 +1339,7 @@ function medEvPickerHtml(h, a, act, px){
       '<button class="circ press" data-a="'+act+'" data-x="'+px+'1" style="width:30px;height:30px;background:#3A3A3C"'+(h>=24?' disabled':'')+'>'+ic("plus",14,"#fff")+'</button>'+
     '</div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+
-      EVERY_QUICK.map(function(q){ return '<button class="press" data-a="'+act+'Set" data-x="'+px+q+'" style="flex:1;min-width:40px;padding:6px 0;border-radius:999px;font-size:13px;font-weight:700;'+
+      EVERY_QUICK.map(function(q){ return '<button class="press" data-a="'+act+'Set" data-x="'+px+q+'" style="flex:1;min-width:40px;padding:6px 0;border-radius:999px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;'+
         (q===h?'background:'+a.c+';color:#000':'background:#3A3A3C;color:#fff')+'">'+q+'h</button>'; }).join("")+
     '</div>'+
     '<div style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.4">Next dose is due '+h+' h after the last one you log (1\u201324 h).</div></div>';
@@ -1907,6 +1907,21 @@ var A = {
   feverSet: function(x){ ui.ft=+x; render(); },
   feverUnit: function(x){ if((ui.fu||"C")===x) return; var t=(ui.ft!=null?ui.ft:37); ui.ft=(x==="F")?Math.round((t*9/5+32)*10)/10:Math.round(((t-32)*5/9)*10)/10; ui.fu=x; render(); },
   feverSave: function(){ feverLog(Date.now()); },
+  tempQuick: function(){ var tv=tempView(); A.hsopen("fever"); if(tv){ ui.ft=tv.last.t; ui.fu=tv.last.u||"C"; render(); } },
+  nsStay: function(){},
+  nsTempStep: function(x){ var tv=tempView(); if(!tv) return; var v=(ui.nsT!=null?ui.nsT:tv.last.t);
+    ui.nsT=Math.round((v+(+x))*10)/10; ui.nsPane=1; ui.nsHold=Date.now()+15000; ui.nsFlipAt=Date.now(); render(); },
+  nsTempSave: function(){
+    var tv=tempView(), u=tv ? (tv.last.u||"C") : "C", v=(ui.nsT!=null?ui.nsT:(tv?tv.last.t:37));
+    var rt=S.route, tb=S.tab;
+    ui.vitWho="baby"; ui.vitItem="temp"; ui.ft=v; ui.fu=u;
+    vitLog();                                          /* same entry type as the Vitals screen */
+    S.route=rt; S.tab=tb; ui.nsT=null; ui.nsPane=0; ui.nsHold=0; ui.nsFlipAt=0;
+    render(); toast("Temperature "+v.toFixed(1)+"\u00B0"+u+" logged"+(isFev(v,u)?" \u00B7 fever range":""));
+  },
+  feverGone: function(){ var tv=tempView(); S.feverClr=Date.now(); if(tv) S.feverAskedFor=String(tv.last.id); closeFeverModal(); save(); render(); toast("Fever mode off \u2014 back to normal"); },
+  feverStill: function(){ var tv=tempView(); if(tv) S.feverAskedFor=String(tv.last.id); closeFeverModal(); save(); A.tempQuick(); },
+  feverEnd: function(){ if(!confirm("End fever mode? Temperature and medicine cards return to their usual places.")) return; S.feverClr=Date.now(); save(); render(); toast("Fever mode off"); },
   feverPast: function(){ ui.feverPastM=true; render(); },
   feverPastBack: function(){ ui.feverPastM=false; render(); },
   feverSaveAt: function(){ var d=dtValue("fdt"); if(d.getTime()>Date.now()+60000){ toast("Time can\u2019t be in the future"); return; } feverLog(d.getTime()); },
@@ -3810,9 +3825,7 @@ function vSummary(){
       ((S.baby&&S.baby.uhid)?'<span class="num" style="font-size:12px;font-weight:700;color:'+((S.baby&&S.baby.sex==="Boy")?"#6FA8FF":"#F27C8D")+';letter-spacing:.3px;flex-shrink:0">'+esc(S.baby.uhid)+'</span>':"")+
       ic("chevron-right",18,C.sub)+'</button>' : "")+
 
-    resumeSumHtml()+(medPin()?medMilestoneHtml():"")+holdCardHtml()+upHtml+outHtml+vomitCardHtml()+noteCardHtml()+pumpStoredCardHtml()+
-
-    (medPin()?"":medMilestoneHtml())+
+    sumStackHtml(upHtml, outHtml)+
 
     '<div style="display:flex;gap:12px;margin-bottom:12px">'+
       '<button class="card press" data-a="night" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px;text-align:left">'+
@@ -4050,7 +4063,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.06</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.07</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4127,6 +4140,12 @@ function vList(){
     for(_ri=0;_ri<acts.length;_ri++){ var _ra=acts[_ri]; if(!coreOn(_ra.k) && !S.sess[_ra.k] && recent2d(_ra.k)) _res.push(_ra); else _norm.push(_ra); }
     acts=_norm.concat(_res);
   }
+  if(!edit && feverOn()){
+    var FPRI=["nursing","nappy","fever","medicine"], ftop=[], frest=[], fp, fq;
+    for(fp=0;fp<FPRI.length;fp++) for(fq=0;fq<acts.length;fq++) if(acts[fq].k===FPRI[fp]) ftop.push(acts[fq]);
+    for(fq=0;fq<acts.length;fq++) if(FPRI.indexOf(acts[fq].k)<0) frest.push(acts[fq]);
+    acts=ftop.concat(frest);
+  }
   var FEEDACTS={nursing:1,formula:1,expressed:1,water:1,solids:1,motherhydration:1};
   var hiddenN=0, vbDone=false;
   for(i=0;i<acts.length;i++){
@@ -4134,7 +4153,7 @@ function vList(){
     if(acts[i].k==="cord" && cordFallen()) continue;
     var a=acts[i], timed=(a.kind==="dual"||a.kind==="single"||a.kind==="burp"||a.kind==="seat");
     var manHid=!coreOn(a.k);
-    if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k) && !recent2d(a.k)){ hiddenN++; continue; }
+    if(!edit && !ui.showAll && !S.sess[a.k] && !coreOn(a.k) && !recent2d(a.k) && !((a.k==="fever"||a.k==="medicine") && feverOn())){ hiddenN++; continue; }
     var ch=cardChips(a, grid);
     var st="", s=S.sess[a.k];
     if(s){
@@ -4701,6 +4720,125 @@ function feverInner(a){
       '<button class="press" data-a="feverUnit" data-x="F" style="padding:8px 22px;border-radius:10px;background:'+(u==="F"?a.c:"var(--card2)")+';color:'+(u==="F"?"#000":"#fff")+';font-size:14px;font-weight:700">\u00B0F</button></div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>'+
     (fev?'<div style="font-size:12px;color:'+C.red+';font-weight:700;margin-top:12px">Fever range \u2014 monitor and consult your pediatrician if it persists.</div>':'')+'</div>';
+}
+/* ===== v0.2.07 BABY TEMPERATURE CARD + FEVER MODE ==========================================
+   Readings: baby temperatures from Vitals (act "vitals", who baby, item temp) and legacy "fever"
+   entries. A check is due 2-12 h after the last reading; after 12 h the card drops down.
+   Fever mode is on while the newest fever-range reading (>=38.0 C / 100.4 F) is newer than
+   S.feverClr; it ends only when the user confirms the fever is gone. */
+var TEMP_DUE_MS=2*36e5, TEMP_STALE_MS=12*36e5;
+function isFev(t, u){ return (u==="F") ? t>=100.4 : t>=38; }
+function fmtTemp(r){ return (+r.t).toFixed(1)+"\u00B0"+(r.u||"C"); }
+function tempReadings(){
+  var out=[], i, j;
+  for(i=0;i<S.entries.length;i++){ var e=S.entries[i], d=e.data||{}, ts=new Date(e.ts).getTime();
+    if(e.startLogged) continue;
+    if(e.act==="fever" && d.temp!=null) out.push({id:e.id, ts:ts, t:+d.temp, u:d.unit||"C"});
+    else if(e.act==="vitals" && (d.who||"baby")==="baby"){
+      if(d.items){ for(j=0;j<d.items.length;j++){ var it=d.items[j]; if(it && it.vit==="temp" && it.temp!=null) out.push({id:e.id, ts:ts, t:+it.temp, u:it.unit||"C"}); } }
+      else if(d.vit==="temp" && d.temp!=null) out.push({id:e.id, ts:ts, t:+d.temp, u:d.unit||"C"});
+    }
+  }
+  out.sort(function(a,b){ return b.ts-a.ts; });
+  return out;
+}
+function feverOn(){
+  var r=tempReadings(), i;
+  for(i=0;i<r.length;i++) if(isFev(r[i].t, r[i].u)) return r[i].ts > (+S.feverClr||0);
+  return false;
+}
+function tempView(){
+  var r=tempReadings(); if(!r.length) return null;
+  var last=r[0], age=Date.now()-last.ts, fo=feverOn();
+  if(age>7*864e5 && !fo) return null;           /* card shows for a week after the last reading, or in fever mode */
+  return {last:last, ts:last.ts, age:age, due:(age>=TEMP_DUE_MS && age<TEMP_STALE_MS), stale:(age>=TEMP_STALE_MS),
+    fever:isFev(last.t, last.u), feverOn:fo};
+}
+function tempCardHtml(tv){
+  var col=(act("fever")||{}).c||C.rose, hot=tv.fever, chip;
+  if(tv.due) chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:'+alpha(C.red,0.18)+';color:'+C.red+';white-space:nowrap">Check due</span>';
+  else if(tv.stale) chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--card2);color:var(--sub);white-space:nowrap">No reading 12h+</span>';
+  else chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--card2);color:var(--sub);white-space:nowrap">Next check '+tClock(tv.ts+TEMP_DUE_MS)+'</span>';
+  return '<div id="tempcard" class="card press" data-a="hsopen" data-x="fever" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;box-sizing:border-box'+(tv.due?';border:1.5px solid '+alpha(C.red,0.6):'')+'">'+
+    '<div class="rowsb" style="margin-bottom:10px">'+
+      '<span style="display:flex;align-items:center;gap:7px;color:'+col+';font-size:15px;font-weight:600">'+ic("flame",16,col)+'Baby Temperature'+
+        (tv.feverOn?'<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:'+C.red+';color:#fff;margin-left:4px">Fever mode</span>':'')+'</span>'+chip+'</div>'+
+    '<div style="display:flex;align-items:flex-end;gap:12px">'+
+      '<span style="flex:1;min-width:0">'+
+        '<div class="num" style="font-size:32px;font-weight:800;letter-spacing:-.5px;line-height:1.15'+(hot?';color:'+C.red:'')+'">'+fmtTemp(tv.last)+'</div>'+
+        '<div style="font-size:15px;color:var(--sub);margin-top:4px">Recorded '+tClock(tv.ts)+' \u00B7 <span id="tempago">'+agoHM(tv.ts)+'</span></div></span>'+
+      '<button class="circ press" data-a="tempQuick" title="Log temperature" style="width:46px;height:46px;flex:none;background:'+col+'">'+ic("plus",20,"#000",{sw:2.6})+'</button></div>'+
+    ((tv.feverOn && !tv.fever) ? '<button class="press" data-a="feverEnd" style="margin-top:10px;font-size:13px;font-weight:700;color:'+col+';background:none;border:none;padding:0">Temperature normal again? End fever mode</button>' : '')+
+  '</div>';
+}
+/* summary stack: due check sits above Next Feed; fever mode lifts temperature + medicine right after Output */
+function sumStackHtml(upHtml, outHtml){
+  var tv=tempView(), fv=feverOn(), tc=tv?tempCardHtml(tv):"", medTop=!fv && medPin();
+  var mid=(tv && !tv.due && !tv.stale), h=resumeSumHtml()+(medTop?medMilestoneHtml():"")+holdCardHtml();
+  if(tv && tv.due) h+=tc;
+  h+=upHtml+outHtml;
+  if(mid) h+=tc;
+  if(fv) h+=medMilestoneHtml();
+  h+=vomitCardHtml()+noteCardHtml()+pumpStoredCardHtml();
+  if(!fv && !medTop) h+=medMilestoneHtml();
+  if(tv && tv.stale) h+=tc;                       /* 12 h without a reading: pushed down */
+  return h;
+}
+/* 12 h without a reading in fever mode: ask whether the fever has gone */
+function closeFeverModal(){ var d=byId("fevermodal"); if(d && d.parentNode) d.parentNode.removeChild(d); }
+function feverAskCheck(){
+  if(inOnboarding() || nsShown()) return false;
+  if(byId("fevermodal")||byId("duemodal")||byId("streakmodal")||byId("nursemodal")||byId("howsmodal")) return false;
+  if(S.tab!=="summary" || S.sub || S.eidx!=null) return false;
+  var tv=tempView(); if(!tv || !tv.feverOn || !tv.stale) return false;
+  if(String(S.feverAskedFor||"")===String(tv.last.id)) return false;
+  var col=(act("fever")||{}).c||C.rose, d=document.createElement("div"); d.id="fevermodal";
+  d.innerHTML='<div style="position:fixed;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,.6);z-index:410;display:flex;align-items:center;justify-content:center;padding:32px">'+
+    '<div class="card" style="max-width:330px;width:100%;padding:24px 22px;text-align:center">'+
+    '<span class="circ" style="width:52px;height:52px;margin:0 auto;background:'+alpha(col,0.2)+'">'+ic("flame",24,col)+'</span>'+
+    '<div style="font-size:18px;font-weight:800;margin:12px 0 6px;line-height:1.3">Has the fever stopped?</div>'+
+    '<div style="font-size:14px;color:var(--sub);margin-bottom:20px;line-height:1.45">No temperature logged for 12 hours (last '+fmtTemp(tv.last)+' at '+tClock(tv.ts)+'). Is it back to normal?</div>'+
+    '<button class="press" data-a="feverGone" style="width:100%;height:48px;border-radius:14px;background:'+C.green+';color:#000;font-size:15px;font-weight:800;margin-bottom:10px">Yes, the fever is gone</button>'+
+    '<button class="press" data-a="feverStill" style="width:100%;height:48px;border-radius:14px;background:transparent;border:1.5px solid '+col+';color:'+col+';font-size:15px;font-weight:700">No \u2014 log a temperature</button>'+
+    '</div></div>';
+  document.body.appendChild(d);
+  return true;
+}
+/* nightstand temperature-check section (inline; no pop-ups over the nightstand) */
+function nsTempHtml(nc, tv){
+  var v=(ui.nsT!=null?ui.nsT:tv.last.t), u=tv.last.u||"C";
+  return '<div class="nstemp" data-a="nsStay" style="width:100%;max-width:360px;margin:0 auto;padding:16px;border-radius:20px;box-sizing:border-box;border:1px solid '+alpha(nc,0.35)+';background:'+alpha(nc,0.08)+'">'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:700;color:'+nc+'">'+ic("flame",17,nc)+'Temperature check due</div>'+
+    '<div style="font-size:14px;color:'+alpha(nc,0.7)+';margin-top:4px">Last '+fmtTemp(tv.last)+' \u00B7 '+agoHM(tv.ts)+'</div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px">'+
+      '<button class="circ press" data-a="nsTempStep" data-x="-0.1" style="width:44px;height:44px;background:'+alpha(nc,0.16)+'">'+ic("minus",18,nc)+'</button>'+
+      '<span id="nstv" class="num" style="font-size:36px;font-weight:800;min-width:128px;color:'+(isFev(v,u)?C.red:nc)+'">'+v.toFixed(1)+'\u00B0'+u+'</span>'+
+      '<button class="circ press" data-a="nsTempStep" data-x="0.1" style="width:44px;height:44px;background:'+alpha(nc,0.16)+'">'+ic("plus",18,nc)+'</button></div>'+
+    '<button class="press" data-a="nsTempSave" style="display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:700;color:'+nc+';background:'+alpha(nc,0.16)+';border:1px solid '+alpha(nc,0.4)+'">'+ic("check",15,nc,{sw:3})+'Log temperature</button>'+
+  '</div>';
+}
+/* nursing + due check: the nursing block and the temperature block slide back and forth every 4 s */
+function nsWrapSlide(nb, ls, nc){
+  var tv=tempView(); if(!(ls && ls.k==="nursing" && tv && tv.due)) return nb;
+  var p=ui.nsPane?1:0, dot=function(i){ return '<span style="width:7px;height:7px;border-radius:4px;background:'+alpha(nc,(i===p)?0.9:0.3)+'"></span>'; };
+  return '<div id="nslide" style="overflow:hidden;width:100%">'+
+    '<div id="nstrack" style="display:flex;width:200%;transform:translateX('+(p?'-50%':'0')+');transition:transform .5s ease">'+
+      '<div style="width:50%;flex:none">'+nb+'</div>'+
+      '<div style="width:50%;flex:none;display:flex;align-items:center;padding-top:clamp(18px, 4vh, 40px);box-sizing:border-box">'+nsTempHtml(nc, tv)+'</div></div>'+
+    '<div id="nsdots" style="display:flex;gap:7px;justify-content:center;margin-top:14px">'+dot(0)+dot(1)+'</div></div>';
+}
+function nsTempStatic(nc, b){
+  var tv=tempView(); if(!tv || !tv.due) return "";
+  if(b.lss.length===1 && b.lss[0].k==="nursing") return "";   /* shown in the slider instead */
+  return '<div style="margin-top:22px">'+nsTempHtml(nc, tv)+'</div>';
+}
+function nsSlideTick(){
+  var tr=byId("nstrack"); if(!tr) return;
+  var now=Date.now(); if(!ui.nsFlipAt) ui.nsFlipAt=now;
+  if(now < (ui.nsHold||0) || now-ui.nsFlipAt < 4000) return;
+  ui.nsPane=ui.nsPane?0:1; ui.nsFlipAt=now;
+  tr.style.transform='translateX('+(ui.nsPane?'-50%':'0')+')';
+  var ds=byId("nsdots"); if(ds && ds.children.length===2){ var nc=nightCol(); ds.children[0].style.background=alpha(nc,ui.nsPane?0.3:0.9); ds.children[1].style.background=alpha(nc,ui.nsPane?0.9:0.3); }
 }
 function vFever(a){
   return '<div class="full" style="padding:0 4px">'+backBtn(a.c)+
@@ -5359,7 +5497,7 @@ function nurseModalTick(){
 function howsBabyCheck(){
   if(byId("howsmodal")){ howsRefresh(); return; }      // an open modal is re-validated, never redisplayed as-is
   if(inOnboarding()) return;
-  if(byId("duemodal")||byId("streakmodal")) return;
+  if(byId("duemodal")||byId("streakmodal")||byId("fevermodal")) return;
   if(Date.now()-(S.howsSnooze||0) < 60*60000) return;
   if(!howsWanted(nfView())) return;
   ui.howsStep=null; showHowsBaby();
@@ -6721,7 +6859,7 @@ function nightHtml(){
     var sideTxt = ls.k==="nursing"
       ? ((ls.s&&ls.s.side)==="L" ? "Left" : (ls.s&&ls.s.side)==="R" ? "Right" : (un9?un9.side:""))
       : "";
-    h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:clamp(28px, 7vh, 64px);width:100%">'+
+    var nb0 = '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:clamp(28px, 7vh, 64px);width:100%">'+
       '<div id="nact-'+ls.k+'" data-bare="1" class="bigtimer num" style="color:'+nc+'">'+nTimeBare(ls)+'</div>'+
       '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;'+
       'font-size:17px;font-weight:600;color:'+nc+'">'+
@@ -6730,6 +6868,7 @@ function nightHtml(){
       '<div style="display:flex;gap:14px;margin-top:24px;justify-content:center">'+
       '<button class="press" data-a="nstop" data-x="'+ls.k+'" style="'+pill+';padding:13px 24px;font-size:16px">'+
       ic("square",13,nc,{fill:true})+'Stop &amp; save</button></div></div>';
+    h += nsWrapSlide(nb0, ls, nc);
   } else if(b.lss.length>=2){
     h += '<div id="nacts" data-k="'+keys.join("|")+'" style="margin-top:clamp(24px, 6vh, 44px);width:100%;'+
       'display:flex;gap:12px;align-items:stretch">'+
@@ -6754,6 +6893,7 @@ function nightHtml(){
     (b.lfd ? '<div id="nlfd" style="font-size:15px;color:'+alpha(nc,0.55)+'">'+b.lfd+'</div>' : '')+
     (b.np ? '<div id="nnp">'+b.np+'</div>' : '')+
     nightNF(nc)+
+    nsTempStatic(nc, b)+
     nightRemote(nc, (b.lss.length===0 && remoteSessions().length>0))+
     (((b.lss.length===1 && b.lss[0] && !b.lss[0].run) || (b.lss.length===0 && remoteSessions().length && !remoteSessions()[0].run))
       ? '<div class="pulse" style="margin-top:18px;font-size:28px;font-weight:800;letter-spacing:1px;color:'+nc+'">Paused</div>' : '')+
@@ -7786,7 +7926,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.2.06";
+var APPVER="0.2.07";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
@@ -8450,6 +8590,10 @@ function notifTick(){
       }
     }
   }
+  // 2b) temperature check due (2 h after the last reading), once per reading
+  var tvn=(typeof tempView==="function")?tempView():null;
+  if(tvn && tvn.due){ var tkey="temp:"+tvn.last.id;
+    if(!S.notifSeen[tkey]){ notif("Temperature check due \u2014 "+nm+" \u00B7 last "+fmtTemp(tvn.last)+" at "+tClock(tvn.ts)); S.notifSeen[tkey]=1; changed=true; } }
   // 3) nappy prediction ("Mixed/Wet due now") \u2014 mirrors the in-app smart-stack hero
   try {
     var ch=nappyChip();
@@ -8913,6 +9057,12 @@ setInterval(function(){
   capTick();
   if(byId("howsmodal")) howsRefresh();
   if(byId("nursemodal")) nurseModalTick();
+  nsSlideTick();
+  var tv7=tempView(), dn7=!!(tv7 && tv7.due), st7=!!(tv7 && tv7.stale);
+  if(ui.tempDueWas!==undefined && (dn7!==ui.tempDueWas || st7!==ui.tempStaleWas)) render();
+  ui.tempDueWas=dn7; ui.tempStaleWas=st7;
+  var ta7=byId("tempago"); if(ta7 && tv7) ta7.textContent=agoHM(tv7.ts);
+  if(Date.now()-(ui.faT||0) > 30000){ ui.faT=Date.now(); feverAskCheck(); }
   resumeTick();
   var _bs=S.sess.burp;
   if(_bs && sE(_bs)>=1200){ if(_bs.mid){ saveMidBurp(); } else { A.nstop("burp", true); } toast("Burp time-out \u2014 Session saved"); }
@@ -9031,7 +9181,7 @@ setInterval(function(){
     tt.textContent=fmt(sE(s2));
   }
 },1000);
-document.addEventListener("visibilitychange", function(){ if(document.hidden){ closeHows(); closeNurseModal(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); nurseModalCheck(); medDueModalCheck(); howsBabyCheck(); cordOverdueCheck(); } });
+document.addEventListener("visibilitychange", function(){ if(document.hidden){ closeHows(); closeNurseModal(); return; } if(!removedCheck()){ purgeRemoved(); feedRecoverCheck(); pauseAutosaveResume(); render(); nurseModalCheck(); medDueModalCheck(); feverAskCheck(); howsBabyCheck(); cordOverdueCheck(); } });
 document.addEventListener("visibilitychange", function(){ if(!document.hidden && (S.night||S.cnight||(ui.land && !ui.landX))) nsWakeReq(); });
 
 /* boot: static status bar icons + first paint */
@@ -9278,6 +9428,7 @@ pumpMigrate();
 bagSweep();
 nurseModalCheck();
 medDueModalCheck();
+feverAskCheck();
 howsBabyCheck();
 cordOverdueCheck();
 removedCheck();
