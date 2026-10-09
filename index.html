@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Baby Care v0.2.10 -->
+<!-- Baby Care v0.2.11 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -3770,7 +3770,7 @@ function vSummary(){
   var age=babyAge(), nv=nfView(), un=nv.un;
   var due = nv.due;
   var upHtml =
-    cryCardHtml()+
+    (feverOn() ? "" : cryCardHtml())+
     '<div class="card press" data-a="sub" data-x="feed" style="width:100%;margin-bottom:12px;padding:16px;text-align:left;min-height:156px;box-sizing:border-box">'+
       '<div class="rowsb" style="margin-bottom:10px">'+
         '<span style="display:flex;align-items:center;gap:7px;color:'+C.mint+';font-size:15px;font-weight:600">'+ic("clock",16,C.mint)+'Next Feed</span>'+
@@ -3820,7 +3820,7 @@ function vSummary(){
       '<span id="syface" class="circ" style="width:44px;height:44px;background:'+((!SY.on||(SY.lastOk&&!SY.err))?'linear-gradient(135deg,#7BAE5C,#4E7A3A)':'linear-gradient(135deg,#FF6B6B,#C0392B)')+'">'+
         ic("baby",22,"#fff")+'</span></span></div>'+
 
-    '<div id="hstack" style="height:124px;margin-top:20px;margin-bottom:12px;position:relative">'+hsCardHtml()+'</div>'+
+    (feverOn() ? '<div style="height:20px"></div>' : '<div id="hstack" style="height:124px;margin-top:20px;margin-bottom:12px;position:relative">'+hsCardHtml()+'</div>')+
 
     (S.chatOn ? '<button class="card press" data-a="sub" data-x="baby" style="width:100%;display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
       '<span class="circ" style="width:40px;height:40px;border-radius:16px;background:'+alpha(C.pink,0.18)+'">'+ic("cake",20,C.pink)+'</span>'+
@@ -4072,7 +4072,7 @@ function vHistory(){
     '<button class="listopt press" data-a="expJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Export as JSON (full backup)</button>'+
     '<button class="listopt press" data-a="impJson" style="color:var(--blue);font-size:16px;border-top:1px solid var(--hair)">Import JSON\u2026</button>'+
     '<button class="listopt press" data-a="clear" style="color:var(--red);font-size:16px;border-top:1px solid var(--hair)">Clear All Data</button></div>'+
-    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.10</div>'+
+    '<div style="font-size:13px;color:var(--sub);line-height:1.5;padding:0 4px;margin-bottom:24px">JSON export includes every data point \u2014 all entries, the baby profile, custom cards and card order \u2014 and Import JSON restores it all. \u00B7 Test build v0.2.11</div>'+
     '<div style="font-size:22px;font-weight:700;margin:0 0 12px">Siri Shortcuts</div>'+
     '<div class="card" style="margin-bottom:12px">'+
     '<div style="font-size:14px;line-height:1.55;color:var(--sub)">In the Shortcuts app, add an <b style="color:#fff">Open URL</b> action with one of these, then name the shortcut (e.g. \u201CStart nursing left\u201D) and say it to Siri:</div>'+
@@ -4768,11 +4768,9 @@ function tempCardHtml(tv){
   if(tv.due) chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:'+alpha(C.red,0.18)+';color:'+C.red+';white-space:nowrap">Check due</span>';
   else if(tv.stale) chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--card2);color:var(--sub);white-space:nowrap">No reading 12h+</span>';
   else chip='<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--card2);color:var(--sub);white-space:nowrap">Next check '+tClock(tv.ts+TEMP_DUE_MS)+'</span>';
-  var fm=tv.feverOn;
-  return '<div id="tempcard" class="card press" data-a="hsopen" data-x="fever" style="width:100%;margin-bottom:12px;text-align:left;box-sizing:border-box;'+
-      (fm ? 'padding:0;overflow:hidden;border:2px solid '+C.red : 'padding:16px'+(tv.due?';border:1.5px solid '+alpha(C.red,0.6):''))+'">'+
-    (fm ? '<div id="fevbanner" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;background:'+C.red+';color:#fff;font-size:13px;font-weight:800;letter-spacing:.3px">'+
-        ic("flame",14,"#fff")+'Fever Mode</div><div style="padding:14px 16px 16px">' : '')+
+  var fm=tv.feverOn;   /* in fever mode the red outline + banner belong to the fever group */
+  return '<div id="tempcard" class="card press" data-a="hsopen" data-x="fever" style="width:100%;margin-bottom:12px;text-align:left;box-sizing:border-box;padding:16px'+
+      ((tv.due && !fm)?';border:1.5px solid '+alpha(C.red,0.6):'')+'">'+
     '<div class="rowsb" style="margin-bottom:10px">'+
       '<span style="display:flex;align-items:center;gap:7px;color:'+col+';font-size:15px;font-weight:600;white-space:nowrap">'+ic("flame",16,col)+'Baby Temperature</span>'+chip+'</div>'+
     '<div style="display:flex;align-items:flex-end;gap:12px">'+
@@ -4781,18 +4779,29 @@ function tempCardHtml(tv){
         '<div style="font-size:15px;color:var(--sub);margin-top:4px">Recorded '+tClock(tv.ts)+' \u00B7 <span id="tempago">'+agoHM(tv.ts)+'</span></div></span>'+
       '<button class="circ press" data-a="tempQuick" title="Log temperature" style="width:46px;height:46px;flex:none;background:'+col+'">'+ic("plus",20,"#000",{sw:2.6})+'</button></div>'+
     ((tv.feverOn && !tv.fever) ? '<button class="press" data-a="feverEnd" style="margin-top:10px;font-size:13px;font-weight:700;color:'+col+';background:none;border:none;padding:0">Temperature normal again? End fever mode</button>' : '')+
-  (fm ? '</div>' : '')+'</div>';
+  '</div>';
 }
 /* summary stack: due check sits above Next Feed; fever mode lifts temperature + medicine right after Output */
+/* v0.2.11: fever mode groups Temperature + Medicine in one red-outlined block with a "Fever Mode" strip */
+function feverGroupHtml(tv){
+  return '<div id="fevergroup" style="border:2px solid '+C.red+';border-radius:26px;overflow:hidden;margin-bottom:12px">'+
+    '<div id="fevbanner" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 12px;background:'+C.red+';color:#fff;font-size:13px;font-weight:800;letter-spacing:.3px">'+
+      ic("flame",14,"#fff")+'Fever Mode</div>'+
+    '<div style="padding:10px 10px 0">'+(tv?tempCardHtml(tv):"")+medMilestoneHtml()+'</div></div>';
+}
 function sumStackHtml(upHtml, outHtml){
-  var tv=tempView(), fv=feverOn(), tc=tv?tempCardHtml(tv):"", medTop=!fv && medPin();
+  var tv=tempView(), fv=feverOn();
+  if(fv){   /* above Next Feed; after 12 h without a reading the group is pushed down */
+    var grp=feverGroupHtml(tv), down=!!(tv && tv.stale);
+    return resumeSumHtml()+holdCardHtml()+(down?"":grp)+upHtml+outHtml+vomitCardHtml()+noteCardHtml()+pumpStoredCardHtml()+(down?grp:"");
+  }
+  var tc=tv?tempCardHtml(tv):"", medTop=medPin();
   var mid=(tv && !tv.due && !tv.stale), h=resumeSumHtml()+(medTop?medMilestoneHtml():"")+holdCardHtml();
   if(tv && tv.due) h+=tc;
   h+=upHtml+outHtml;
   if(mid) h+=tc;
-  if(fv) h+=medMilestoneHtml();
   h+=vomitCardHtml()+noteCardHtml()+pumpStoredCardHtml();
-  if(!fv && !medTop) h+=medMilestoneHtml();
+  if(!medTop) h+=medMilestoneHtml();
   if(tv && tv.stale) h+=tc;                       /* 12 h without a reading: pushed down */
   return h;
 }
@@ -7938,7 +7947,7 @@ function sySoon(){
   if(SY.t) clearTimeout(SY.t);
   SY.t=setTimeout(function(){ SY.t=null; syTick(); }, 2500);
 }
-var APPVER="0.2.10";
+var APPVER="0.2.11";
 var SLOTL={m:"Morning", n:"Noon", ni:"Night"};
 function outSplit(){
   var tk=dayKey(Date.now()), w=0, m=0, i, e, t;
